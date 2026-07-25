@@ -7,6 +7,6 @@
     "ru": "Встроенный сервер лицензий, блокировка запуска без подписки, обратный отсчёт, локальная проверка ключей без сервера",
     "en": "Built-in license server, block launch without subscription, countdown timer, local key validation without server"
   },
-  "required": true,
+  "required": false,
   "releaseDate": "2026-07-25"
 }
