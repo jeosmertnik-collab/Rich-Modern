@@ -262,7 +262,7 @@ public class ClickGui extends Screen implements IMinecraft {
         background.render(context, bgX, bgY, selectedCategory, delta, alphaMultiplier);
         background.renderCategoryPanel(bgX, bgY, alphaMultiplier);
 
-        background.renderHeader(bgX, bgY, selectedCategory, alphaMultiplier, delta);
+        background.renderHeader(bgX, bgY, selectedCategory, alphaMultiplier);
         background.renderCategoryNames(bgX, bgY, selectedCategory, alphaMultiplier);
 
         float mlX = bgX + ClickGuiTheme.CATEGORY_PANEL_WIDTH + ClickGuiTheme.PANEL_INSET * 2 + 4;
@@ -300,8 +300,6 @@ public class ClickGui extends Screen implements IMinecraft {
         }
 
         Scissor.reset();
-
-        background.renderAvatar(context, bgX, bgY, alphaMultiplier);
 
         if (!closing && normalAlpha > 0.01f && isModuleCategory(selectedCategory)) {
             renderTooltip(bgX, bgY, mx, my, mlX, mlY, mlW, mlH, alphaMultiplier);
@@ -432,7 +430,7 @@ public class ClickGui extends Screen implements IMinecraft {
         }
 
         if (isModuleCategory(selectedCategory)) {
-            ModuleStructure toggleModule = moduleComponent.getModuleForToggleClick(mx, my, mlX, mlY, mlW, mlH);
+            ModuleStructure toggleModule = moduleComponent.getModuleAtPosition(mx, my, mlX, mlY, mlW, mlH);
             if (toggleModule != null && click.button() == 0) {
                 toggleModule.switchState();
                 return true;
@@ -645,7 +643,7 @@ public class ClickGui extends Screen implements IMinecraft {
 
     private void renderTooltip(float bgX, float bgY, float mx, float my,
                                float mlX, float mlY, float mlW, float mlH, float alphaMultiplier) {
-        ModuleStructure hovered = moduleComponent.getHoveredModule(mx, my, mlX, mlY, mlW, mlH);
+        ModuleStructure hovered = moduleComponent.getModuleAtPosition(mx, my, mlX, mlY, mlW, mlH);
         if (hovered == null) return;
         if (hovered.getDescription() == null || hovered.getDescription().isEmpty()) return;
 
