@@ -405,41 +405,12 @@ ipcMain.handle('update:getLocalVersion', () => {
 
 ipcMain.handle('license:activate', async (event, { key }) => {
     const hwid = getHardwareId();
-    try {
-        const url = new URL(LICENSE_API_URL);
-        const postData = JSON.stringify({ key, hwid });
-
-        return new Promise((resolve) => {
-            const req = http.request({
-                hostname: url.hostname,
-                port: url.port,
-                path: url.pathname,
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(postData) }
-            }, (res) => {
-                let body = '';
-                res.on('data', chunk => body += chunk);
-                res.on('end', () => {
-                    try {
-                        const result = JSON.parse(body);
-                        if (result.valid) {
-                            saveLicense({ key, plan: result.plan, expiresAt: result.expiresAt, activatedAt: Date.now(), hwid });
-                            resolve({ success: true, plan: result.plan, expiresAt: result.expiresAt });
-                        } else {
-                            resolve({ success: false, error: result.error || 'Invalid key' });
-                        }
-                    } catch (e) {
-                        resolve({ success: false, error: 'Invalid server response' });
-                    }
-                });
-            });
-            req.on('error', () => resolve({ success: false, error: 'Cannot connect to license server' }));
-            req.write(postData);
-            req.end();
-        });
-    } catch (e) {
-        return { success: false, error: e.message };
+    const result = validateKeyLocal(key, hwid);
+    if (result.valid) {
+        saveLicense({ key, plan: result.plan, expiresAt: result.expiresAt, activatedAt: Date.now(), hwid });
+        return { success: true, plan: result.plan, expiresAt: result.expiresAt };
     }
+    return { success: false, error: result.error };
 });
 
 ipcMain.handle('license:get', () => {
