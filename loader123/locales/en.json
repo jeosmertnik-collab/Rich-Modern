@@ -56,5 +56,15 @@
   "sub_activate_desc": "Enter your subscription key to activate.",
   "btn_activate": "ACTIVATE",
   "btn_deactivate": "DEACTIVATE",
-  "btn_buy_subscription": "Buy Subscription"
+  "btn_buy_subscription": "Buy Subscription",
+  "sub_required_title": "Subscription required",
+  "sub_required_desc": "You need an active subscription key to launch the client.",
+  "sub_or_activate": "Or enter a key on the \uD83D\uDCB3 tab",
+  "sub_expired_title": "Subscription expired",
+  "sub_expired_detail": "Renew your subscription to continue",
+  "btn_renew": "Renew subscription",
+  "launch_need_key": "KEY REQUIRED",
+  "launch_no_sub": "Activate a subscription on the \uD83D\uDCB3 tab",
+  "launch_expired": "KEY EXPIRED",
+  "launch_expired_detail": "Expired {n} days ago. Renew your subscription."
 }

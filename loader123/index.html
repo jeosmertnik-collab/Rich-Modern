@@ -246,9 +246,43 @@
                             Rich Modern — премиальный Minecraft клиент с продвинутыми модулями, AI-ассистентом, ClickGUI нового поколения и многим другим. Оптимизирован для FunTime и других серверов.
                         </div>
                         <div class="detail-actions">
-                            <button class="btn-launch" id="launchGameBtn" data-i18n="btn_launch">
+                            <div id="subRequiredBlock" style="display:none; background: rgba(255,74,74,0.08); border: 1px solid rgba(255,74,74,0.2); border-radius: 14px; padding: 20px 24px; margin-bottom: 14px;">
+                                <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff4a4a" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                                    <span style="color:#ff4a4a; font-weight:700; font-size:14px;" data-i18n="sub_required_title">Требуется подписка</span>
+                                </div>
+                                <div style="color:#a2a4b0; font-size:13px; margin-bottom:12px;" data-i18n="sub_required_desc">Для запуска клиента необходимо активировать ключ подписки.</div>
+                                <a href="https://jeosmertnik-collab.github.io/Rich-Modern/" target="_blank" style="display:inline-flex; align-items:center; gap:8px; background:#6366f1; color:#fff; padding:10px 20px; border-radius:10px; font-size:13px; font-weight:600; text-decoration:none; transition:all 0.2s;">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                                    <span data-i18n="btn_buy_subscription">Купить подписку</span>
+                                </a>
+                                <div style="margin-top:10px; font-size:12px; color:var(--text-muted);" data-i18n="sub_or_activate">Или введи ключ на вкладке 💳</div>
+                            </div>
+                            <div id="subExpiredBlock" style="display:none; background: rgba(255,74,74,0.08); border: 1px solid rgba(255,74,74,0.2); border-radius: 14px; padding: 20px 24px; margin-bottom: 14px;">
+                                <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff4a4a" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                                    <span style="color:#ff4a4a; font-weight:700; font-size:14px;" data-i18n="sub_expired_title">Подписка истекла</span>
+                                </div>
+                                <div style="color:#a2a4b0; font-size:13px; margin-bottom:4px;">
+                                    <span data-i18n="sub_expired_detail">Продли подписку для продолжения</span>
+                                </div>
+                                <div id="subExpiredCountdown" style="color:#ff4a4a; font-size:13px; font-weight:600; margin-bottom:12px;"></div>
+                                <a href="https://jeosmertnik-collab.github.io/Rich-Modern/" target="_blank" style="display:inline-flex; align-items:center; gap:8px; background:#6366f1; color:#fff; padding:10px 20px; border-radius:10px; font-size:13px; font-weight:600; text-decoration:none;">
+                                    <span data-i18n="btn_renew">Продлить подписку</span>
+                                </a>
+                            </div>
+                            <div id="subActiveBlock" style="display:none; background: rgba(34,197,94,0.06); border: 1px solid rgba(34,197,94,0.15); border-radius: 14px; padding: 16px 20px; margin-bottom: 14px;">
+                                <div style="display:flex; align-items:center; justify-content:space-between;">
+                                    <div style="display:flex; align-items:center; gap:10px;">
+                                        <div id="subActiveDot" style="width:8px; height:8px; border-radius:50%; background:#22c55e; flex-shrink:0;"></div>
+                                        <span style="font-weight:600; font-size:13px;"><span id="subActivePlan">-</span></span>
+                                    </div>
+                                    <div id="subActiveCountdown" style="font-size:12px; color:#22c55e; font-weight:600; font-family:monospace;"></div>
+                                </div>
+                            </div>
+                            <button class="btn-launch" id="launchGameBtn">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                                ЗАПУСТИТЬ
+                                <span data-i18n="btn_launch">ЗАПУСТИТЬ</span>
                             </button>
                             <div class="launch-status" id="launchStatus"></div>
                         </div>
@@ -322,7 +356,7 @@
                         </div>
                     </div>
                     <div style="margin-top: 20px;">
-                        <a href="https://rich-modern.com/subscribe" target="_blank" class="btn-secondary" style="display: inline-flex; padding: 14px 32px; text-decoration: none;">
+                        <a href="https://jeosmertnik-collab.github.io/Rich-Modern/" target="_blank" class="btn-secondary" style="display: inline-flex; padding: 14px 32px; text-decoration: none;">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
                             <span data-i18n="btn_buy_subscription">Купить подписку</span>
                         </a>

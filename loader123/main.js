@@ -256,10 +256,80 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (clientCard) {
-        clientCard.addEventListener('click', () => {
+        clientCard.addEventListener('click', async () => {
             if (screenMain) { screenMain.style.display = 'none'; screenMain.classList.remove('active'); }
             if (clientDetailScreen) { clientDetailScreen.style.display = 'flex'; setTimeout(() => clientDetailScreen.classList.add('active'), 10); }
+            await updateLaunchState();
         });
+    }
+
+    const subRequiredBlock = document.getElementById('subRequiredBlock');
+    const subExpiredBlock = document.getElementById('subExpiredBlock');
+    const subActiveBlock = document.getElementById('subActiveBlock');
+    const subExpiredCountdown = document.getElementById('subExpiredCountdown');
+    const subActivePlan = document.getElementById('subActivePlan');
+    const subActiveCountdown = document.getElementById('subActiveCountdown');
+    const PLAN_LABELS_LAUNCH = { stable: 'Stable', beta: 'Beta', alpha: 'Alpha' };
+
+    async function updateLaunchState() {
+        const t = await loadTranslations(currentLanguage);
+        const license = await ipcRenderer.invoke('license:get');
+
+        if (subRequiredBlock) subRequiredBlock.style.display = 'none';
+        if (subExpiredBlock) subExpiredBlock.style.display = 'none';
+        if (subActiveBlock) subActiveBlock.style.display = 'none';
+
+        if (!license) {
+            if (subRequiredBlock) subRequiredBlock.style.display = '';
+            if (launchGameBtn) { launchGameBtn.disabled = true; launchGameBtn.style.opacity = '0.4'; launchGameBtn.style.pointerEvents = 'none'; }
+            if (launchStatus) { launchStatus.style.display = 'block'; launchStatus.textContent = ''; launchStatus.style.color = ''; }
+            return;
+        }
+
+        const now = Date.now();
+        if (now > license.expiresAt) {
+            if (subExpiredBlock) subExpiredBlock.style.display = '';
+            if (launchGameBtn) { launchGameBtn.disabled = true; launchGameBtn.style.opacity = '0.4'; launchGameBtn.style.pointerEvents = 'none'; }
+            updateExpiredCountdown(license.expiresAt, t);
+            return;
+        }
+
+        if (subActiveBlock) subActiveBlock.style.display = '';
+        if (launchGameBtn) { launchGameBtn.disabled = false; launchGameBtn.style.opacity = '1'; launchGameBtn.style.pointerEvents = 'all'; }
+        if (launchStatus) { launchStatus.style.display = 'none'; launchStatus.textContent = ''; }
+        updateActiveCountdown(license, t);
+    }
+
+    function updateExpiredCountdown(expiresAt, t) {
+        if (!subExpiredCountdown) return;
+        function update() {
+            const diff = Date.now() - expiresAt;
+            const days = Math.floor(diff / 86400000);
+            const hours = Math.floor((diff % 86400000) / 3600000);
+            const mins = Math.floor((diff % 3600000) / 60000);
+            const secs = Math.floor((diff % 60000) / 1000);
+            subExpiredCountdown.textContent = `${days}д ${hours}ч ${mins}м ${secs}с назад`;
+        }
+        update();
+        if (subExpiredCountdown._timer) clearInterval(subExpiredCountdown._timer);
+        subExpiredCountdown._timer = setInterval(update, 1000);
+    }
+
+    function updateActiveCountdown(license, t) {
+        if (!subActivePlan || !subActiveCountdown) return;
+        subActivePlan.textContent = PLAN_LABELS_LAUNCH[license.plan] || license.plan;
+        function update() {
+            const diff = license.expiresAt - Date.now();
+            if (diff <= 0) { clearInterval(subActiveCountdown._timer); updateLaunchState(); return; }
+            const days = Math.floor(diff / 86400000);
+            const hours = Math.floor((diff % 86400000) / 3600000);
+            const mins = Math.floor((diff % 3600000) / 60000);
+            const secs = Math.floor((diff % 60000) / 1000);
+            subActiveCountdown.textContent = `${days}д ${hours}ч ${mins}м ${secs}с`;
+        }
+        update();
+        if (subActiveCountdown._timer) clearInterval(subActiveCountdown._timer);
+        subActiveCountdown._timer = setInterval(update, 1000);
     }
 
     if (backToCardsBtn) {
@@ -272,6 +342,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (launchGameBtn) {
         launchGameBtn.addEventListener('click', async () => {
             const t = await loadTranslations(currentLanguage);
+
+            const license = await ipcRenderer.invoke('license:get');
+            if (!license || Date.now() > license.expiresAt) {
+                return;
+            }
+
             const nickname = currentUser || 'Player';
             const ram = ramSlider ? ramSlider.value : '2048';
 
@@ -305,6 +381,7 @@ document.addEventListener('DOMContentLoaded', () => {
             launchGameBtn.style.pointerEvents = 'all';
             launchGameBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> ${t.btn_launch || 'ЗАПУСТИТЬ'}`;
             if (launchStatus) launchStatus.style.display = 'none';
+            updateLaunchState();
         }
     });
 
@@ -562,6 +639,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (licenseError) licenseError.style.display = 'none';
                 if (licenseKeyInput) licenseKeyInput.value = '';
                 loadSubscriptionStatus();
+                updateLaunchState();
             } else {
                 if (licenseError) {
                     licenseError.textContent = result.error || (currentLanguage === 'ru' ? 'Ошибка активации' : 'Activation failed');
@@ -576,6 +654,7 @@ document.addEventListener('DOMContentLoaded', () => {
         removeKeyBtn.addEventListener('click', async () => {
             await ipcRenderer.invoke('license:remove');
             loadSubscriptionStatus();
+            updateLaunchState();
         });
     }
 
@@ -592,4 +671,5 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     loadSubscriptionStatus();
+    updateLaunchState();
 });

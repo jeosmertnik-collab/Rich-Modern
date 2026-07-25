@@ -56,5 +56,15 @@
   "sub_activate_desc": "Введи ключ подписки для активации.",
   "btn_activate": "АКТИВИРОВАТЬ",
   "btn_deactivate": "ДЕАКТИВИРОВАТЬ",
-  "btn_buy_subscription": "Купить подписку"
+  "btn_buy_subscription": "Купить подписку",
+  "sub_required_title": "Требуется подписка",
+  "sub_required_desc": "Для запуска клиента необходимо активировать ключ подписки.",
+  "sub_or_activate": "Или введи ключ на вкладке \uD83D\uDCB3",
+  "sub_expired_title": "Подписка истекла",
+  "sub_expired_detail": "Продли подписку для продолжения",
+  "btn_renew": "Продлить подписку",
+  "launch_need_key": "ТРЕБУЕТСЯ КЛЮЧ",
+  "launch_no_sub": "Активируй подписку на вкладке \uD83D\uDCB3",
+  "launch_expired": "КЛЮЧ ПРОСРОЧЕН",
+  "launch_expired_detail": "Истёк {n} дн. назад. Продли подписку."
 }
