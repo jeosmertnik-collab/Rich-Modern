@@ -9,9 +9,126 @@ let win;
 
 const USERS_FILE = path.join(app.getPath('userData'), 'users.json');
 const LICENSE_FILE = path.join(app.getPath('userData'), 'license.json');
+const LICENSE_DB_FILE = path.join(app.getPath('userData'), 'licenses.json');
 const VERSION_URL = 'https://raw.githubusercontent.com/jeosmertnik-collab/Rich-Modern/main/version.json';
 const LICENSE_API_URL = 'http://localhost:3000/api/validate';
 const LOCAL_VERSION_FILE = path.join(app.getPath('userData'), 'version.json');
+const LICENSE_SECRET = 'rich-modern-secret-2026';
+
+function generateLicenseKey(plan, days, email, nick) {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let seed = 0;
+    const str = plan + days + email + nick + LICENSE_SECRET;
+    for (let i = 0; i < str.length; i++) {
+        seed = ((seed << 5) - seed + str.charCodeAt(i)) | 0;
+    }
+    function rand() {
+        seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+        return seed;
+    }
+    function segment() {
+        let s = '';
+        for (let i = 0; i < 4; i++) s += chars[rand() % chars.length];
+        return s;
+    }
+    const planCode = { stable: 'ST', beta: 'BT', alpha: 'AL' }[plan];
+    const daysCode = days.toString(16).toUpperCase().padStart(2, '0');
+    return `RM-${planCode}${daysCode}-${segment()}-${segment()}-${segment()}`;
+}
+
+function validateKeyLocal(key, hwid) {
+    if (!key || key.length < 22) return { valid: false, error: 'Invalid key format' };
+
+    const parts = key.split('-');
+    if (parts.length !== 5 || parts[0] !== 'RM') return { valid: false, error: 'Invalid key format' };
+
+    const planMap = { ST: 'stable', BT: 'beta', AL: 'alpha' };
+    const planPart = parts[1].substring(0, 2);
+    const daysHex = parts[1].substring(2, 4);
+    const plan = planMap[planPart];
+    if (!plan) return { valid: false, error: 'Unknown plan' };
+
+    const days = parseInt(daysHex, 16);
+    if (isNaN(days) || days <= 0) return { valid: false, error: 'Invalid duration' };
+
+    const db = loadLicenseDB();
+    let entry = db[key];
+
+    if (!entry) {
+        entry = { plan, days, createdAt: Date.now(), expiresAt: Date.now() + days * 86400000, hwid: null };
+        db[key] = entry;
+        saveLicenseDB(db);
+    }
+
+    if (entry.hwid && entry.hwid !== hwid) {
+        return { valid: false, error: 'Key bound to another device' };
+    }
+
+    const now = Date.now();
+    if (now > entry.expiresAt) return { valid: false, error: 'Key expired' };
+
+    if (hwid) { entry.hwid = hwid; saveLicenseDB(db); }
+
+    return { valid: true, plan: entry.plan, daysTotal: entry.days, expiresAt: entry.expiresAt };
+}
+
+function loadLicenseDB() {
+    try { if (fs.existsSync(LICENSE_DB_FILE)) return JSON.parse(fs.readFileSync(LICENSE_DB_FILE, 'utf8')); } catch (e) {}
+    return {};
+}
+
+function saveLicenseDB(db) {
+    try { const dir = path.dirname(LICENSE_DB_FILE); if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(LICENSE_DB_FILE, JSON.stringify(db, null, 2)); } catch (e) {}
+}
+
+function startLicenseServer() {
+    try {
+        const server = http.createServer((req, res) => {
+            res.setHeader('Content-Type', 'application/json');
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
+            res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+            if (req.method === 'OPTIONS') { res.writeHead(200); res.end(); return; }
+
+            if (req.url === '/api/validate' && req.method === 'POST') {
+                let body = '';
+                req.on('data', chunk => body += chunk);
+                req.on('end', () => {
+                    try {
+                        const { key, hwid } = JSON.parse(body);
+                        const result = validateKeyLocal(key, hwid);
+                        res.writeHead(result.valid ? 200 : 403);
+                        res.end(JSON.stringify(result));
+                    } catch (e) {
+                        res.writeHead(400);
+                        res.end(JSON.stringify({ error: 'Invalid request' }));
+                    }
+                });
+            } else if (req.url === '/api/plans' && req.method === 'GET') {
+                res.writeHead(200);
+                res.end(JSON.stringify({
+                    stable: { name: 'Stable', prices: { 7: 1.49, 30: 2.99, 90: 7.65, 180: 13.46, 365: 21.53 } },
+                    beta:   { name: 'Beta',   prices: { 7: 2.99, 30: 5.99, 90: 15.27, 180: 26.96, 365: 43.13 } },
+                    alpha:  { name: 'Alpha',  prices: { 7: 4.99, 30: 9.99, 90: 25.48, 180: 44.96, 365: 71.93 } }
+                }));
+            } else {
+                res.writeHead(404);
+                res.end(JSON.stringify({ error: 'Not found' }));
+            }
+        });
+
+        server.listen(3000, '127.0.0.1', () => {
+            console.log('License server started on port 3000');
+        });
+
+        server.on('error', (err) => {
+            console.log('License server port 3000 busy, retrying...');
+            setTimeout(() => { try { server.listen(3000, '127.0.0.1'); } catch (e) {} }, 5000);
+        });
+    } catch (e) {
+        console.log('Failed to start license server:', e.message);
+    }
+}
 
 function loadUsers() {
     try {
@@ -433,6 +550,7 @@ ipcMain.on('game:launch', (event, { nickname, ram }) => {
 });
 
 app.whenReady().then(() => {
+    startLicenseServer();
     createWindow();
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) createWindow();
