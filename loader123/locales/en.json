@@ -19,6 +19,7 @@
   "tab_main": "Main",
   "tab_profile": "Profile",
   "tab_settings": "Settings",
+  "tab_subscription": "Subscription",
   "client_badge": "Client",
   "client_name": "Rich Modern",
   "client_version": "1.21.11",
@@ -48,5 +49,12 @@
   "update_complete": "Done!",
   "update_restart": "RESTART",
   "update_error": "Error: ",
-  "update_percent": "%"
+  "update_percent": "%",
+  "sub_status_title": "Subscription",
+  "sub_status_desc": "Check your subscription status.",
+  "sub_activate_title": "Activate Key",
+  "sub_activate_desc": "Enter your subscription key to activate.",
+  "btn_activate": "ACTIVATE",
+  "btn_deactivate": "DEACTIVATE",
+  "btn_buy_subscription": "Buy Subscription"
 }

@@ -470,4 +470,126 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     checkForUpdates();
+
+    // === SUBSCRIPTION SYSTEM ===
+    const licenseKeyInput = document.getElementById('licenseKeyInput');
+    const activateKeyBtn = document.getElementById('activateKeyBtn');
+    const removeKeyBtn = document.getElementById('removeKeyBtn');
+    const licenseError = document.getElementById('licenseError');
+    const licenseSuccess = document.getElementById('licenseSuccess');
+    const subStatusDot = document.getElementById('subStatusDot');
+    const subStatusText = document.getElementById('subStatusText');
+    const subStatusDetail = document.getElementById('subStatusDetail');
+    const subPlanInfo = document.getElementById('subPlanInfo');
+    const subPlanName = document.getElementById('subPlanName');
+    const subExpiresAt = document.getElementById('subExpiresAt');
+    const subKeyDisplay = document.getElementById('subKeyDisplay');
+
+    const PLAN_LABELS = { stable: 'Stable', beta: 'Beta', alpha: 'Alpha' };
+
+    async function loadSubscriptionStatus() {
+        const license = await ipcRenderer.invoke('license:get');
+        if (!license) {
+            if (subStatusDot) subStatusDot.style.background = '#ff4a4a';
+            if (subStatusText) subStatusText.textContent = currentLanguage === 'ru' ? 'Нет подписки' : 'No subscription';
+            if (subStatusDetail) subStatusDetail.textContent = '';
+            if (subPlanInfo) subPlanInfo.style.display = 'none';
+            if (removeKeyBtn) removeKeyBtn.style.display = 'none';
+            return;
+        }
+
+        const now = Date.now();
+        const expired = now > license.expiresAt;
+
+        if (expired) {
+            if (subStatusDot) subStatusDot.style.background = '#ff4a4a';
+            if (subStatusText) subStatusText.textContent = currentLanguage === 'ru' ? 'Подписка истекла' : 'Subscription expired';
+            if (subStatusDetail) subStatusDetail.textContent = '';
+            if (subPlanInfo) subPlanInfo.style.display = 'none';
+            if (removeKeyBtn) removeKeyBtn.style.display = '';
+            return;
+        }
+
+        const daysLeft = Math.ceil((license.expiresAt - now) / 86400000);
+        if (subStatusDot) subStatusDot.style.background = '#22c55e';
+        if (subStatusText) subStatusText.textContent = PLAN_LABELS[license.plan] || license.plan;
+        if (subStatusDetail) {
+            subStatusDetail.textContent = currentLanguage === 'ru'
+                ? `Осталось ${daysLeft} дн.`
+                : `${daysLeft} days left`;
+        }
+
+        if (subPlanInfo) {
+            subPlanInfo.style.display = '';
+            if (subPlanName) subPlanName.textContent = PLAN_LABELS[license.plan] || license.plan;
+            if (subExpiresAt) {
+                const d = new Date(license.expiresAt);
+                subExpiresAt.textContent = d.toLocaleDateString(currentLanguage === 'ru' ? 'ru-RU' : 'en-US');
+            }
+            if (subKeyDisplay) subKeyDisplay.textContent = license.key;
+        }
+        if (removeKeyBtn) removeKeyBtn.style.display = '';
+    }
+
+    if (activateKeyBtn) {
+        activateKeyBtn.addEventListener('click', async () => {
+            const key = (licenseKeyInput ? licenseKeyInput.value.trim() : '').toUpperCase();
+            if (!key || key.length < 18) {
+                if (licenseError) {
+                    licenseError.textContent = currentLanguage === 'ru' ? 'Неверный формат ключа' : 'Invalid key format';
+                    licenseError.style.display = 'block';
+                }
+                if (licenseSuccess) licenseSuccess.style.display = 'none';
+                return;
+            }
+
+            activateKeyBtn.disabled = true;
+            activateKeyBtn.textContent = currentLanguage === 'ru' ? 'ПРОВЕРКА...' : 'CHECKING...';
+            if (licenseError) licenseError.style.display = 'none';
+
+            const result = await ipcRenderer.invoke('license:activate', { key });
+
+            activateKeyBtn.disabled = false;
+            activateKeyBtn.textContent = currentLanguage === 'ru' ? 'АКТИВИРОВАТЬ' : 'ACTIVATE';
+
+            if (result.success) {
+                if (licenseSuccess) {
+                    licenseSuccess.textContent = currentLanguage === 'ru'
+                        ? `Подписка ${PLAN_LABELS[result.plan] || result.plan} активирована!`
+                        : `${PLAN_LABELS[result.plan] || result.plan} subscription activated!`;
+                    licenseSuccess.style.display = 'block';
+                }
+                if (licenseError) licenseError.style.display = 'none';
+                if (licenseKeyInput) licenseKeyInput.value = '';
+                loadSubscriptionStatus();
+            } else {
+                if (licenseError) {
+                    licenseError.textContent = result.error || (currentLanguage === 'ru' ? 'Ошибка активации' : 'Activation failed');
+                    licenseError.style.display = 'block';
+                }
+                if (licenseSuccess) licenseSuccess.style.display = 'none';
+            }
+        });
+    }
+
+    if (removeKeyBtn) {
+        removeKeyBtn.addEventListener('click', async () => {
+            await ipcRenderer.invoke('license:remove');
+            loadSubscriptionStatus();
+        });
+    }
+
+    if (subKeyDisplay) {
+        subKeyDisplay.addEventListener('click', () => {
+            const key = subKeyDisplay.textContent;
+            if (key && key !== '-') {
+                navigator.clipboard.writeText(key).then(() => {
+                    subKeyDisplay.style.color = '#22c55e';
+                    setTimeout(() => { subKeyDisplay.style.color = '#a78bfa'; }, 1000);
+                });
+            }
+        });
+    }
+
+    loadSubscriptionStatus();
 });

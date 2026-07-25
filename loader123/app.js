@@ -8,7 +8,9 @@ const { spawn } = require('child_process');
 let win;
 
 const USERS_FILE = path.join(app.getPath('userData'), 'users.json');
+const LICENSE_FILE = path.join(app.getPath('userData'), 'license.json');
 const VERSION_URL = 'https://raw.githubusercontent.com/jeosmertnik-collab/Rich-Modern/main/version.json';
+const LICENSE_API_URL = 'http://localhost:3000/api/validate';
 const LOCAL_VERSION_FILE = path.join(app.getPath('userData'), 'version.json');
 
 function loadUsers() {
@@ -26,6 +28,36 @@ function saveUsers(users) {
         if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
         fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), 'utf8');
     } catch (e) {}
+}
+
+function loadLicense() {
+    try {
+        if (fs.existsSync(LICENSE_FILE)) {
+            return JSON.parse(fs.readFileSync(LICENSE_FILE, 'utf8'));
+        }
+    } catch (e) {}
+    return null;
+}
+
+function saveLicense(license) {
+    try {
+        const dir = path.dirname(LICENSE_FILE);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(LICENSE_FILE, JSON.stringify(license, null, 2), 'utf8');
+    } catch (e) {}
+}
+
+function getHardwareId() {
+    const os = require('os');
+    const interfaces = os.networkInterfaces();
+    for (const name of Object.keys(interfaces)) {
+        for (const iface of interfaces[name]) {
+            if (iface.mac && iface.mac !== '00:00:00:00:00:00') {
+                return iface.mac.replace(/:/g, '').toUpperCase();
+            }
+        }
+    }
+    return 'UNKNOWN';
 }
 
 function findGameRoot() {
@@ -250,6 +282,56 @@ ipcMain.handle('update:setVersion', (event, { version, clientVersion }) => {
 
 ipcMain.handle('update:getLocalVersion', () => {
     return loadLocalVersion();
+});
+
+// === SUBSCRIPTION HANDLERS ===
+
+ipcMain.handle('license:activate', async (event, { key }) => {
+    const hwid = getHardwareId();
+    try {
+        const url = new URL(LICENSE_API_URL);
+        const postData = JSON.stringify({ key, hwid });
+
+        return new Promise((resolve) => {
+            const req = http.request({
+                hostname: url.hostname,
+                port: url.port,
+                path: url.pathname,
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(postData) }
+            }, (res) => {
+                let body = '';
+                res.on('data', chunk => body += chunk);
+                res.on('end', () => {
+                    try {
+                        const result = JSON.parse(body);
+                        if (result.valid) {
+                            saveLicense({ key, plan: result.plan, expiresAt: result.expiresAt, activatedAt: Date.now(), hwid });
+                            resolve({ success: true, plan: result.plan, expiresAt: result.expiresAt });
+                        } else {
+                            resolve({ success: false, error: result.error || 'Invalid key' });
+                        }
+                    } catch (e) {
+                        resolve({ success: false, error: 'Invalid server response' });
+                    }
+                });
+            });
+            req.on('error', () => resolve({ success: false, error: 'Cannot connect to license server' }));
+            req.write(postData);
+            req.end();
+        });
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
+
+ipcMain.handle('license:get', () => {
+    return loadLicense();
+});
+
+ipcMain.handle('license:remove', () => {
+    try { fs.unlinkSync(LICENSE_FILE); } catch (e) {}
+    return true;
 });
 
 ipcMain.on('game:launch', (event, { nickname, ram }) => {

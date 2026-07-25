@@ -19,6 +19,7 @@
   "tab_main": "Главная",
   "tab_profile": "Профиль",
   "tab_settings": "Настройки",
+  "tab_subscription": "Подписка",
   "client_badge": "Клиент",
   "client_name": "Rich Modern",
   "client_version": "1.21.11",
@@ -48,5 +49,12 @@
   "update_complete": "Готово!",
   "update_restart": "ЗАПУСТИТЬ ЗАНОВО",
   "update_error": "Ошибка: ",
-  "update_percent": "%"
+  "update_percent": "%",
+  "sub_status_title": "Подписка",
+  "sub_status_desc": "Проверь статус своей подписки.",
+  "sub_activate_title": "Активировать ключ",
+  "sub_activate_desc": "Введи ключ подписки для активации.",
+  "btn_activate": "АКТИВИРОВАТЬ",
+  "btn_deactivate": "ДЕАКТИВИРОВАТЬ",
+  "btn_buy_subscription": "Купить подписку"
 }

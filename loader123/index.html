@@ -185,6 +185,9 @@
                     <div class="nav-item" data-target="screen-settings">
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2 2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                     </div>
+                    <div class="nav-item" data-target="screen-subscription">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg>
+                    </div>
                 </div>
                 <div class="logout-btn" id="logoutBtn">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
@@ -281,6 +284,48 @@
                                 <div class="value-box"><span id="ramValue">2048</span> MB</div>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <div class="screen" id="screen-subscription">
+                    <div class="grid-2x2">
+                        <div class="card" id="subStatusCard">
+                            <div class="card-title" data-i18n="sub_status_title">Подписка</div>
+                            <div class="card-desc" data-i18n="sub_status_desc">Проверь статус своей подписки.</div>
+                            <div id="subStatusInfo" style="margin-top: 12px;">
+                                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
+                                    <div id="subStatusDot" style="width: 10px; height: 10px; border-radius: 50%; background: #ff4a4a; flex-shrink: 0;"></div>
+                                    <div>
+                                        <div id="subStatusText" style="font-weight: 600; font-size: 14px;">Нет подписки</div>
+                                        <div id="subStatusDetail" style="font-size: 12px; color: var(--text-muted); margin-top: 2px;"></div>
+                                    </div>
+                                </div>
+                                <div id="subPlanInfo" style="display: none;">
+                                    <table class="profile-info-table">
+                                        <tr><td>План</td><td id="subPlanName">-</td></tr>
+                                        <tr><td>Истекает</td><td id="subExpiresAt">-</td></tr>
+                                        <tr><td>Ключ</td><td id="subKeyDisplay" style="font-family: monospace; font-size: 11px; color: #a78bfa; cursor: pointer;" title="Нажми чтобы скопировать">-</td></tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-title" data-i18n="sub_activate_title">Активировать ключ</div>
+                            <div class="card-desc" data-i18n="sub_activate_desc">Введи ключ подписки для активации.</div>
+                            <div class="input-group" style="margin-top: 8px;">
+                                <input type="text" id="licenseKeyInput" placeholder="RM-XXXX-XXXX-XXXX-XXXX" style="font-family: monospace; letter-spacing: 1px;" maxlength="26">
+                            </div>
+                            <div id="licenseError" class="error-text" style="margin-top: -8px;"></div>
+                            <div id="licenseSuccess" style="display: none; font-size: 12px; color: #22c55e; margin-top: -8px; margin-bottom: 12px;"></div>
+                            <button class="btn-monochrome-sub" id="activateKeyBtn" style="width: 100%; padding: 14px; font-size: 13px;" data-i18n="btn_activate">АКТИВИРОВАТЬ</button>
+                            <button class="btn-monochrome-sub" id="removeKeyBtn" style="width: 100%; padding: 14px; font-size: 12px; margin-top: 10px; display: none; color: #ff4a4a; border-color: rgba(255, 74, 74, 0.3);" data-i18n="btn_deactivate">ДЕАКТИВИРОВАТЬ</button>
+                        </div>
+                    </div>
+                    <div style="margin-top: 20px;">
+                        <a href="https://rich-modern.com/subscribe" target="_blank" class="btn-secondary" style="display: inline-flex; padding: 14px 32px; text-decoration: none;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                            <span data-i18n="btn_buy_subscription">Купить подписку</span>
+                        </a>
                     </div>
                 </div>
             </div>
