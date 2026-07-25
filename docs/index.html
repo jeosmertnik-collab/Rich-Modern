@@ -553,6 +553,10 @@
                         <span>Период</span>
                         <span id="orderPeriod">30 дней</span>
                     </div>
+                    <div class="order-row" id="promoRow" style="display:none;color:#22c55e;">
+                        <span>Скидка</span>
+                        <span id="orderDiscount">-$0.00</span>
+                    </div>
                     <div class="order-row total">
                         <span>Итого</span>
                         <span id="orderTotal">$5.99</span>
@@ -565,8 +569,12 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Никнейм в Minecraft</label>
-                    <input type="text" id="nickInput" placeholder="PlayerName">
+                    <label>Промокод</label>
+                    <div style="display:flex;gap:8px;">
+                        <input type="text" id="promoInput" placeholder="Введите промокод" style="flex:1;">
+                        <button onclick="applyPromo()" style="padding:12px 16px;background:#6366f1;color:white;border:none;border-radius:10px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;">Применить</button>
+                    </div>
+                    <div id="promoMessage" style="font-size:12px;margin-top:6px;display:none;"></div>
                 </div>
 
                 <div class="payment-methods">
@@ -614,13 +622,18 @@
             alpha:  { 7: 4.99, 30: 9.99, 90: 25.48, 180: 44.96, 365: 71.93 }
         };
 
+        const PROMO_CODES = {
+            'ostopov': { discount: 0.50, label: '50% скидка' }
+        };
+
         const PLAN_NAMES = { stable: 'Stable', beta: 'Beta', alpha: 'Alpha' };
 
         let selectedDays = 30;
         let selectedPlan = 'beta';
         let selectedPayment = 'card';
+        let promoDiscount = 0;
+        let promoApplied = false;
 
-        // Duration buttons
         document.querySelectorAll('.duration-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.duration-btn').forEach(b => b.classList.remove('active'));
@@ -630,10 +643,39 @@
             });
         });
 
+        function applyPromo() {
+            const code = document.getElementById('promoInput').value.trim().toLowerCase();
+            const msg = document.getElementById('promoMessage');
+
+            if (promoApplied) {
+                promoDiscount = 0;
+                promoApplied = false;
+                msg.style.display = 'none';
+                document.getElementById('promoInput').value = '';
+                updatePrices();
+                return;
+            }
+
+            if (PROMO_CODES[code]) {
+                promoDiscount = PROMO_CODES[code].discount;
+                promoApplied = true;
+                msg.style.display = 'block';
+                msg.style.color = '#22c55e';
+                msg.textContent = 'Применено: ' + PROMO_CODES[code].label;
+                document.getElementById('promoInput').disabled = true;
+            } else {
+                msg.style.display = 'block';
+                msg.style.color = '#ef4444';
+                msg.textContent = 'Промокод не найден';
+            }
+            updatePrices();
+        }
+
         function updatePrices() {
             document.querySelectorAll('.price-value').forEach((el, i) => {
                 const plan = ['stable', 'beta', 'alpha'][i];
-                const price = PRICES[plan][selectedDays];
+                let price = PRICES[plan][selectedDays];
+                if (promoApplied) price = price * (1 - promoDiscount);
                 el.textContent = price.toFixed(2);
             });
 
@@ -648,9 +690,16 @@
             }
         }
 
+        function getCurrentPrice() {
+            let price = PRICES[selectedPlan][selectedDays];
+            if (promoApplied) price = price * (1 - promoDiscount);
+            return price;
+        }
+
         function openCheckout(plan) {
             selectedPlan = plan;
-            const price = PRICES[plan][selectedDays];
+            const price = getCurrentPrice();
+            const fullPrice = PRICES[plan][selectedDays];
             const periodText = selectedDays < 30 ? selectedDays + ' дней' :
                                selectedDays < 365 ? Math.round(selectedDays / 30) + ' мес' : '1 год';
 
@@ -659,6 +708,14 @@
             document.getElementById('orderPeriod').textContent = periodText;
             document.getElementById('orderTotal').textContent = '$' + price.toFixed(2);
             document.getElementById('payAmount').textContent = '$' + price.toFixed(2);
+
+            if (promoApplied) {
+                const discount = fullPrice * promoDiscount;
+                document.getElementById('promoRow').style.display = '';
+                document.getElementById('orderDiscount').textContent = '-$' + discount.toFixed(2);
+            } else {
+                document.getElementById('promoRow').style.display = 'none';
+            }
 
             document.getElementById('checkoutForm').style.display = '';
             document.getElementById('successContent').style.display = 'none';
@@ -677,14 +734,9 @@
 
         async function processPayment() {
             const email = document.getElementById('emailInput').value.trim();
-            const nick = document.getElementById('nickInput').value.trim();
 
             if (!email || !email.includes('@')) {
                 alert('Введите корректный email');
-                return;
-            }
-            if (!nick || nick.length < 3) {
-                alert('Введите никнейм (минимум 3 символа)');
                 return;
             }
 
@@ -692,11 +744,8 @@
             btn.disabled = true;
             btn.textContent = 'Обработка...';
 
-            // Generate license key
-            const key = generateLicenseKey(selectedPlan, selectedDays, email, nick);
+            const key = generateLicenseKey(selectedPlan, selectedDays, email);
 
-            // In production: send to backend API for payment processing
-            // For now: simulate payment delay
             await new Promise(r => setTimeout(r, 2000));
 
             document.getElementById('licenseKeyDisplay').textContent = key;
@@ -707,10 +756,10 @@
             btn.textContent = 'Оплатить';
         }
 
-        function generateLicenseKey(plan, days, email, nick) {
+        function generateLicenseKey(plan, days, email) {
             const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
             let seed = 0;
-            const str = plan + days + email + nick + 'rich-modern-secret-2026';
+            const str = plan + days + email + 'rich-modern-secret-2026';
             for (let i = 0; i < str.length; i++) {
                 seed = ((seed << 5) - seed + str.charCodeAt(i)) | 0;
             }
