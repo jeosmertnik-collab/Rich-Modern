@@ -462,11 +462,11 @@
         </header>
 
         <div class="duration-selector">
+            <button class="duration-btn" data-days="1">1 день</button>
             <button class="duration-btn" data-days="7">7 дней</button>
             <button class="duration-btn active" data-days="30">30 дней</button>
             <button class="duration-btn" data-days="90">90 дней <span class="badge">-15%</span></button>
-            <button class="duration-btn" data-days="180">6 мес <span class="badge">-25%</span></button>
-            <button class="duration-btn" data-days="365">1 год <span class="badge">-40%</span></button>
+            <button class="duration-btn" data-days="9999">Навсегда <span class="badge">-60%</span></button>
         </div>
 
         <div class="plans">
@@ -617,9 +617,9 @@
 
     <script>
         const PRICES = {
-            stable: { 7: 1.49, 30: 2.99, 90: 7.65, 180: 13.46, 365: 21.53 },
-            beta:   { 7: 2.99, 30: 5.99, 90: 15.27, 180: 26.96, 365: 43.13 },
-            alpha:  { 7: 4.99, 30: 9.99, 90: 25.48, 180: 44.96, 365: 71.93 }
+            stable: { 1: 0.49, 7: 1.49, 30: 2.99, 90: 7.65, 9999: 17.99 },
+            beta:   { 1: 0.99, 7: 2.99, 30: 5.99, 90: 15.27, 9999: 35.99 },
+            alpha:  { 1: 1.49, 7: 4.99, 30: 9.99, 90: 25.48, 9999: 59.99 }
         };
 
         const PROMO_CODES = {
@@ -671,6 +671,14 @@
             updatePrices();
         }
 
+        function getPeriodText(days) {
+            if (days === 9999) return 'навсегда';
+            if (days === 1) return '1 день';
+            if (days < 30) return days + ' дней';
+            const months = Math.round(days / 30);
+            return months + ' мес';
+        }
+
         function updatePrices() {
             document.querySelectorAll('.price-value').forEach((el, i) => {
                 const plan = ['stable', 'beta', 'alpha'][i];
@@ -680,14 +688,8 @@
             });
 
             const periods = document.querySelectorAll('.period');
-            if (selectedDays < 30) {
-                periods.forEach(p => p.textContent = '/' + selectedDays + ' дн');
-            } else if (selectedDays < 365) {
-                const months = Math.round(selectedDays / 30);
-                periods.forEach(p => p.textContent = '/' + months + ' мес');
-            } else {
-                periods.forEach(p => p.textContent = '/год');
-            }
+            const pt = getPeriodText(selectedDays);
+            periods.forEach(p => p.textContent = '/' + pt);
         }
 
         function getCurrentPrice() {
@@ -700,8 +702,7 @@
             selectedPlan = plan;
             const price = getCurrentPrice();
             const fullPrice = PRICES[plan][selectedDays];
-            const periodText = selectedDays < 30 ? selectedDays + ' дней' :
-                               selectedDays < 365 ? Math.round(selectedDays / 30) + ' мес' : '1 год';
+            const periodText = getPeriodText(selectedDays);
 
             document.getElementById('checkoutSubtitle').textContent = PLAN_NAMES[plan] + ' — ' + periodText;
             document.getElementById('orderPlan').textContent = PLAN_NAMES[plan];
