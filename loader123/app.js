@@ -423,11 +423,20 @@ ipcMain.handle('license:remove', () => {
 });
 
 ipcMain.on('game:launch', (event, { nickname, ram }) => {
+    const logFile = path.join(app.getPath('userData'), 'launch.log');
+    const log = (msg) => { const line = `[${new Date().toISOString()}] ${msg}\n`; fs.appendFileSync(logFile, line); };
+    log('=== LAUNCH START ===');
+
     const root = findGameRoot();
+    log('findGameRoot: ' + root);
     if (!root) {
         event.reply('game:launch-status', { status: 'error', message: 'Game root not found (gradlew.bat)' });
         return;
     }
+
+    const gradlewPath = path.join(root, 'gradlew.bat');
+    log('gradlew.bat exists: ' + fs.existsSync(gradlewPath));
+    log('JAVA_HOME will be set');
 
     const nickFile = path.join(root, 'Rich', 'configs', 'lastnick.txt');
     try {
@@ -440,6 +449,7 @@ ipcMain.on('game:launch', (event, { nickname, ram }) => {
     if (ram) {
         env.GRADLE_OPTS = `-Xmx${ram}M`;
         env.JAVA_OPTS = `-Xmx${ram}M -Xms${Math.min(parseInt(ram), 512)}M`;
+        log('RAM: ' + ram);
     }
 
     const localJre = path.join(root, 'jre', 'bin', 'java.exe');
@@ -447,39 +457,48 @@ ipcMain.on('game:launch', (event, { nickname, ram }) => {
 
     if (fs.existsSync(localJre)) {
         env.JAVA_HOME = path.join(root, 'jre');
+        log('Java: local jre');
     } else if (fs.existsSync(tempJre)) {
         env.JAVA_HOME = path.join(process.env.TEMP || '', 'jdk21', 'jdk-21.0.2');
+        log('Java: temp jdk21');
+    } else {
+        log('Java: using system PATH');
     }
 
     event.reply('game:launch-status', { status: 'launching', message: 'Launching game...' });
 
-    const batContent = `@echo off
-set "ROOT=${root}"
-cd /d "%ROOT%"
-set "JAVA_HOME=${env.JAVA_HOME || ''}"
-start "" /min cmd /c "cd /d "%ROOT%" && call gradlew.bat runClient --no-daemon"
-`;
-
-    const batPath = path.join(root, '_rm_launch.bat');
-    try {
-        fs.writeFileSync(batPath, batContent, 'utf8');
-    } catch (e) {
-        event.reply('game:launch-status', { status: 'error', message: 'Cannot write launch script: ' + e.message });
-        return;
-    }
-
-    const game = spawn('cmd.exe', ['/c', batPath], {
+    const game = spawn('cmd.exe', ['/c', 'gradlew.bat', '--no-daemon', 'runClient'], {
         cwd: root,
         env: env,
         detached: true,
-        stdio: 'ignore'
+        stdio: ['ignore', 'pipe', 'pipe']
+    });
+
+    log('spawn returned, pid: ' + game.pid);
+
+    let stderr = '';
+    let stdout = '';
+    game.stdout.on('data', d => { stdout += d.toString(); });
+    game.stderr.on('data', d => { stderr += d.toString(); });
+
+    game.on('error', (err) => {
+        log('SPAWN ERROR: ' + err.message);
+        event.reply('game:launch-status', { status: 'error', message: 'Spawn error: ' + err.message });
+    });
+
+    game.on('close', (code) => {
+        log('process closed, code=' + code);
+        log('stdout (last 500): ' + stdout.slice(-500));
+        log('stderr (last 500): ' + stderr.slice(-500));
+        if (win) { win.show(); }
+        if (code !== 0) {
+            event.reply('game:launch-status', { status: 'error', message: 'Exit ' + code + ': ' + stderr.slice(-300) });
+        } else {
+            event.reply('game:launch-status', { status: 'closed', message: 'Game closed' });
+        }
     });
 
     game.unref();
-
-    setTimeout(() => {
-        try { fs.unlinkSync(batPath); } catch (e) {}
-    }, 10000);
 
     event.reply('game:launch-status', { status: 'started', message: 'Game started' });
 
