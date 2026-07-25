@@ -1,11 +1,11 @@
 {
-  "version": "1.0.1",
+  "version": "1.0.2",
   "clientVersion": "1.0.01",
-  "downloadUrl": "https://github.com/jeosmertnik-collab/Rich-Modern/releases/download/v1.0.1/rich-1.0.01.jar",
-  "launcherUrl": "",
+  "downloadUrl": "https://github.com/jeosmertnik-collab/Rich-Modern/releases/download/v1.0.2/rich-1.0.01.jar",
+  "launcherUrl": "https://github.com/jeosmertnik-collab/Rich-Modern/releases/download/v1.0.2/RichModern.exe",
   "changelog": {
-    "ru": "Добавлены крылья (Wings), исправлена глубина BackSword, новые пайплайны рендера",
-    "en": "Added Wings module, fixed BackSword depth, new render pipelines"
+    "ru": "Система подписок: сайт, API, вкладка в лаунчере. Три тарифа (Stable/Beta/Alpha), HWID привязка, онлайн-проверка ключей.",
+    "en": "Subscription system: website, API, launcher tab. Three tiers (Stable/Beta/Alpha), HWID binding, online key validation."
   },
   "required": false,
   "releaseDate": "2026-07-25"
