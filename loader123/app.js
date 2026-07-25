@@ -436,144 +436,56 @@ ipcMain.on('game:launch', (event, { nickname, ram }) => {
         fs.writeFileSync(nickFile, nickname, 'utf8');
     } catch (e) {}
 
-    event.reply('game:launch-status', { status: 'building', message: 'Building client...' });
-
-    const jarPath = path.join(root, 'build', 'libs', 'rich-1.0.01.jar');
-    const modsDir = path.join(root, 'run', 'mods');
-
-    function copyJarAndLaunch() {
-        try {
-            const destJar = path.join(modsDir, 'rich-1.0.01.jar');
-            if (!fs.existsSync(modsDir)) fs.mkdirSync(modsDir, { recursive: true });
-            if (fs.existsSync(jarPath)) {
-                fs.copyFileSync(jarPath, destJar);
-            }
-        } catch (e) {}
-
-        event.reply('game:launch-status', { status: 'launching', message: 'Launching game...' });
-
-        const env = Object.assign({}, process.env);
-        if (ram) {
-            env.GRADLE_OPTS = `-Xmx${ram}M`;
-            env.JAVA_OPTS = `-Xmx${ram}M -Xms${Math.min(parseInt(ram), 512)}M`;
-        }
-
-        function launchGame() {
-            const game = spawn('cmd.exe', ['/c', 'gradlew.bat', '--no-daemon', 'runClient'], {
-                cwd: root,
-                env: env,
-                windowsHide: false,
-                stdio: ['ignore', 'pipe', 'pipe']
-            });
-
-            let gameStderr = '';
-            let gameStdout = '';
-            game.stderr.on('data', d => { gameStderr += d.toString(); });
-            game.stdout.on('data', d => { gameStdout += d.toString(); });
-
-            event.reply('game:launch-status', { status: 'started', message: 'Game started' });
-
-            setTimeout(() => {
-                if (win) { win.hide(); }
-            }, 3000);
-
-            let hasError = false;
-            game.stderr.on('data', (d) => {
-                const text = d.toString();
-                if (text.includes('Exception') || text.includes('Error') || text.includes('error:')) {
-                    hasError = true;
-                    event.reply('game:launch-status', { status: 'error', message: 'Java: ' + text.slice(0, 300) });
-                }
-            });
-
-            game.on('close', (code) => {
-                if (win) { win.show(); }
-                if (code !== 0 && !hasError) {
-                    const errOutput = (gameStderr + gameStdout).slice(-500);
-                    event.reply('game:launch-status', { status: 'error', message: 'Exit code ' + code + ': ' + errOutput });
-                } else {
-                    event.reply('game:launch-status', { status: 'closed', message: 'Game closed' });
-                }
-            });
-        }
-
-        // Find Java 21
-        const localJre = path.join(root, 'jre', 'bin', 'java.exe');
-        const tempJre = path.join(process.env.TEMP || '', 'jdk21', 'jdk-21.0.2', 'bin', 'java.exe');
-
-        if (fs.existsSync(localJre)) {
-            env.JAVA_HOME = path.join(root, 'jre');
-            launchGame();
-        } else if (fs.existsSync(tempJre)) {
-            env.JAVA_HOME = path.join(process.env.TEMP || '', 'jdk21', 'jdk-21.0.2');
-            launchGame();
-        } else {
-            // Download Java 21
-            event.reply('game:launch-status', { status: 'building', message: 'Downloading Java 21...' });
-            const jdkUrl = 'https://download.java.net/java/GA/jdk21.0.2/f2283984656d49d69e91c558476027ac/13/GPL/openjdk-21.0.2_windows-x64_bin.zip';
-            const zipPath = path.join(process.env.TEMP || '', 'jdk21.zip');
-            const extractDir = path.join(process.env.TEMP || '', 'jdk21');
-
-            function downloadJava(downloadUrl) {
-                const client = downloadUrl.startsWith('https') ? require('https') : require('http');
-                client.get(downloadUrl, { timeout: 120000 }, (res) => {
-                    if (res.statusCode === 301 || res.statusCode === 302) {
-                        downloadJava(res.headers.location);
-                        return;
-                    }
-                    if (res.statusCode !== 200) {
-                        event.reply('game:launch-status', { status: 'error', message: 'Java download failed: HTTP ' + res.statusCode });
-                        return;
-                    }
-                    const fileStream = fs.createWriteStream(zipPath);
-                    res.pipe(fileStream);
-                    fileStream.on('finish', () => {
-                        fileStream.close(() => {
-                            event.reply('game:launch-status', { status: 'building', message: 'Extracting Java 21...' });
-                            const extract = spawn('powershell.exe', ['-Command', `Expand-Archive -Path '${zipPath}' -DestinationPath '${extractDir}' -Force`], {
-                                windowsHide: true, stdio: ['ignore', 'pipe', 'pipe']
-                            });
-                            extract.on('close', () => {
-                                try { fs.unlinkSync(zipPath); } catch (e) {}
-                                if (fs.existsSync(tempJre)) {
-                                    env.JAVA_HOME = path.join(extractDir, 'jdk-21.0.2');
-                                    launchGame();
-                                } else {
-                                    event.reply('game:launch-status', { status: 'error', message: 'Java 21 extraction failed' });
-                                }
-                            });
-                        });
-                    });
-                }).on('error', (e) => {
-                    event.reply('game:launch-status', { status: 'error', message: 'Java download error: ' + e.message });
-                });
-            }
-
-            downloadJava(jdkUrl);
-        }
+    const env = Object.assign({}, process.env);
+    if (ram) {
+        env.GRADLE_OPTS = `-Xmx${ram}M`;
+        env.JAVA_OPTS = `-Xmx${ram}M -Xms${Math.min(parseInt(ram), 512)}M`;
     }
 
-    if (fs.existsSync(jarPath)) {
-        copyJarAndLaunch();
-    } else {
-        const build = spawn('cmd.exe', ['/c', 'gradlew.bat', 'build', '--no-daemon'], {
-            cwd: root,
-            windowsHide: true,
-            stdio: ['ignore', 'pipe', 'pipe']
-        });
+    const localJre = path.join(root, 'jre', 'bin', 'java.exe');
+    const tempJre = path.join(process.env.TEMP || '', 'jdk21', 'jdk-21.0.2', 'bin', 'java.exe');
 
-        let buildOutput = '';
-        build.stdout.on('data', d => { buildOutput += d.toString(); });
-        build.stderr.on('data', d => { buildOutput += d.toString(); });
-
-        build.on('close', (code) => {
-            if (code !== 0) {
-                event.reply('game:launch-status', { status: 'error', message: 'Build failed (code ' + code + '): ' + buildOutput.slice(-500) });
-                return;
-            }
-            copyJarAndLaunch();
-        });
+    if (fs.existsSync(localJre)) {
+        env.JAVA_HOME = path.join(root, 'jre');
+    } else if (fs.existsSync(tempJre)) {
+        env.JAVA_HOME = path.join(process.env.TEMP || '', 'jdk21', 'jdk-21.0.2');
     }
+
+    event.reply('game:launch-status', { status: 'launching', message: 'Launching game...' });
+
+    const batContent = `@echo off
+set "ROOT=${root}"
+cd /d "%ROOT%"
+set "JAVA_HOME=${env.JAVA_HOME || ''}"
+start "" /min cmd /c "cd /d "%ROOT%" && call gradlew.bat runClient --no-daemon"
+`;
+
+    const batPath = path.join(root, '_rm_launch.bat');
+    try {
+        fs.writeFileSync(batPath, batContent, 'utf8');
+    } catch (e) {
+        event.reply('game:launch-status', { status: 'error', message: 'Cannot write launch script: ' + e.message });
+        return;
+    }
+
+    const game = spawn('cmd.exe', ['/c', batPath], {
+        cwd: root,
+        env: env,
+        detached: true,
+        stdio: 'ignore'
+    });
+
+    game.unref();
+
+    setTimeout(() => {
+        try { fs.unlinkSync(batPath); } catch (e) {}
+    }, 10000);
+
+    event.reply('game:launch-status', { status: 'started', message: 'Game started' });
+
+    setTimeout(() => {
+        if (win) { win.hide(); }
+    }, 3000);
 });
 
 app.whenReady().then(() => {
