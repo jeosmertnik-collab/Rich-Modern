@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rich Modern — Подписки</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0a0a0f;
+            color: #e4e4e7;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .bg-gradient {
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(ellipse at 30% 20%, rgba(99, 102, 241, 0.08) 0%, transparent 50%),
+                        radial-gradient(ellipse at 70% 80%, rgba(139, 92, 246, 0.06) 0%, transparent 50%);
+            z-index: -1;
+            animation: bgShift 20s ease-in-out infinite alternate;
+        }
+
+        @keyframes bgShift {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(-5%, -3%); }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .logo {
+            font-size: 32px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #6366f1, #a78bfa, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 12px;
+        }
+
+        header p {
+            color: #71717a;
+            font-size: 16px;
+        }
+
+        .duration-selector {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 50px;
+            flex-wrap: wrap;
+        }
+
+        .duration-btn {
+            padding: 10px 20px;
+            border: 1px solid #27272a;
+            background: #18181b;
+            color: #a1a1aa;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .duration-btn:hover {
+            border-color: #6366f1;
+            color: #e4e4e7;
+        }
+
+        .duration-btn.active {
+            background: #6366f1;
+            border-color: #6366f1;
+            color: white;
+        }
+
+        .duration-btn .badge {
+            font-size: 10px;
+            background: #22c55e;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 6px;
+            margin-left: 4px;
+            font-weight: 600;
+        }
+
+        .plans {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            margin-bottom: 60px;
+        }
+
+        @media (max-width: 900px) {
+            .plans { grid-template-columns: 1fr; max-width: 400px; margin-left: auto; margin-right: auto; }
+        }
+
+        .plan-card {
+            background: #18181b;
+            border: 1px solid #27272a;
+            border-radius: 20px;
+            padding: 36px 28px;
+            position: relative;
+            transition: transform 0.3s, border-color 0.3s;
+        }
+
+        .plan-card:hover {
+            transform: translateY(-4px);
+        }
+
+        .plan-card.featured {
+            border-color: #6366f1;
+            box-shadow: 0 0 40px rgba(99, 102, 241, 0.1);
+        }
+
+        .plan-card.featured::before {
+            content: 'ПОПУЛЯРНЫЙ';
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+            padding: 4px 16px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .plan-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            margin-bottom: 20px;
+        }
+
+        .plan-card:nth-child(1) .plan-icon { background: rgba(234, 179, 8, 0.15); }
+        .plan-card:nth-child(2) .plan-icon { background: rgba(99, 102, 241, 0.15); }
+        .plan-card:nth-child(3) .plan-icon { background: rgba(34, 197, 94, 0.15); }
+
+        .plan-name {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .plan-desc {
+            color: #71717a;
+            font-size: 14px;
+            margin-bottom: 24px;
+        }
+
+        .plan-price {
+            font-size: 40px;
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+
+        .plan-price .currency {
+            font-size: 20px;
+            font-weight: 600;
+            color: #a1a1aa;
+        }
+
+        .plan-price .period {
+            font-size: 16px;
+            font-weight: 500;
+            color: #52525b;
+        }
+
+        .plan-features {
+            list-style: none;
+            margin: 24px 0;
+            padding: 0;
+        }
+
+        .plan-features li {
+            padding: 8px 0;
+            font-size: 14px;
+            color: #a1a1aa;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .plan-features li::before {
+            content: '✓';
+            color: #22c55e;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .plan-features li.disabled {
+            color: #3f3f46;
+        }
+
+        .plan-features li.disabled::before {
+            content: '✕';
+            color: #3f3f46;
+        }
+
+        .buy-btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .plan-card:nth-child(1) .buy-btn {
+            background: linear-gradient(135deg, #eab308, #ca8a04);
+            color: #000;
+        }
+
+        .plan-card:nth-child(2) .buy-btn {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+        }
+
+        .plan-card:nth-child(3) .buy-btn {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            color: white;
+        }
+
+        .buy-btn:hover {
+            transform: scale(1.02);
+            filter: brightness(1.1);
+        }
+
+        .buy-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active { display: flex; }
+
+        .modal {
+            background: #18181b;
+            border: 1px solid #27272a;
+            border-radius: 20px;
+            padding: 40px;
+            width: 90%;
+            max-width: 480px;
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: none;
+            border: none;
+            color: #71717a;
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        .modal h2 {
+            font-size: 22px;
+            margin-bottom: 8px;
+        }
+
+        .modal .subtitle {
+            color: #71717a;
+            font-size: 14px;
+            margin-bottom: 28px;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #a1a1aa;
+            margin-bottom: 6px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            background: #0a0a0f;
+            border: 1px solid #27272a;
+            border-radius: 10px;
+            color: #e4e4e7;
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            transition: border-color 0.2s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #6366f1;
+        }
+
+        .form-group input::placeholder { color: #3f3f46; }
+
+        .payment-methods {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .payment-method {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #27272a;
+            border-radius: 10px;
+            background: #0a0a0f;
+            cursor: pointer;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .payment-method:hover, .payment-method.active {
+            border-color: #6366f1;
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        .pay-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.2s;
+        }
+
+        .pay-btn:hover { filter: brightness(1.1); }
+        .pay-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .divider {
+            height: 1px;
+            background: #27272a;
+            margin: 20px 0;
+        }
+
+        .order-summary {
+            background: #0a0a0f;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+
+        .order-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            padding: 4px 0;
+        }
+
+        .order-row.total {
+            font-weight: 700;
+            font-size: 16px;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #27272a;
+        }
+
+        /* Success */
+        .success-content {
+            text-align: center;
+        }
+
+        .success-icon {
+            width: 64px;
+            height: 64px;
+            background: rgba(34, 197, 94, 0.15);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            margin: 0 auto 20px;
+        }
+
+        .license-key {
+            background: #0a0a0f;
+            border: 1px solid #27272a;
+            border-radius: 10px;
+            padding: 14px;
+            font-family: monospace;
+            font-size: 14px;
+            color: #a78bfa;
+            text-align: center;
+            margin: 16px 0;
+            word-break: break-all;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        .license-key:hover { border-color: #6366f1; }
+
+        .copy-hint {
+            font-size: 12px;
+            color: #52525b;
+        }
+
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: #3f3f46;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-gradient"></div>
+
+    <div class="container">
+        <header>
+            <div class="logo">RICH MODERN</div>
+            <p>Выбери подписку и получи доступ к эксклюзивным функциям</p>
+        </header>
+
+        <div class="duration-selector">
+            <button class="duration-btn" data-days="7">7 дней</button>
+            <button class="duration-btn active" data-days="30">30 дней</button>
+            <button class="duration-btn" data-days="90">90 дней <span class="badge">-15%</span></button>
+            <button class="duration-btn" data-days="180">6 мес <span class="badge">-25%</span></button>
+            <button class="duration-btn" data-days="365">1 год <span class="badge">-40%</span></button>
+        </div>
+
+        <div class="plans">
+            <!-- Stable -->
+            <div class="plan-card">
+                <div class="plan-icon">⚡</div>
+                <div class="plan-name">Stable</div>
+                <div class="plan-desc">Стабильная версия для всех</div>
+                <div class="plan-price">
+                    <span class="price-value" data-base="2.99">2.99</span>
+                    <span class="currency">$</span>
+                    <span class="period" id="period-0">/мес</span>
+                </div>
+                <ul class="plan-features">
+                    <li>Все базовые модули</li>
+                    <li>ClickGUI + HUD</li>
+                    <li>Stable обновления</li>
+                    <li>Discord поддержка</li>
+                    <li class="disabled">Alpha/Beta функции</li>
+                    <li class="disabled">Ранний доступ</li>
+                </ul>
+                <button class="buy-btn" onclick="openCheckout('stable')">Купить</button>
+            </div>
+
+            <!-- Beta -->
+            <div class="plan-card featured">
+                <div class="plan-icon">🚀</div>
+                <div class="plan-name">Beta</div>
+                <div class="plan-desc">Тестирование новых функций</div>
+                <div class="plan-price">
+                    <span class="price-value" data-base="5.99">5.99</span>
+                    <span class="currency">$</span>
+                    <span class="period" id="period-1">/мес</span>
+                </div>
+                <ul class="plan-features">
+                    <li>Все функции Stable</li>
+                    <li>Beta модули</li>
+                    <li>Ранний доступ к обновлениям</li>
+                    <li>Приоритетная поддержка</li>
+                    <li>Экспериментальные функции</li>
+                    <li class="disabled">Alpha функции</li>
+                </ul>
+                <button class="buy-btn" onclick="openCheckout('beta')">Купить</button>
+            </div>
+
+            <!-- Alpha -->
+            <div class="plan-card">
+                <div class="plan-icon">👑</div>
+                <div class="plan-name">Alpha</div>
+                <div class="plan-desc">Максимум возможностей</div>
+                <div class="plan-price">
+                    <span class="price-value" data-base="9.99">9.99</span>
+                    <span class="currency">$</span>
+                    <span class="period" id="period-2">/мес</span>
+                </div>
+                <ul class="plan-features">
+                    <li>Все функции Beta</li>
+                    <li>Alpha эксклюзив</li>
+                    <li>Персональные настройки</li>
+                    <li>Личный Discord канал</li>
+                    <li>Голосование за фичи</li>
+                    <li>Полный доступ ко всему</li>
+                </ul>
+                <button class="buy-btn" onclick="openCheckout('alpha')">Купить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Checkout Modal -->
+    <div class="modal-overlay" id="checkoutModal">
+        <div class="modal">
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+
+            <div id="checkoutForm">
+                <h2>Оформление подписки</h2>
+                <p class="subtitle" id="checkoutSubtitle">Beta — 30 дней</p>
+
+                <div class="order-summary">
+                    <div class="order-row">
+                        <span>Подписка</span>
+                        <span id="orderPlan">Beta</span>
+                    </div>
+                    <div class="order-row">
+                        <span>Период</span>
+                        <span id="orderPeriod">30 дней</span>
+                    </div>
+                    <div class="order-row total">
+                        <span>Итого</span>
+                        <span id="orderTotal">$5.99</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="emailInput" placeholder="your@email.com">
+                </div>
+
+                <div class="form-group">
+                    <label>Никнейм в Minecraft</label>
+                    <input type="text" id="nickInput" placeholder="PlayerName">
+                </div>
+
+                <div class="payment-methods">
+                    <div class="payment-method active" data-method="card" onclick="selectPayment(this)">
+                        💳 Карта
+                    </div>
+                    <div class="payment-method" data-method="crypto" onclick="selectPayment(this)">
+                        ₿ Крипто
+                    </div>
+                    <div class="payment-method" data-method="qiwi" onclick="selectPayment(this)">
+                        🅴 QIWI
+                    </div>
+                </div>
+
+                <button class="pay-btn" id="payBtn" onclick="processPayment()">
+                    Оплатить <span id="payAmount">$5.99</span>
+                </button>
+            </div>
+
+            <div id="successContent" style="display:none;">
+                <div class="success-content">
+                    <div class="success-icon">✓</div>
+                    <h2>Оплата прошла!</h2>
+                    <p class="subtitle">Твой лицензионный ключ</p>
+                    <div class="license-key" id="licenseKeyDisplay" onclick="copyLicense()" title="Нажми чтобы скопировать">
+                        RM-XXXX-XXXX-XXXX-XXXX
+                    </div>
+                    <p class="copy-hint">Нажми на ключ чтобы скопировать</p>
+                    <p style="margin-top:20px; font-size:13px; color:#71717a;">
+                        Вставь этот ключ в лаунчер: <strong>Настройки → Подписка → Активировать</strong>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        Rich Modern &copy; 2026 — Оплата защищена. Ключ действителен на 1 устройстве.
+    </footer>
+
+    <script>
+        const PRICES = {
+            stable: { 7: 1.49, 30: 2.99, 90: 7.65, 180: 13.46, 365: 21.53 },
+            beta:   { 7: 2.99, 30: 5.99, 90: 15.27, 180: 26.96, 365: 43.13 },
+            alpha:  { 7: 4.99, 30: 9.99, 90: 25.48, 180: 44.96, 365: 71.93 }
+        };
+
+        const PLAN_NAMES = { stable: 'Stable', beta: 'Beta', alpha: 'Alpha' };
+
+        let selectedDays = 30;
+        let selectedPlan = 'beta';
+        let selectedPayment = 'card';
+
+        // Duration buttons
+        document.querySelectorAll('.duration-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.duration-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                selectedDays = parseInt(btn.dataset.days);
+                updatePrices();
+            });
+        });
+
+        function updatePrices() {
+            document.querySelectorAll('.price-value').forEach((el, i) => {
+                const plan = ['stable', 'beta', 'alpha'][i];
+                const price = PRICES[plan][selectedDays];
+                el.textContent = price.toFixed(2);
+            });
+
+            const periods = document.querySelectorAll('.period');
+            if (selectedDays < 30) {
+                periods.forEach(p => p.textContent = '/' + selectedDays + ' дн');
+            } else if (selectedDays < 365) {
+                const months = Math.round(selectedDays / 30);
+                periods.forEach(p => p.textContent = '/' + months + ' мес');
+            } else {
+                periods.forEach(p => p.textContent = '/год');
+            }
+        }
+
+        function openCheckout(plan) {
+            selectedPlan = plan;
+            const price = PRICES[plan][selectedDays];
+            const periodText = selectedDays < 30 ? selectedDays + ' дней' :
+                               selectedDays < 365 ? Math.round(selectedDays / 30) + ' мес' : '1 год';
+
+            document.getElementById('checkoutSubtitle').textContent = PLAN_NAMES[plan] + ' — ' + periodText;
+            document.getElementById('orderPlan').textContent = PLAN_NAMES[plan];
+            document.getElementById('orderPeriod').textContent = periodText;
+            document.getElementById('orderTotal').textContent = '$' + price.toFixed(2);
+            document.getElementById('payAmount').textContent = '$' + price.toFixed(2);
+
+            document.getElementById('checkoutForm').style.display = '';
+            document.getElementById('successContent').style.display = 'none';
+            document.getElementById('checkoutModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('checkoutModal').classList.remove('active');
+        }
+
+        function selectPayment(el) {
+            document.querySelectorAll('.payment-method').forEach(m => m.classList.remove('active'));
+            el.classList.add('active');
+            selectedPayment = el.dataset.method;
+        }
+
+        async function processPayment() {
+            const email = document.getElementById('emailInput').value.trim();
+            const nick = document.getElementById('nickInput').value.trim();
+
+            if (!email || !email.includes('@')) {
+                alert('Введите корректный email');
+                return;
+            }
+            if (!nick || nick.length < 3) {
+                alert('Введите никнейм (минимум 3 символа)');
+                return;
+            }
+
+            const btn = document.getElementById('payBtn');
+            btn.disabled = true;
+            btn.textContent = 'Обработка...';
+
+            // Generate license key
+            const key = generateLicenseKey(selectedPlan, selectedDays, email, nick);
+
+            // In production: send to backend API for payment processing
+            // For now: simulate payment delay
+            await new Promise(r => setTimeout(r, 2000));
+
+            document.getElementById('licenseKeyDisplay').textContent = key;
+            document.getElementById('checkoutForm').style.display = 'none';
+            document.getElementById('successContent').style.display = '';
+
+            btn.disabled = false;
+            btn.textContent = 'Оплатить';
+        }
+
+        function generateLicenseKey(plan, days, email, nick) {
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+            let seed = 0;
+            const str = plan + days + email + nick + 'rich-modern-secret-2026';
+            for (let i = 0; i < str.length; i++) {
+                seed = ((seed << 5) - seed + str.charCodeAt(i)) | 0;
+            }
+
+            function rand() {
+                seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+                return seed;
+            }
+
+            function segment() {
+                let s = '';
+                for (let i = 0; i < 4; i++) s += chars[rand() % chars.length];
+                return s;
+            }
+
+            const planCode = { stable: 'ST', beta: 'BT', alpha: 'AL' }[plan];
+            const daysCode = days.toString(16).toUpperCase().padStart(2, '0');
+
+            return `RM-${planCode}${daysCode}-${segment()}-${segment()}-${segment()}`;
+        }
+
+        function copyLicense() {
+            const key = document.getElementById('licenseKeyDisplay').textContent;
+            navigator.clipboard.writeText(key).then(() => {
+                const el = document.getElementById('licenseKeyDisplay');
+                el.style.borderColor = '#22c55e';
+                setTimeout(() => el.style.borderColor = '', 1000);
+            });
+        }
+
+        updatePrices();
+    </script>
+</body>
+</html>
