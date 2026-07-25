@@ -477,7 +477,7 @@
                 <div class="plan-desc">Стабильная версия для всех</div>
                 <div class="plan-price">
                     <span class="price-value" data-base="2.99">2.99</span>
-                    <span class="currency">$</span>
+                    <span class="currency">₽</span>
                     <span class="period" id="period-0">/мес</span>
                 </div>
                 <ul class="plan-features">
@@ -498,7 +498,7 @@
                 <div class="plan-desc">Тестирование новых функций</div>
                 <div class="plan-price">
                     <span class="price-value" data-base="5.99">5.99</span>
-                    <span class="currency">$</span>
+                    <span class="currency">₽</span>
                     <span class="period" id="period-1">/мес</span>
                 </div>
                 <ul class="plan-features">
@@ -519,7 +519,7 @@
                 <div class="plan-desc">Максимум возможностей</div>
                 <div class="plan-price">
                     <span class="price-value" data-base="9.99">9.99</span>
-                    <span class="currency">$</span>
+                    <span class="currency">₽</span>
                     <span class="period" id="period-2">/мес</span>
                 </div>
                 <ul class="plan-features">
@@ -555,11 +555,11 @@
                     </div>
                     <div class="order-row" id="promoRow" style="display:none;color:#22c55e;">
                         <span>Скидка</span>
-                        <span id="orderDiscount">-$0.00</span>
+                        <span id="orderDiscount">-₽0.00</span>
                     </div>
                     <div class="order-row total">
                         <span>Итого</span>
-                        <span id="orderTotal">$5.99</span>
+                        <span id="orderTotal">₽5.99</span>
                     </div>
                 </div>
 
@@ -590,7 +590,7 @@
                 </div>
 
                 <button class="pay-btn" id="payBtn" onclick="processPayment()">
-                    Оплатить <span id="payAmount">$5.99</span>
+                    Оплатить <span id="payAmount">₽5.99</span>
                 </button>
             </div>
 
@@ -617,9 +617,9 @@
 
     <script>
         const PRICES = {
-            stable: { 1: 0.49, 7: 1.49, 30: 2.99, 90: 7.65, 9999: 17.99 },
-            beta:   { 1: 0.99, 7: 2.99, 30: 5.99, 90: 15.27, 9999: 35.99 },
-            alpha:  { 1: 1.49, 7: 4.99, 30: 9.99, 90: 25.48, 9999: 59.99 }
+            stable: { 1: 49, 7: 149, 30: 299, 90: 649, 9999: 999 },
+            beta:   { 1: 79, 7: 249, 30: 449, 90: 949, 9999: 1499 },
+            alpha:  { 1: 129, 7: 349, 30: 599, 90: 1299, 9999: 1999 }
         };
 
         const PROMO_CODES = {
@@ -684,7 +684,7 @@
                 const plan = ['stable', 'beta', 'alpha'][i];
                 let price = PRICES[plan][selectedDays];
                 if (promoApplied) price = price * (1 - promoDiscount);
-                el.textContent = price.toFixed(2);
+                el.textContent = Math.round(price);
             });
 
             const periods = document.querySelectorAll('.period');
@@ -707,13 +707,13 @@
             document.getElementById('checkoutSubtitle').textContent = PLAN_NAMES[plan] + ' — ' + periodText;
             document.getElementById('orderPlan').textContent = PLAN_NAMES[plan];
             document.getElementById('orderPeriod').textContent = periodText;
-            document.getElementById('orderTotal').textContent = '$' + price.toFixed(2);
-            document.getElementById('payAmount').textContent = '$' + price.toFixed(2);
+            document.getElementById('orderTotal').textContent = Math.round(price) + '₽';
+            document.getElementById('payAmount').textContent = Math.round(price) + '₽';
 
             if (promoApplied) {
                 const discount = fullPrice * promoDiscount;
                 document.getElementById('promoRow').style.display = '';
-                document.getElementById('orderDiscount').textContent = '-$' + discount.toFixed(2);
+                document.getElementById('orderDiscount').textContent = '-' + Math.round(discount) + '₽';
             } else {
                 document.getElementById('promoRow').style.display = 'none';
             }
