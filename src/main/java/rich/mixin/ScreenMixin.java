@@ -9,6 +9,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import rich.command.CommandManager;
+import rich.screens.ai.AiChatScreen;
 import rich.screens.clickgui.ClickGui;
 
 @Mixin(Screen.class)
@@ -16,7 +17,7 @@ public class ScreenMixin {
 
     @Inject(method = "renderBackground", at = @At("HEAD"), cancellable = true)
     private void disableBackgroundBlurAndDimming(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
-        if ((Object) this instanceof ClickGui) {
+        if ((Object) this instanceof ClickGui || (Object) this instanceof AiChatScreen) {
             ci.cancel();
         }
     }

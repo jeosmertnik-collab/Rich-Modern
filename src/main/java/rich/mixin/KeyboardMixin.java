@@ -13,6 +13,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import rich.events.api.EventManager;
 import rich.events.impl.KeyEvent;
+import rich.screens.ai.AiChatScreen;
 import rich.screens.clickgui.ClickGui;
 import rich.util.config.impl.bind.BindConfig;
 
@@ -29,6 +30,10 @@ public class KeyboardMixin {
 
             if (action == 0 && input.key() == BindConfig.getInstance().getBindKey() && canOpenClickGui()) {
                 ClickGui.INSTANCE.openGui();
+            }
+
+            if (action == 0 && input.key() == GLFW.GLFW_KEY_HOME && canOpenClickGui()) {
+                client.setScreen(new AiChatScreen());
             }
 
             EventManager.callEvent(new KeyEvent(client.currentScreen, InputUtil.Type.KEYSYM, input.key(), action));

@@ -1,0 +1,34 @@
+{
+  "name": "rich-modern-launcher",
+  "version": "1.0.0",
+  "description": "Rich Modern Launcher",
+  "main": "app.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win portable",
+    "build-installer": "electron-builder --win nsis"
+  },
+  "build": {
+    "appId": "com.rich.modern.launcher",
+    "productName": "Rich Modern",
+    "win": {
+      "target": "portable",
+      "icon": null,
+      "signAndEditExecutable": false
+    },
+    "portable": {
+      "artifactName": "RichModern.exe"
+    },
+    "files": [
+      "**/*",
+      "!node_modules/.cache"
+    ]
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "electron-builder": "^24.0.0"
+  }
+}

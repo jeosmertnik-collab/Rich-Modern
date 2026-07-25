@@ -146,7 +146,7 @@ public class WayRepository implements IMinecraft {
 
             Vec3d screenPos = Projection.worldSpaceToScreenSpace(wayVec);
 
-            if (screenPos.z <= 0 || screenPos.z >= 1) continue;
+            if (screenPos.z <= 0) continue;
 
             double distance = mc.player.getEntityPos().distanceTo(wayVec);
             String text = way.name() + " - " + String.format("%.1f", distance) + "m";

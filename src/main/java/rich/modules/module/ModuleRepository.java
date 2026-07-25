@@ -41,6 +41,8 @@ public class ModuleRepository {
                 .add(new TriggerBot())
                 .add(new BowSpammer())
                 .add(new Ambience())
+                .add(new BackSword())
+                .add(new Wings())
                 .add(new AutoTotem())
                 .add(new TapeMouse())
                 .add(new ElytraHelper())
@@ -102,6 +104,12 @@ public class ModuleRepository {
                 .add(new SwingAnimation())
                 .add(new AutoSprint())
                 .add(new AutoBuy())
+                .add(new StorageESP())
+                .add(new InventoryManager())
+                .add(new EventWaypointParser())
+                .add(new AiAssistant())
+                .add(new VoiceAlert())
+                .add(new ClanHelper())
                 .hidden(new AutoParser());
     }
 

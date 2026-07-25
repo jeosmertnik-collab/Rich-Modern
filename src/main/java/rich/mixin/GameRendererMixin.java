@@ -63,6 +63,15 @@ public abstract class GameRendererMixin {
     @Unique
     private final MatrixStack matrices = new MatrixStack();
 
+    @Unique
+    private final MatrixStack worldSpaceStack = new MatrixStack();
+
+    @Unique
+    private final Quaternionf tempRotation = new Quaternionf();
+
+    @Unique
+    private final Matrix4f invertResult = new Matrix4f();
+
     @Shadow
     protected abstract void bobView(MatrixStack matrices, float tickDelta);
 
@@ -108,7 +117,7 @@ public abstract class GameRendererMixin {
     public void hookWorldRender(RenderTickCounter tickCounter, CallbackInfo ci, @Local(ordinal = 0) Matrix4f projection, @Local(ordinal = 1) Matrix4f view, @Local(ordinal = 0) float tickDelta, @Local MatrixStack matrixStack) {
         if (client.world == null || client.player == null) return;
 
-        MatrixStack worldSpaceStack = new MatrixStack();
+        worldSpaceStack.push();
         worldSpaceStack.multiply(RotationAxis.POSITIVE_X.rotationDegrees(camera.getPitch()));
         worldSpaceStack.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(camera.getYaw() + 180.0F));
 
@@ -119,7 +128,8 @@ public abstract class GameRendererMixin {
         Render3D.setLastWorldSpaceEntry(matrixStack.peek());
         Render3D.setLastTickDelta(tickDelta);
         Render3D.setLastCameraPos(camera.getCameraPos());
-        Render3D.setLastCameraRotation(new Quaternionf(camera.getRotation()));
+        tempRotation.set(camera.getRotation());
+        Render3D.setLastCameraRotation(tempRotation);
 
         Matrix4fStack modelViewStack = RenderSystem.getModelViewStack();
         modelViewStack.pushMatrix().mul(view);
@@ -129,8 +139,10 @@ public abstract class GameRendererMixin {
         if (client.options.getBobView().getValue()) {
             bobView(matrices, camera.getLastTickProgress());
         }
-        modelViewStack.mul(matrices.peek().getPositionMatrix().invert(new Matrix4f()));
+        modelViewStack.mul(matrices.peek().getPositionMatrix().invert(invertResult));
         matrices.pop();
+
+        worldSpaceStack.pop();
 
         WorldRenderEvent event = new WorldRenderEvent(matrixStack, tickDelta);
         EventManager.callEvent(event);
@@ -179,6 +191,7 @@ public abstract class GameRendererMixin {
 
         if (client.currentScreen instanceof ClickGui clickGui) {
             clickGui.renderOverlay(context, tickCounter);
+            return;
         }
 
         guiRenderer.render(fogRenderer.getFogBuffer(FogRenderer.FogType.NONE));

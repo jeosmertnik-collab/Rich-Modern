@@ -278,4 +278,214 @@ public class ClientPipelines {
                         .build();
                 return RenderLayer.of("gui_arrow_blend", setup);
             });
+
+    public static final RenderPipeline BACKSWORD_FILL_PIPELINE = RenderPipelines.register(
+            RenderPipeline.builder(TRANSFORMS_AND_PROJECTION_SNIPPET)
+                    .withLocation("pipeline/backsword_fill")
+                    .withVertexShader("core/position_color")
+                    .withFragmentShader("core/position_color")
+                    .withBlend(BlendFunction.TRANSLUCENT)
+                    .withDepthTestFunction(DepthTestFunction.LEQUAL_DEPTH_TEST)
+                    .withDepthWrite(true)
+                    .withCull(false)
+                    .withVertexFormat(VertexFormats.POSITION_COLOR, VertexFormat.DrawMode.QUADS)
+                    .build()
+    );
+
+    public static final RenderLayer BACKSWORD_FILL = RenderLayer.of(
+            "backsword_fill",
+            RenderSetup.builder(BACKSWORD_FILL_PIPELINE)
+                    .translucent()
+                    .expectedBufferSize(8192)
+                    .build()
+    );
+
+    public static final RenderPipeline BACKSWORD_GLOW_PIPELINE = RenderPipelines.register(
+            RenderPipeline.builder(TRANSFORMS_AND_PROJECTION_SNIPPET)
+                    .withLocation("pipeline/backsword_glow")
+                    .withVertexShader("core/position_color")
+                    .withFragmentShader("core/position_color")
+                    .withBlend(BlendFunction.LIGHTNING)
+                    .withDepthTestFunction(DepthTestFunction.NO_DEPTH_TEST)
+                    .withDepthWrite(false)
+                    .withCull(false)
+                    .withVertexFormat(VertexFormats.POSITION_COLOR, VertexFormat.DrawMode.QUADS)
+                    .build()
+    );
+
+    public static final RenderLayer BACKSWORD_GLOW = RenderLayer.of(
+            "backsword_glow",
+            RenderSetup.builder(BACKSWORD_GLOW_PIPELINE)
+                    .translucent()
+                    .expectedBufferSize(8192)
+                    .build()
+    );
+
+    public static final RenderPipeline WINGS_FILLED_PIPELINE = RenderPipelines.register(
+            RenderPipeline.builder(TRANSFORMS_AND_PROJECTION_SNIPPET)
+                    .withLocation("pipeline/wings_filled")
+                    .withVertexShader("core/position_color")
+                    .withFragmentShader("core/position_color")
+                    .withBlend(BlendFunction.TRANSLUCENT)
+                    .withDepthTestFunction(DepthTestFunction.LEQUAL_DEPTH_TEST)
+                    .withDepthWrite(true)
+                    .withCull(false)
+                    .withVertexFormat(VertexFormats.POSITION_COLOR, VertexFormat.DrawMode.TRIANGLES)
+                    .build()
+    );
+
+    public static final RenderLayer WINGS_FILLED = RenderLayer.of(
+            "wings_filled",
+            RenderSetup.builder(WINGS_FILLED_PIPELINE)
+                    .translucent()
+                    .expectedBufferSize(8192)
+                    .build()
+    );
+
+    public static final RenderPipeline WINGS_FILLED_NOTHROUGH_PIPELINE = RenderPipelines.register(
+            RenderPipeline.builder(TRANSFORMS_AND_PROJECTION_SNIPPET)
+                    .withLocation("pipeline/wings_filled_nothrough")
+                    .withVertexShader("core/position_color")
+                    .withFragmentShader("core/position_color")
+                    .withBlend(BlendFunction.TRANSLUCENT)
+                    .withDepthTestFunction(DepthTestFunction.NO_DEPTH_TEST)
+                    .withDepthWrite(false)
+                    .withCull(false)
+                    .withVertexFormat(VertexFormats.POSITION_COLOR, VertexFormat.DrawMode.TRIANGLES)
+                    .build()
+    );
+
+    public static final RenderLayer WINGS_FILLED_NOTHROUGH = RenderLayer.of(
+            "wings_filled_nothrough",
+            RenderSetup.builder(WINGS_FILLED_NOTHROUGH_PIPELINE)
+                    .translucent()
+                    .expectedBufferSize(8192)
+                    .build()
+    );
+
+    public static final RenderPipeline WINGS_GLOW_PIPELINE = RenderPipelines.register(
+            RenderPipeline.builder(TRANSFORMS_AND_PROJECTION_SNIPPET)
+                    .withLocation("pipeline/wings_glow")
+                    .withVertexShader("core/position_color")
+                    .withFragmentShader("core/position_color")
+                    .withBlend(BlendFunction.LIGHTNING)
+                    .withDepthTestFunction(DepthTestFunction.NO_DEPTH_TEST)
+                    .withDepthWrite(false)
+                    .withCull(false)
+                    .withVertexFormat(VertexFormats.POSITION_COLOR, VertexFormat.DrawMode.TRIANGLES)
+                    .build()
+    );
+
+    public static final RenderLayer WINGS_GLOW = RenderLayer.of(
+            "wings_glow",
+            RenderSetup.builder(WINGS_GLOW_PIPELINE)
+                    .translucent()
+                    .expectedBufferSize(8192)
+                    .build()
+    );
+
+    public static final RenderPipeline WINGS_GLOW_DEPTH_PIPELINE = RenderPipelines.register(
+            RenderPipeline.builder(TRANSFORMS_AND_PROJECTION_SNIPPET)
+                    .withLocation("pipeline/wings_glow_depth")
+                    .withVertexShader("core/position_color")
+                    .withFragmentShader("core/position_color")
+                    .withBlend(BlendFunction.LIGHTNING)
+                    .withDepthTestFunction(DepthTestFunction.LEQUAL_DEPTH_TEST)
+                    .withDepthWrite(false)
+                    .withCull(false)
+                    .withVertexFormat(VertexFormats.POSITION_COLOR, VertexFormat.DrawMode.TRIANGLES)
+                    .build()
+    );
+
+    public static final RenderLayer WINGS_GLOW_DEPTH = RenderLayer.of(
+            "wings_glow_depth",
+            RenderSetup.builder(WINGS_GLOW_DEPTH_PIPELINE)
+                    .translucent()
+                    .expectedBufferSize(8192)
+                    .build()
+    );
+
+    public static final RenderPipeline WINGS_OUTLINE_PIPELINE = RenderPipelines.register(
+            RenderPipeline.builder(TRANSFORMS_AND_PROJECTION_SNIPPET)
+                    .withLocation("pipeline/wings_outline")
+                    .withVertexShader("core/position_color")
+                    .withFragmentShader("core/position_color")
+                    .withBlend(BlendFunction.LIGHTNING)
+                    .withDepthTestFunction(DepthTestFunction.NO_DEPTH_TEST)
+                    .withDepthWrite(false)
+                    .withCull(false)
+                    .withVertexFormat(VertexFormats.POSITION_COLOR, VertexFormat.DrawMode.DEBUG_LINE_STRIP)
+                    .build()
+    );
+
+    public static final RenderLayer WINGS_OUTLINE = RenderLayer.of(
+            "wings_outline",
+            RenderSetup.builder(WINGS_OUTLINE_PIPELINE)
+                    .translucent()
+                    .expectedBufferSize(4096)
+                    .build()
+    );
+
+    public static final RenderPipeline WINGS_OUTLINE_DEPTH_PIPELINE = RenderPipelines.register(
+            RenderPipeline.builder(TRANSFORMS_AND_PROJECTION_SNIPPET)
+                    .withLocation("pipeline/wings_outline_depth")
+                    .withVertexShader("core/position_color")
+                    .withFragmentShader("core/position_color")
+                    .withBlend(BlendFunction.LIGHTNING)
+                    .withDepthTestFunction(DepthTestFunction.LEQUAL_DEPTH_TEST)
+                    .withDepthWrite(false)
+                    .withCull(false)
+                    .withVertexFormat(VertexFormats.POSITION_COLOR, VertexFormat.DrawMode.DEBUG_LINE_STRIP)
+                    .build()
+    );
+
+    public static final RenderLayer WINGS_OUTLINE_DEPTH = RenderLayer.of(
+            "wings_outline_depth",
+            RenderSetup.builder(WINGS_OUTLINE_DEPTH_PIPELINE)
+                    .translucent()
+                    .expectedBufferSize(4096)
+                    .build()
+    );
+
+    public static final RenderPipeline WINGS_RIBS_PIPELINE = RenderPipelines.register(
+            RenderPipeline.builder(TRANSFORMS_AND_PROJECTION_SNIPPET)
+                    .withLocation("pipeline/wings_ribs")
+                    .withVertexShader("core/position_color")
+                    .withFragmentShader("core/position_color")
+                    .withBlend(BlendFunction.LIGHTNING)
+                    .withDepthTestFunction(DepthTestFunction.NO_DEPTH_TEST)
+                    .withDepthWrite(false)
+                    .withCull(false)
+                    .withVertexFormat(VertexFormats.POSITION_COLOR, VertexFormat.DrawMode.DEBUG_LINES)
+                    .build()
+    );
+
+    public static final RenderLayer WINGS_RIBS = RenderLayer.of(
+            "wings_ribs",
+            RenderSetup.builder(WINGS_RIBS_PIPELINE)
+                    .translucent()
+                    .expectedBufferSize(4096)
+                    .build()
+    );
+
+    public static final RenderPipeline WINGS_RIBS_DEPTH_PIPELINE = RenderPipelines.register(
+            RenderPipeline.builder(TRANSFORMS_AND_PROJECTION_SNIPPET)
+                    .withLocation("pipeline/wings_ribs_depth")
+                    .withVertexShader("core/position_color")
+                    .withFragmentShader("core/position_color")
+                    .withBlend(BlendFunction.LIGHTNING)
+                    .withDepthTestFunction(DepthTestFunction.LEQUAL_DEPTH_TEST)
+                    .withDepthWrite(false)
+                    .withCull(false)
+                    .withVertexFormat(VertexFormats.POSITION_COLOR, VertexFormat.DrawMode.DEBUG_LINES)
+                    .build()
+    );
+
+    public static final RenderLayer WINGS_RIBS_DEPTH = RenderLayer.of(
+            "wings_ribs_depth",
+            RenderSetup.builder(WINGS_RIBS_DEPTH_PIPELINE)
+                    .translucent()
+                    .expectedBufferSize(4096)
+                    .build()
+    );
 }

@@ -4,7 +4,10 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.render.entity.EntityRenderer;
 import net.minecraft.client.render.entity.LivingEntityRenderer;
 import net.minecraft.client.render.entity.state.LivingEntityRenderState;
+import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.effect.StatusEffectInstance;
+import net.minecraft.item.ItemStack;
 import net.minecraft.util.Identifier;
 import rich.client.draggables.AbstractHudElement;
 import rich.modules.impl.combat.Aura;
@@ -12,10 +15,12 @@ import rich.util.ColorUtil;
 import rich.util.network.Network;
 import rich.util.render.Render2D;
 import rich.util.render.font.Fonts;
-import rich.util.string.PlayerInteractionHelper;
+import rich.util.render.item.ItemRender;
 import rich.util.timer.StopWatch;
 
-import java.awt.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 
 public class TargetHud extends AbstractHudElement {
 
@@ -29,8 +34,19 @@ public class TargetHud extends AbstractHudElement {
     private long lastUpdateTime = System.currentTimeMillis();
     private long startTime = System.currentTimeMillis();
 
+    private static final int PANEL_WIDTH = 130;
+    private static final int PANEL_HEIGHT = 58;
+    private static final int FACE_SIZE = 24;
+    private static final int ITEM_SIZE = 8;
+    private static final float HP_BAR_WIDTH = 80;
+    private static final float HP_BAR_HEIGHT = 4;
+
+    private static final int[] BG_GRADIENT_COLORS = new int[4];
+    private static final int[] GOLD_COLORS = new int[4];
+    private static final ItemStack[] GEAR_SLOTS = new ItemStack[6];
+
     public TargetHud() {
-        super("TargetHud", 10, 80, 112, 40, true);
+        super("TargetHud", 10, 80, PANEL_WIDTH, PANEL_HEIGHT, true);
     }
 
     @Override
@@ -83,6 +99,39 @@ public class TargetHud extends AbstractHudElement {
         }
     }
 
+    private int getHealthColor(float healthPercent) {
+        float r, g;
+        if (healthPercent > 0.5f) {
+            float t = (healthPercent - 0.5f) * 2f;
+            r = 255 * (1f - t);
+            g = 255;
+        } else {
+            float t = healthPercent * 2f;
+            r = 255;
+            g = 255 * t;
+        }
+        return 0xFF000000 | ((int) r << 16) | ((int) g << 8) | 40;
+    }
+
+    private int getHealthColorAnimated(float healthPercent) {
+        float r, g;
+        if (healthPercent > 0.5f) {
+            float t = (healthPercent - 0.5f) * 2f;
+            r = 255 * (1f - t);
+            g = 255;
+        } else {
+            float t = healthPercent * 2f;
+            r = 255;
+            g = 255 * t;
+        }
+        long elapsed = System.currentTimeMillis() - startTime;
+        float wavePhase = (elapsed % 2000f) / 2000f * (float) Math.PI * 2f;
+        float wave = (float) (Math.sin(wavePhase) * 0.08f + 1.0f);
+        r = Math.min(255, r * wave);
+        g = Math.min(255, g * wave);
+        return 0xFF000000 | ((int) r << 16) | ((int) g << 8) | 40;
+    }
+
     @Override
     public void drawDraggable(DrawContext context, int alpha) {
         if (alpha <= 0) return;
@@ -93,35 +142,32 @@ public class TargetHud extends AbstractHudElement {
         lastUpdateTime = currentTime;
         deltaTime = Math.min(deltaTime, 0.1f);
 
+        setWidth(PANEL_WIDTH);
+        setHeight(PANEL_HEIGHT);
+
         float x = getX();
         float y = getY();
-
-        setWidth(112);
-        setHeight(40);
-
         float scaleAlpha = scaleAnimation.getOutput().floatValue();
 
         drawBackground(x, y, scaleAlpha);
         drawFace(x, y, scaleAlpha);
-        drawContent(x, y, scaleAlpha, deltaTime);
+        drawHealthBar(x, y, scaleAlpha, deltaTime);
+        drawGear(context, x, y, scaleAlpha);
+        drawPotionEffects(x, y, scaleAlpha);
     }
 
     private void drawBackground(float x, float y, float alpha) {
         int alphaInt = (int) (255 * alpha);
 
+        BG_GRADIENT_COLORS[0] = (alphaInt << 24) | 0x343434;
+        BG_GRADIENT_COLORS[1] = (alphaInt << 24) | 0x161616;
+        BG_GRADIENT_COLORS[2] = (alphaInt << 24) | 0x343434;
+        BG_GRADIENT_COLORS[3] = (alphaInt << 24) | 0x161616;
         Render2D.gradientRect(x + 2, y + 2, getWidth() - 4, getHeight() - 4,
-                new int[]{
-                        new Color(52, 52, 52, alphaInt).getRGB(),
-                        new Color(22, 22, 22, alphaInt).getRGB(),
-                        new Color(52, 52, 52, alphaInt).getRGB(),
-                        new Color(22, 22, 22, alphaInt).getRGB()
-                },
+                BG_GRADIENT_COLORS,
                 6);
 
-        Render2D.outline(x + 2, y + 2, getWidth() - 4, getHeight() - 4, 0.35f, new Color(90, 90, 90, alphaInt).getRGB(), 5);
-
-        int blurTint = ColorUtil.rgba(0, 0, 0, 0);
-        Render2D.blur(x + 2, y + 2, 1, 1, 0f, 7, blurTint);
+        Render2D.outline(x + 2, y + 2, getWidth() - 4, getHeight() - 4, 0.35f, (alphaInt << 24) | 0x5A5A5A, 5);
     }
 
     private void drawFace(float x, float y, float alpha) {
@@ -137,7 +183,6 @@ public class TargetHud extends AbstractHudElement {
         LivingEntityRenderState state = renderer.getAndUpdateRenderState(lastTarget, lastTickDelta);
         Identifier textureLocation = renderer.getTexture(state);
 
-        float faceSize = 24;
         float faceX = x + 9;
         float faceY = y + 8;
 
@@ -145,19 +190,19 @@ public class TargetHud extends AbstractHudElement {
         int r = 255;
         int g = (int) (255 * (1.0f - hurtPercent));
         int b = (int) (255 * (1.0f - hurtPercent));
-        int color = new Color(r, g, b, (int) (255 * alpha)).getRGB();
+        int color = ((int)(255 * alpha) << 24) | (r << 16) | (g << 8) | b;
 
         float u0 = 8f / 64f;
         float v0 = 8f / 64f;
         float u1 = 16f / 64f;
         float v1 = 16f / 64f;
 
-        Render2D.texture(textureLocation, faceX, faceY, faceSize, faceSize,
+        Render2D.texture(textureLocation, faceX, faceY, FACE_SIZE, FACE_SIZE,
                 u0, v0, u1, v1, color, 0, 4f);
 
         float hatScale = 1.1f;
-        float hatSize = faceSize * hatScale;
-        float hatOffset = (hatSize - faceSize) / 2f;
+        float hatSize = FACE_SIZE * hatScale;
+        float hatOffset = (hatSize - FACE_SIZE) / 2f;
 
         float hatU0 = 40f / 64f;
         float hatV0 = 8f / 64f;
@@ -168,10 +213,9 @@ public class TargetHud extends AbstractHudElement {
                 hatU0, hatV0, hatU1, hatV1, color, 0f, 4f);
     }
 
-    private void drawContent(float x, float y, float alpha, float deltaTime) {
-        float faceSize = 24;
+    private void drawHealthBar(float x, float y, float alpha, float deltaTime) {
         float faceX = x + 9;
-        float contentX = faceX + faceSize + 6;
+        float contentX = faceX + FACE_SIZE + 6;
         float nameY = y + 13;
 
         float hp = getHealth(lastTarget);
@@ -190,15 +234,20 @@ public class TargetHud extends AbstractHudElement {
         float snappedHealth = snapToStep(displayedHealth, 0.25f);
 
         String hpStr = getHealthString(snappedHealth);
-
         String name = lastTarget.getName().getString();
         float hpWidth = Fonts.BOLD.getWidth(hpStr, 5.5f);
 
-        Fonts.BOLD.draw(name, contentX, nameY, 5.5f,
-                new Color(255, 255, 255, (int) (255 * alpha)).getRGB());
+        int alphaInt = (int) (255 * alpha);
+        Fonts.BOLD.draw(name, contentX, nameY, 5.5f, (alphaInt << 24) | 0xFFFFFF);
+        Fonts.BOLD.draw(hpStr, x + getWidth() - 10 - hpWidth, nameY, 5.5f,
+                (alphaInt << 24) | 0xD7D7D7);
 
-        int hpColor = new Color(215, 215, 215, (int) (255 * alpha)).getRGB();
-        Fonts.BOLD.draw(hpStr, x + getWidth() - 10 - hpWidth, nameY, 5.5f, hpColor);
+        float barX = contentX;
+        float barY = nameY + 12f;
+        float barRadius = 2;
+
+        Render2D.rect(barX, barY, HP_BAR_WIDTH, HP_BAR_HEIGHT,
+                ((int)(200 * alpha) << 24) | 0x1E1E1E, barRadius);
 
         float targetHealth;
         if (isInvisible) {
@@ -221,40 +270,18 @@ public class TargetHud extends AbstractHudElement {
         }
         absorptionAnimation = lerp(absorptionAnimation, targetAbsorption, deltaTime, 3f);
 
-        float barX = contentX;
-        float barY = nameY + 12f;
-        float barWidth = 64;
-        float barHeight = 4;
-        float barRadius = 2;
-
-        Render2D.rect(barX, barY, barWidth, barHeight,
-                new Color(30, 30, 30, (int) (200 * alpha)).getRGB(), barRadius);
-
         float healthPercent = Math.max(0, Math.min(1, healthAnimation));
         float trailPercent = Math.max(0, Math.min(1, trailAnimation));
 
         if (trailPercent > healthPercent) {
-            int trailColor = new Color(55, 55, 55, (int) (160 * alpha)).getRGB();
-            Render2D.rect(barX, barY, barWidth * trailPercent, barHeight, trailColor, barRadius);
+            int trailColor = ((int)(160 * alpha) << 24) | 0x373737;
+            Render2D.rect(barX, barY, HP_BAR_WIDTH * trailPercent, HP_BAR_HEIGHT, trailColor, barRadius);
         }
 
         if (healthPercent > 0.01f) {
-            long elapsed = System.currentTimeMillis() - startTime;
-            float waveSpeed = 1500f;
-            float wavePhase = (elapsed % (long) waveSpeed) / waveSpeed * (float) Math.PI * 2f;
-
-            int[] colors = new int[4];
-            for (int i = 0; i < 2; i++) {
-                float charWave = (float) Math.sin(wavePhase - i * 1.5f);
-                float waveFactor = (charWave + 1f) / 2f;
-
-                int baseGray = (int) (155 + 100 * waveFactor);
-
-                colors[i * 2] = new Color(baseGray, baseGray, baseGray, (int) (255 * alpha)).getRGB();
-                colors[i * 2 + 1] = new Color(baseGray, baseGray, baseGray, (int) (255 * alpha)).getRGB();
-            }
-
-            Render2D.gradientRect(barX, barY, barWidth * healthPercent, barHeight, colors, barRadius);
+            int hpColor = getHealthColorAnimated(healthPercent);
+            int hpColorAlpha = (hpColor & 0x00FFFFFF) | ((int)(255 * alpha) << 24);
+            Render2D.rect(barX, barY, HP_BAR_WIDTH * healthPercent, HP_BAR_HEIGHT, hpColorAlpha, barRadius);
         }
 
         float absorptionPercent = Math.max(0, Math.min(1, absorptionAnimation));
@@ -263,20 +290,99 @@ public class TargetHud extends AbstractHudElement {
             float waveSpeed = 1200f;
             float wavePhase = (elapsed % (long) waveSpeed) / waveSpeed * (float) Math.PI * 2f;
 
-            int[] goldColors = new int[4];
             for (int i = 0; i < 2; i++) {
                 float charWave = (float) Math.sin(wavePhase - i * 1.5f);
                 float waveFactor = (charWave + 1f) / 2f;
-
                 int cr = 255;
                 int cg = (int) (165 + 50 * waveFactor);
                 int cb = 0;
-
-                goldColors[i * 2] = new Color(cr, cg, cb, (int) (200 * alpha)).getRGB();
-                goldColors[i * 2 + 1] = new Color(cr, cg, cb, (int) (200 * alpha)).getRGB();
+                int goldArgb = ((int)(200 * alpha) << 24) | (cr << 16) | (cg << 8) | cb;
+                GOLD_COLORS[i * 2] = goldArgb;
+                GOLD_COLORS[i * 2 + 1] = goldArgb;
             }
 
-            Render2D.gradientRect(barX, barY, barWidth * absorptionPercent, barHeight, goldColors, barRadius);
+            Render2D.gradientRect(barX, barY, HP_BAR_WIDTH * absorptionPercent, HP_BAR_HEIGHT, GOLD_COLORS, barRadius);
         }
+    }
+
+    private void drawGear(DrawContext context, float x, float y, float alpha) {
+        float faceX = x + 9;
+        float contentX = faceX + FACE_SIZE + 6;
+        float gearY = y + 32;
+        float alphaF = alpha;
+
+        ItemStack helmet = lastTarget.getEquippedStack(EquipmentSlot.HEAD);
+        ItemStack chest = lastTarget.getEquippedStack(EquipmentSlot.CHEST);
+        ItemStack legs = lastTarget.getEquippedStack(EquipmentSlot.LEGS);
+        ItemStack boots = lastTarget.getEquippedStack(EquipmentSlot.FEET);
+        ItemStack mainHand = lastTarget.getEquippedStack(EquipmentSlot.MAINHAND);
+        ItemStack offHand = lastTarget.getEquippedStack(EquipmentSlot.OFFHAND);
+
+        GEAR_SLOTS[0] = helmet;
+        GEAR_SLOTS[1] = chest;
+        GEAR_SLOTS[2] = legs;
+        GEAR_SLOTS[3] = boots;
+        GEAR_SLOTS[4] = mainHand;
+        GEAR_SLOTS[5] = offHand;
+        float gearX = contentX;
+        for (ItemStack stack : GEAR_SLOTS) {
+            if (!stack.isEmpty()) {
+                Render2D.rect(gearX, gearY, ITEM_SIZE + 1, ITEM_SIZE + 1,
+                        ((int)(120 * alpha) << 24) | 0x1E1E1E, 1.5f);
+                if (ItemRender.needsContextRender(stack)) {
+                    ItemRender.drawItemWithContext(context, stack, gearX + 0.5f, gearY + 0.5f, 0.5f, alphaF);
+                } else {
+                    ItemRender.drawItem(stack, gearX + 0.5f, gearY + 0.5f, 0.5f, alphaF);
+                }
+            }
+            gearX += ITEM_SIZE + 3;
+        }
+    }
+
+    private void drawPotionEffects(float x, float y, float alpha) {
+        if (lastTarget == mc.player) return;
+
+        Collection<StatusEffectInstance> effects = lastTarget.getStatusEffects();
+        if (effects.isEmpty()) return;
+
+        float faceX = x + 9;
+        float contentX = faceX + FACE_SIZE + 6;
+        float effectY = y + 44;
+        float effectX = contentX;
+        int alphaInt = (int) (255 * alpha);
+        int count = 0;
+
+        for (StatusEffectInstance effect : effects) {
+            if (count >= 4) break;
+            if (!effect.shouldShowIcon()) continue;
+
+            String name = effect.getEffectType().value().getName().getString();
+            int amplifier = effect.getAmplifier();
+            String levelStr = amplifier > 0 ? " " + toRoman(amplifier + 1) : "";
+            String text = name + levelStr;
+
+            boolean isNegative = effect.getEffectType().value().isBeneficial();
+            int effectColor = isNegative
+                    ? (alphaInt << 24) | 0xFF5050
+                    : (alphaInt << 24) | 0x50FF78;
+
+            float textWidth = Fonts.TEST.getWidth(text, 4f);
+            if (effectX + textWidth > x + getWidth() - 5) break;
+
+            Fonts.TEST.draw(text, effectX, effectY, 4f, effectColor);
+            effectX += textWidth + 6;
+            count++;
+        }
+    }
+
+    private String toRoman(int number) {
+        return switch (number) {
+            case 1 -> "I";
+            case 2 -> "II";
+            case 3 -> "III";
+            case 4 -> "IV";
+            case 5 -> "V";
+            default -> String.valueOf(number);
+        };
     }
 }
