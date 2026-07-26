@@ -1,12 +1,12 @@
 {
-  "version": "1.0.12",
+  "version": "1.0.13",
   "launcherVersion": "1.0.12",
   "clientVersion": "1.0.01",
-  "downloadUrl": "https://github.com/jeosmertnik-collab/Rich-Modern/releases/download/v1.0.10/rich-1.0.01.jar",
+  "downloadUrl": "https://github.com/jeosmertnik-collab/Rich-Modern/releases/download/v1.0.13/rich-1.0.01.jar",
   "launcherUrl": "https://github.com/jeosmertnik-collab/Rich-Modern/releases/download/v1.0.10/RichModern.exe",
   "changelog": {
-    "ru": "Лоадер теперь автоматически обновляется и ищет Minecraft в разных папках. Если Minecraft не найден — кнопка выбора папки.",
-    "en": "Launcher now auto-updates and searches for Minecraft in multiple folders. If Minecraft not found — folder picker button."
+    "ru": "ClickGUI заменён из Rich-Modern1. Новая тема HUD (SFPRO + синий акцент). TargetHud показывает экипировку. Цвет акцента настраивается. ThirdPersonHud показывает ник. Changelog в конфигах.",
+    "en": "ClickGUI replaced from Rich-Modern1. New HUD theme (SFPRO + blue accent). TargetHud shows equipment. Accent color configurable. ThirdPersonHud shows account name. Config panel changelog."
   },
   "required": false,
   "releaseDate": "2026-07-26"

@@ -5,11 +5,11 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import rich.client.draggables.AbstractHudElement;
-import rich.util.ColorUtil;
 import rich.util.animations.Direction;
 import rich.util.render.Render2D;
 import rich.util.render.shader.Scissor;
 import rich.util.render.font.Fonts;
+import rich.modules.impl.render.Hud;
 import rich.util.render.item.ItemRender;
 
 import java.awt.*;
@@ -111,6 +111,14 @@ public class CoolDowns extends AbstractHudElement {
             Items.TRIDENT, Items.CROSSBOW, Items.DRIED_KELP, Items.NETHERITE_SCRAP
     };
 
+    private int accentR = 100, accentG = 150, accentB = 255;
+    private void updateAccent() {
+        int c = Hud.getInstance().getAccentRGB();
+        accentR = (c >> 16) & 0xFF;
+        accentG = (c >> 8) & 0xFF;
+        accentB = c & 0xFF;
+    }
+
     public CoolDowns() {
         super("CoolDowns", 10, 40, 80, 23, true);
         stopAnimation();
@@ -201,6 +209,7 @@ public class CoolDowns extends AbstractHudElement {
 
     @Override
     public void drawDraggable(DrawContext context, int alpha) {
+        updateAccent();
         if (alpha <= 0) return;
 
         float alphaFactor = alpha / 255.0f;
@@ -239,15 +248,13 @@ public class CoolDowns extends AbstractHudElement {
         float targetWidth = 80;
 
         boolean hasAnimatingCooldowns = !cooldownAnimations.isEmpty();
-        int blurTint = ColorUtil.rgba(0, 0, 0, 0);
-        Render2D.blur(x, y, 1, 1, 0f, 0, blurTint);
 
-        float fixedTimerWidth = Fonts.BOLD.getWidth(TIMER_TEMPLATE, 6);
+        float fixedTimerWidth = Fonts.SFPRO_REGULAR.getWidth(TIMER_TEMPLATE, 6);
 
         if (!hasAnimatingCooldowns) {
             offset += 11;
             String name = "Example CoolDown";
-            float nameWidth = Fonts.BOLD.getWidth(name, 6);
+            float nameWidth = Fonts.SFPRO_REGULAR.getWidth(name, 6);
             targetWidth = Math.max(nameWidth + fixedTimerWidth + 55, targetWidth);
         } else {
             for (Map.Entry<Item, Float> entry : cooldownAnimations.entrySet()) {
@@ -261,7 +268,7 @@ public class CoolDowns extends AbstractHudElement {
                 offset += (int) (animation * 11);
 
                 String name = item.getDefaultStack().getName().getString();
-                float nameWidth = Fonts.BOLD.getWidth(name, 6);
+                float nameWidth = Fonts.SFPRO_REGULAR.getWidth(name, 6);
                 targetWidth = Math.max(nameWidth + fixedTimerWidth + 55, targetWidth);
             }
         }
@@ -283,26 +290,27 @@ public class CoolDowns extends AbstractHudElement {
         if (contentHeight > 0) {
             Render2D.gradientRect(x, y, getWidth(), contentHeight,
                     new int[]{
-                            new Color(52, 52, 52, bgAlpha).getRGB(),
-                            new Color(32, 32, 32, bgAlpha).getRGB(),
-                            new Color(52, 52, 52, bgAlpha).getRGB(),
-                            new Color(32, 32, 32, bgAlpha).getRGB()
-                    }, 5);
-            Render2D.outline(x, y, getWidth(), contentHeight, 0.35f, new Color(90, 90, 90, bgAlpha).getRGB(), 5);
+                            new Color(25, 30, 40, bgAlpha).getRGB(),
+                            new Color(15, 20, 30, bgAlpha).getRGB(),
+                            new Color(25, 30, 40, bgAlpha).getRGB(),
+                            new Color(15, 20, 30, bgAlpha).getRGB()
+                    }, 4);
+            Render2D.glowOutline(x, y, getWidth(), contentHeight, 1.0f,
+                    new Color(accentR, accentG, accentB, (int)(bgAlpha * 0.4f)).getRGB(), 4, 1.0f, 3.0f);
         }
 
         Scissor.enable(x, y, getWidth(), contentHeight, FORCED_GUI_SCALE);
 
         Render2D.gradientRect(x + getWidth() - 22.5f, y + 5, 14, 12,
                 new int[]{
-                        new Color(52, 52, 52, bgAlpha).getRGB(),
-                        new Color(52, 52, 52, bgAlpha).getRGB(),
-                        new Color(52, 52, 52, bgAlpha).getRGB(),
-                        new Color(52, 52, 52, bgAlpha).getRGB()
-                }, 3);
+                        new Color(35, 40, 50, bgAlpha).getRGB(),
+                        new Color(25, 30, 40, bgAlpha).getRGB(),
+                        new Color(35, 40, 50, bgAlpha).getRGB(),
+                        new Color(25, 30, 40, bgAlpha).getRGB()
+                }, 4);
 
-        Fonts.ICONS.draw("D", x + getWidth() - 20f, y + 6.5f, 9, new Color(165, 165, 165, bgAlpha).getRGB());
-        Fonts.BOLD.draw("CoolDowns", x + 8, y + 6.5f, 6, new Color(255, 255, 255, bgAlpha).getRGB());
+        Fonts.ICONS.draw("D", x + getWidth() - 20f, y + 6.5f, 9, new Color(accentR, accentG, accentB, bgAlpha).getRGB());
+        Fonts.SFPRO_REGULAR.draw("CoolDowns", x + 8, y + 6.5f, 6, new Color(220, 230, 255, bgAlpha).getRGB());
 
         int moduleOffset = 23;
         float timerBoxWidth = fixedTimerWidth + 4;
@@ -315,16 +323,14 @@ public class CoolDowns extends AbstractHudElement {
 
             Render2D.gradientRect(fixedTimerBoxX + 1, y + moduleOffset - 1f, timerBoxWidth, 9,
                     new int[]{
-                            new Color(52, 52, 52, bgAlpha).getRGB(),
-                            new Color(52, 52, 52, bgAlpha).getRGB(),
-                            new Color(52, 52, 52, bgAlpha).getRGB(),
-                            new Color(52, 52, 52, bgAlpha).getRGB()
-                    }, 3);
+                            new Color(35, 40, 50, bgAlpha).getRGB(),
+                            new Color(25, 30, 40, bgAlpha).getRGB(),
+                            new Color(35, 40, 50, bgAlpha).getRGB(),
+                            new Color(25, 30, 40, bgAlpha).getRGB()
+                    }, 4);
 
-            Render2D.blur(x, y, 1, 1, 0f, 0, blurTint);
-
-            Render2D.outline(fixedTimerBoxX + 1, y + moduleOffset - 1f, timerBoxWidth, 9, 0.05f,
-                    new Color(132, 132, 132, bgAlpha).getRGB(), 2);
+            Render2D.outline(fixedTimerBoxX + 1, y + moduleOffset - 1f, timerBoxWidth, 9, 0.3f,
+                    new Color(accentR, accentG, accentB, (int)(120 * alphaFactor)).getRGB(), 3);
 
             float itemX = x + 8;
             float itemY = y + moduleOffset - 1f;
@@ -336,11 +342,11 @@ public class CoolDowns extends AbstractHudElement {
             }
 
             float nameX = x + 20;
-            Fonts.BOLD.draw(name, nameX, y + moduleOffset - 1f, 6, new Color(255, 255, 255, bgAlpha).getRGB());
+            Fonts.SFPRO_REGULAR.draw(name, nameX, y + moduleOffset - 1f, 6, new Color(220, 230, 255, bgAlpha).getRGB());
 
-            float durationWidth = Fonts.BOLD.getWidth(duration, 6);
+            float durationWidth = Fonts.SFPRO_REGULAR.getWidth(duration, 6);
             float durationX = fixedTimerBoxX + (timerBoxWidth - durationWidth) / 2;
-            Fonts.BOLD.draw(duration, durationX + 1, y + moduleOffset, 6, new Color(165, 165, 165, bgAlpha).getRGB());
+            Fonts.SFPRO_REGULAR.draw(duration, durationX + 1, y + moduleOffset, 6, new Color(accentR, accentG, accentB, bgAlpha).getRGB());
         } else {
             for (Map.Entry<Item, Float> entry : cooldownAnimations.entrySet()) {
                 Item item = entry.getKey();
@@ -361,15 +367,14 @@ public class CoolDowns extends AbstractHudElement {
 
                 Render2D.gradientRect(fixedTimerBoxX + 1, y + moduleOffset - 1f, timerBoxWidth, 9,
                         new int[]{
-                                new Color(52, 52, 52, textAlpha).getRGB(),
-                                new Color(52, 52, 52, textAlpha).getRGB(),
-                                new Color(52, 52, 52, textAlpha).getRGB(),
-                                new Color(52, 52, 52, textAlpha).getRGB()
-                        }, 3);
-                Render2D.blur(x, y, 1, 1, 0f, 0, blurTint);
+                                new Color(35, 40, 50, textAlpha).getRGB(),
+                                new Color(25, 30, 40, textAlpha).getRGB(),
+                                new Color(35, 40, 50, textAlpha).getRGB(),
+                                new Color(25, 30, 40, textAlpha).getRGB()
+                        }, 4);
 
-                Render2D.outline(fixedTimerBoxX + 1, y + moduleOffset - 1f, timerBoxWidth, 9, 0.05f,
-                        new Color(132, 132, 132, textAlpha).getRGB(), 2);
+                Render2D.outline(fixedTimerBoxX + 1, y + moduleOffset - 1f, timerBoxWidth, 9, 0.3f,
+                        new Color(accentR, accentG, accentB, (int)(textAlpha * 0.6f)).getRGB(), 3);
 
                 float itemX = x + 8;
                 float itemY = y + moduleOffset - 1f;
@@ -381,11 +386,11 @@ public class CoolDowns extends AbstractHudElement {
                 }
 
                 float nameX = x + 20;
-                Fonts.BOLD.draw(name, nameX, y + moduleOffset - 0.5f, 6, new Color(255, 255, 255, textAlpha).getRGB());
+                Fonts.SFPRO_REGULAR.draw(name, nameX, y + moduleOffset - 0.5f, 6, new Color(220, 230, 255, textAlpha).getRGB());
 
-                float durationWidth = Fonts.BOLD.getWidth(duration, 6);
+                float durationWidth = Fonts.SFPRO_REGULAR.getWidth(duration, 6);
                 float durationX = fixedTimerBoxX + (timerBoxWidth - durationWidth) / 2;
-                Fonts.BOLD.draw(duration, durationX + 1, y + moduleOffset, 6, new Color(165, 165, 165, textAlpha).getRGB());
+                Fonts.SFPRO_REGULAR.draw(duration, durationX + 1, y + moduleOffset, 6, new Color(accentR, accentG, accentB, textAlpha).getRGB());
 
                 moduleOffset += (int) (animation * 11);
             }

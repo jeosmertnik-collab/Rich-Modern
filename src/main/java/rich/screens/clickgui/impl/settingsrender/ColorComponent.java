@@ -3,7 +3,6 @@ package rich.screens.clickgui.impl.settingsrender;
 import net.minecraft.client.gui.DrawContext;
 import org.lwjgl.glfw.GLFW;
 import rich.modules.module.setting.implement.ColorSetting;
-import rich.screens.clickgui.impl.theme.ClickGuiTheme;
 import rich.util.interfaces.AbstractSettingComponent;
 import rich.util.render.Render2D;
 import rich.util.render.shader.Scissor;
@@ -177,6 +176,11 @@ public class ColorComponent extends AbstractSettingComponent {
         return Math.max(hexSelectionStart, hexSelectionEnd);
     }
 
+    private String getHexSelectedText() {
+        if (!hasHexSelection()) return "";
+        return hexInputText.substring(getHexSelectionStart(), getHexSelectionEnd());
+    }
+
     private void clearHexSelection() {
         hexSelectionStart = -1;
         hexSelectionEnd = -1;
@@ -221,7 +225,7 @@ public class ColorComponent extends AbstractSettingComponent {
 
     private void copyHexToClipboard() {
         if (hasHexSelection()) {
-            GLFW.glfwSetClipboardString(mc.getWindow().getHandle(), "#" + hexInputText.substring(getHexSelectionStart(), getHexSelectionEnd()));
+            GLFW.glfwSetClipboardString(mc.getWindow().getHandle(), "#" + getHexSelectedText());
         } else if (!hexInputText.isEmpty()) {
             GLFW.glfwSetClipboardString(mc.getWindow().getHandle(), "#" + hexInputText);
         }
@@ -229,18 +233,27 @@ public class ColorComponent extends AbstractSettingComponent {
 
     private void moveHexCursor(int direction) {
         if (hasHexSelection() && !isShiftDown()) {
-            hexCursorPosition = direction < 0 ? getHexSelectionStart() : getHexSelectionEnd();
+            if (direction < 0) {
+                hexCursorPosition = getHexSelectionStart();
+            } else {
+                hexCursorPosition = getHexSelectionEnd();
+            }
             clearHexSelection();
         } else {
-            if (direction < 0 && hexCursorPosition > 0) hexCursorPosition--;
-            else if (direction > 0 && hexCursorPosition < hexInputText.length()) hexCursorPosition++;
+            if (direction < 0 && hexCursorPosition > 0) {
+                hexCursorPosition--;
+            } else if (direction > 0 && hexCursorPosition < hexInputText.length()) {
+                hexCursorPosition++;
+            }
             updateHexSelectionAfterCursorMove();
         }
     }
 
     private void updateHexSelectionAfterCursorMove() {
         if (isShiftDown()) {
-            if (hexSelectionStart == -1) hexSelectionStart = hexSelectionEnd != -1 ? hexSelectionEnd : hexCursorPosition;
+            if (hexSelectionStart == -1) {
+                hexSelectionStart = hexSelectionEnd != -1 ? hexSelectionEnd : hexCursorPosition;
+            }
             hexSelectionEnd = hexCursorPosition;
         } else {
             clearHexSelection();
@@ -253,13 +266,20 @@ public class ColorComponent extends AbstractSettingComponent {
 
         updateDisplayColors(deltaTime);
 
-        if (draggingPalette) updatePalette(mouseX, mouseY);
-        if (draggingHue) updateHue(mouseY);
-        if (draggingAlpha) updateAlpha(mouseY);
+        if (draggingPalette) {
+            updatePalette(mouseX, mouseY);
+        }
+        if (draggingHue) {
+            updateHue(mouseY);
+        }
+        if (draggingAlpha) {
+            updateAlpha(mouseY);
+        }
 
+        boolean hovered = isHover(mouseX, mouseY);
         boolean previewHovered = isPreviewHover(mouseX, mouseY);
 
-        hoverAnimation = lerp(hoverAnimation, isHover(mouseX, mouseY) ? 1f : 0f, deltaTime * ANIMATION_SPEED);
+        hoverAnimation = lerp(hoverAnimation, hovered ? 1f : 0f, deltaTime * ANIMATION_SPEED);
         previewHoverAnimation = lerp(previewHoverAnimation, previewHovered ? 1f : 0f, deltaTime * ANIMATION_SPEED);
         expandAnimation = lerp(expandAnimation, expanded ? 1f : 0f, deltaTime * ANIMATION_SPEED);
         hexInputAnimation = lerp(hexInputAnimation, hexInputActive ? 1f : 0f, deltaTime * FAST_ANIMATION_SPEED);
@@ -281,18 +301,13 @@ public class ColorComponent extends AbstractSettingComponent {
         alphaHandleAnimation = lerp(alphaHandleAnimation, draggingAlpha ? 1f : 0f, deltaTime * FAST_ANIMATION_SPEED);
 
         int iconAlpha = (int)(200 * alphaMultiplier);
-        Fonts.GUI_ICONS.draw("R", x + 0.5f, y + height / 2 - 11.5f, 16,
-                ((iconAlpha & 0xFF) << 24) | (ClickGuiTheme.SETTINGS_DESC_ARGB & 0xFFFFFF));
+        Fonts.GUI_ICONS.draw("R", x + 0.5f, y + height / 2 - 11.5f, 16, new Color(210, 210, 210, iconAlpha).getRGB());
 
-        int nameAlpha = (int)(220 * alphaMultiplier);
-        Fonts.BOLD.draw(colorSetting.getName(), x + 11.5f, y + height / 2 - 6.5f, 6,
-                ((nameAlpha & 0xFF) << 24) | (ClickGuiTheme.SETTINGS_TITLE_ARGB & 0xFFFFFF));
+        Fonts.BOLD.draw(colorSetting.getName(), x + 11.5f, y + height / 2 - 6.5f, 6, applyAlpha(new Color(210, 210, 220, 200)).getRGB());
 
         String description = colorSetting.getDescription();
         if (description != null && !description.isEmpty()) {
-            int descAlpha = (int)(120 * alphaMultiplier);
-            Fonts.BOLD.draw(description, x + 8.5f, y + height / 2 + 0.5f, 5,
-                    ((descAlpha & 0xFF) << 24) | (ClickGuiTheme.SETTINGS_DESC_ARGB & 0xFFFFFF));
+            Fonts.BOLD.draw(description, x + 8.5f, y + height / 2 + 0.5f, 5, applyAlpha(new Color(128, 128, 128, 128)).getRGB());
         }
 
         renderColorPreview(mouseX, mouseY);
@@ -311,10 +326,11 @@ public class ColorComponent extends AbstractSettingComponent {
         float scaledY = previewY - scale / 2;
 
         int colorValue = getDisplayColor();
-        Render2D.rect(scaledX + 0.5f, scaledY + 0.5f, 9, 9, applyContentAlpha(new Color(colorValue, true)).getRGB(), 15);
+        Color previewColor = new Color(colorValue, true);
+        Render2D.rect(scaledX + 0.5f, scaledY + 0.5f, 9, 9, applyAlpha(previewColor).getRGB(), 15);
         int outlineAlpha = clamp((int)((255 + previewHoverAnimation * 60) * alphaMultiplier));
-        Render2D.outline(scaledX, scaledY, 10, 10, 1f,
-                new Color((ClickGuiTheme.ACCENT_ARGB >> 16) & 0xFF, (ClickGuiTheme.ACCENT_ARGB >> 8) & 0xFF, ClickGuiTheme.ACCENT_ARGB & 0xFF, outlineAlpha).getRGB(), 15);
+
+        Render2D.outline(scaledX, scaledY, 10, 10, 1f, new Color(125, 125, 125, outlineAlpha).getRGB(), 15);
     }
 
     private void renderColorPicker(DrawContext context, int mouseX, int mouseY, float deltaTime) {
@@ -327,11 +343,11 @@ public class ColorComponent extends AbstractSettingComponent {
 
         int outlineAlpha = clamp((int)(60 * expandAnimation * contentAlpha * alphaMultiplier));
         Render2D.outline(pickerX, pickerY, pickerWidth, visibleHeight + 2, 0.5f,
-                new Color((ClickGuiTheme.ACCENT_ARGB >> 16) & 0xFF, (ClickGuiTheme.ACCENT_ARGB >> 8) & 0xFF, ClickGuiTheme.ACCENT_ARGB & 0xFF, outlineAlpha).getRGB(), 4f);
+                new Color(80, 80, 85, outlineAlpha).getRGB(), 4f);
 
         if (expandAnimation < 0.3f || contentAlpha < 0.01f) return;
 
-        Scissor.enable(pickerX, pickerY, pickerWidth, visibleHeight, 2);
+        Scissor.enable(pickerX, pickerY, pickerWidth, visibleHeight,2);
 
         float contentX = pickerX + SPACING;
         float contentY = pickerY + SPACING;
@@ -368,6 +384,7 @@ public class ColorComponent extends AbstractSettingComponent {
                 applyContentAlpha(Color.BLACK).getRGB(),
                 applyContentAlpha(Color.BLACK).getRGB()
         };
+
         Render2D.gradientRect(paletteX, paletteY, paletteWidth, paletteHeight, blackGradient, 3f);
 
         float handleX = paletteX + displaySaturation * paletteWidth;
@@ -379,8 +396,9 @@ public class ColorComponent extends AbstractSettingComponent {
                 new Color(255, 255, 255, handleOutlineAlpha).getRGB(), handleSize / 2);
 
         int currentColor = Color.HSBtoRGB(displayHue, displaySaturation, displayBrightness);
+        Color handleColor = new Color(currentColor);
         Render2D.rect(handleX - handleSize / 2 + 1, handleY - handleSize / 2 + 1, handleSize - 2, handleSize - 2,
-                applyContentAlpha(new Color(currentColor)).getRGB(), (handleSize - 2) / 2);
+                applyContentAlpha(handleColor).getRGB(), (handleSize - 2) / 2);
     }
 
     private void renderHueSlider(float sliderX, float sliderY, float sliderWidth, float sliderHeight, int mouseX, int mouseY) {
@@ -410,7 +428,7 @@ public class ColorComponent extends AbstractSettingComponent {
 
         int hueOutlineAlpha = clamp((int)(80 * expandAnimation * contentAlpha * alphaMultiplier));
         Render2D.outline(sliderX, sliderY, sliderWidth, sliderHeight, 0.5f,
-                new Color((ClickGuiTheme.ACCENT_ARGB >> 16) & 0xFF, (ClickGuiTheme.ACCENT_ARGB >> 8) & 0xFF, ClickGuiTheme.ACCENT_ARGB & 0xFF, hueOutlineAlpha).getRGB(), 3f);
+                new Color(100, 100, 105, hueOutlineAlpha).getRGB(), 3f);
 
         float handleY = sliderY + displayHue * sliderHeight;
         float handleHeight = 3f + hueHandleAnimation * 1f;
@@ -426,10 +444,10 @@ public class ColorComponent extends AbstractSettingComponent {
 
     private void renderAlphaSlider(float sliderX, float sliderY, float sliderWidth, float sliderHeight, int mouseX, int mouseY) {
         int checkAlpha = clamp((int)(150 * expandAnimation * contentAlpha * alphaMultiplier));
-        Render2D.rect(sliderX, sliderY, sliderWidth, sliderHeight,
-                new Color((ClickGuiTheme.PANEL_BORDER_LIGHT_ARGB >> 16) & 0xFF, (ClickGuiTheme.PANEL_BORDER_LIGHT_ARGB >> 8) & 0xFF, ClickGuiTheme.PANEL_BORDER_LIGHT_ARGB & 0xFF, checkAlpha).getRGB(), 2f);
+        Render2D.rect(sliderX, sliderY, sliderWidth, sliderHeight, new Color(180, 180, 180, checkAlpha).getRGB(), 2f);
 
         int baseColor = getDisplayColorNoAlpha() & 0x00FFFFFF;
+
         int transparentColor = baseColor;
         int opaqueColor = baseColor | 0xFF000000;
 
@@ -443,7 +461,7 @@ public class ColorComponent extends AbstractSettingComponent {
 
         int alphaOutlineAlpha = clamp((int)(80 * expandAnimation * contentAlpha * alphaMultiplier));
         Render2D.outline(sliderX, sliderY, sliderWidth, sliderHeight, 0.5f,
-                new Color((ClickGuiTheme.ACCENT_ARGB >> 16) & 0xFF, (ClickGuiTheme.ACCENT_ARGB >> 8) & 0xFF, ClickGuiTheme.ACCENT_ARGB & 0xFF, alphaOutlineAlpha).getRGB(), 3f);
+                new Color(100, 100, 105, alphaOutlineAlpha).getRGB(), 3f);
 
         float handleY = sliderY + displayAlpha * sliderHeight;
         float handleHeight = 3f + alphaHandleAnimation * 1f;
@@ -467,29 +485,23 @@ public class ColorComponent extends AbstractSettingComponent {
                 mouseY >= inputY && mouseY <= inputY + inputHeight;
 
         int bgAlpha = clamp((int)((40 + hexInputAnimation * 20 + (inputHovered ? 10 : 0)) * expandAnimation * contentAlpha * alphaMultiplier));
-        Render2D.rect(inputX, inputY, inputWidth, inputHeight,
-                new Color((ClickGuiTheme.PANEL_BG_ARGB >> 16) & 0xFF, (ClickGuiTheme.PANEL_BG_ARGB >> 8) & 0xFF, ClickGuiTheme.PANEL_BG_ARGB & 0xFF, bgAlpha).getRGB(), 3f);
-
-        int aR = (ClickGuiTheme.ACCENT_ARGB >> 16) & 0xFF;
-        int aG = (ClickGuiTheme.ACCENT_ARGB >> 8) & 0xFF;
-        int aB = ClickGuiTheme.ACCENT_ARGB & 0xFF;
+        Render2D.rect(inputX, inputY, inputWidth, inputHeight, new Color(35, 35, 40, bgAlpha).getRGB(), 3f);
 
         int hexOutlineAlpha = clamp((int)((60 + hexInputAnimation * 80 + (inputHovered ? 20 : 0)) * expandAnimation * contentAlpha * alphaMultiplier));
         Color outlineColor = hexInputActive
-                ? new Color(aR, aG, aB, hexOutlineAlpha)
-                : new Color((ClickGuiTheme.PANEL_BORDER_LIGHT_ARGB >> 16) & 0xFF, (ClickGuiTheme.PANEL_BORDER_LIGHT_ARGB >> 8) & 0xFF, ClickGuiTheme.PANEL_BORDER_LIGHT_ARGB & 0xFF, hexOutlineAlpha);
+                ? new Color(100, 140, 180, hexOutlineAlpha)
+                : new Color(80, 80, 85, hexOutlineAlpha);
         Render2D.outline(inputX, inputY, inputWidth, inputHeight, 0.5f, outlineColor.getRGB(), 3f);
 
         int iconAlpha = clamp((int)(200 * expandAnimation * contentAlpha * alphaMultiplier));
-        Fonts.GUI_ICONS.draw("V", inputX + 4, inputY + inputHeight / 2 - 7.5f, 12,
-                ((iconAlpha & 0xFF) << 24) | (ClickGuiTheme.SETTINGS_DESC_ARGB & 0xFFFFFF));
+        Fonts.GUI_ICONS.draw("V", inputX + 4, inputY + inputHeight / 2 - 7.5f, 12, new Color(210, 210, 210, iconAlpha).getRGB());
 
         String label = "HEX: ";
         float iconOffset = 10f;
         float labelWidth = Fonts.BOLD.getWidth(label, 5);
         int labelAlpha = clamp((int)(150 * expandAnimation * contentAlpha * alphaMultiplier));
         Fonts.BOLD.draw(label, inputX + 4 + iconOffset, inputY + inputHeight / 2 - 2.5f, 5,
-                ((labelAlpha & 0xFF) << 24) | (ClickGuiTheme.SETTINGS_DESC_ARGB & 0xFFFFFF));
+                new Color(140, 140, 150, labelAlpha).getRGB());
 
         String displayText = hexInputActive ? hexInputText : getDisplayHexString();
         float textStartX = inputX + 4 + iconOffset + labelWidth;
@@ -505,22 +517,22 @@ public class ColorComponent extends AbstractSettingComponent {
             float selectionWidth = Fonts.BOLD.getWidth(selection, 5);
 
             int selAlpha = clamp((int)(100 * hexSelectionAnimation * expandAnimation * contentAlpha * alphaMultiplier));
-            Render2D.rect(selectionX - 1, inputY + 4.25f, selectionWidth + 2, inputHeight - 8,
-                    new Color(aR, aG, aB, selAlpha).getRGB(), 2f);
+//            Render2D.rect(selectionX - 1, inputY + 4.25f, selectionWidth + 2, inputHeight - 8,
+//                    new Color(100, 140, 180, selAlpha).getRGB(), 2f);
         }
 
         int textAlpha = clamp((int)((180 + hexInputAnimation * 40) * expandAnimation * contentAlpha * alphaMultiplier));
         Fonts.BOLD.draw("#" + displayText, textStartX, textY, 5,
-                new Color((ClickGuiTheme.SETTINGS_TITLE_ARGB >> 16) & 0xFF, (ClickGuiTheme.SETTINGS_TITLE_ARGB >> 8) & 0xFF, ClickGuiTheme.SETTINGS_TITLE_ARGB & 0xFF, textAlpha).getRGB());
+                new Color(210, 210, 220, textAlpha).getRGB());
 
         if (hexInputActive && !hasHexSelection()) {
             float cursorAlpha = (float)(Math.sin(hexCursorBlinkAnimation * Math.PI * 2) * 0.5 + 0.5);
             if (cursorAlpha > 0.3f) {
                 String beforeCursor = "#" + hexInputText.substring(0, hexCursorPosition);
-                float cursorXPos = textStartX + Fonts.BOLD.getWidth(beforeCursor, 5);
+                float cursorX = textStartX + Fonts.BOLD.getWidth(beforeCursor, 5);
                 int cursorAlphaInt = clamp((int)(255 * cursorAlpha * hexInputAnimation * expandAnimation * contentAlpha * alphaMultiplier));
-                Render2D.rect(cursorXPos, inputY + 3, 0.5f, inputHeight - 6,
-                        new Color((ClickGuiTheme.SETTINGS_TITLE_ARGB >> 16) & 0xFF, (ClickGuiTheme.SETTINGS_TITLE_ARGB >> 8) & 0xFF, ClickGuiTheme.SETTINGS_TITLE_ARGB & 0xFF, cursorAlphaInt).getRGB(), 0f);
+                Render2D.rect(cursorX, inputY + 3, 0.5f, inputHeight - 6,
+                        new Color(180, 180, 185, cursorAlphaInt).getRGB(), 0f);
             }
         }
 
@@ -530,12 +542,12 @@ public class ColorComponent extends AbstractSettingComponent {
 
         int miniCheckAlpha = clamp((int)(120 * expandAnimation * contentAlpha * alphaMultiplier));
         Render2D.rect(miniPreviewX, miniPreviewY, miniPreviewSize, miniPreviewSize,
-                new Color((ClickGuiTheme.PANEL_BORDER_LIGHT_ARGB >> 16) & 0xFF, (ClickGuiTheme.PANEL_BORDER_LIGHT_ARGB >> 8) & 0xFF, ClickGuiTheme.PANEL_BORDER_LIGHT_ARGB & 0xFF, miniCheckAlpha).getRGB(), 3f);
+                new Color(150, 150, 150, miniCheckAlpha).getRGB(), 3f);
         Render2D.rect(miniPreviewX, miniPreviewY, miniPreviewSize, miniPreviewSize,
                 applyContentAlpha(new Color(getDisplayColor(), true)).getRGB(), 3f);
         int miniOutlineAlpha = clamp((int)(80 * expandAnimation * contentAlpha * alphaMultiplier));
         Render2D.outline(miniPreviewX, miniPreviewY, miniPreviewSize, miniPreviewSize, 0.5f,
-                new Color((ClickGuiTheme.ACCENT_ARGB >> 16) & 0xFF, (ClickGuiTheme.ACCENT_ARGB >> 8) & 0xFF, ClickGuiTheme.ACCENT_ARGB & 0xFF, miniOutlineAlpha).getRGB(), 3f);
+                new Color(80, 80, 85, miniOutlineAlpha).getRGB(), 3f);
     }
 
     private String getDisplayHexString() {
@@ -548,10 +560,10 @@ public class ColorComponent extends AbstractSettingComponent {
     }
 
     private boolean isPreviewHover(double mouseX, double mouseY) {
-        float previewX = x + width - 14;
-        float previewY = y + height / 2 / 2;
-        return mouseX >= previewX && mouseX <= previewX + 10 &&
-                mouseY >= previewY && mouseY <= previewY + 10;
+        float previewX = x + width - PREVIEW_SIZE - 4;
+        float previewY = y + height / 2 - PREVIEW_SIZE / 2;
+        return mouseX >= previewX && mouseX <= previewX + PREVIEW_SIZE &&
+                mouseY >= previewY && mouseY <= previewY + PREVIEW_SIZE;
     }
 
     private boolean isPaletteHover(double mouseX, double mouseY) {
@@ -671,9 +683,18 @@ public class ColorComponent extends AbstractSettingComponent {
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
         if (button == 0) {
-            if (draggingPalette) { updatePalette(mouseX, mouseY); return true; }
-            if (draggingHue) { updateHue(mouseY); return true; }
-            if (draggingAlpha) { updateAlpha(mouseY); return true; }
+            if (draggingPalette) {
+                updatePalette(mouseX, mouseY);
+                return true;
+            }
+            if (draggingHue) {
+                updateHue(mouseY);
+                return true;
+            }
+            if (draggingAlpha) {
+                updateAlpha(mouseY);
+                return true;
+            }
         }
         return false;
     }
@@ -684,22 +705,75 @@ public class ColorComponent extends AbstractSettingComponent {
 
         if (isControlDown()) {
             switch (keyCode) {
-                case GLFW.GLFW_KEY_A -> { selectAllHexText(); return true; }
-                case GLFW.GLFW_KEY_V -> { pasteHexFromClipboard(); return true; }
-                case GLFW.GLFW_KEY_C -> { copyHexToClipboard(); return true; }
-                case GLFW.GLFW_KEY_X -> { if (hasHexSelection()) { copyHexToClipboard(); deleteHexSelectedText(); } return true; }
+                case GLFW.GLFW_KEY_A -> {
+                    selectAllHexText();
+                    return true;
+                }
+                case GLFW.GLFW_KEY_V -> {
+                    pasteHexFromClipboard();
+                    return true;
+                }
+                case GLFW.GLFW_KEY_C -> {
+                    copyHexToClipboard();
+                    return true;
+                }
+                case GLFW.GLFW_KEY_X -> {
+                    if (hasHexSelection()) {
+                        copyHexToClipboard();
+                        deleteHexSelectedText();
+                    }
+                    return true;
+                }
             }
         }
 
         switch (keyCode) {
-            case GLFW.GLFW_KEY_ENTER, GLFW.GLFW_KEY_KP_ENTER -> { applyHexInput(); hexInputActive = false; clearHexSelection(); return true; }
-            case GLFW.GLFW_KEY_ESCAPE -> { hexInputActive = false; clearHexSelection(); return true; }
-            case GLFW.GLFW_KEY_BACKSPACE -> { if (hasHexSelection()) deleteHexSelectedText(); else if (hexCursorPosition > 0) { hexInputText = hexInputText.substring(0, hexCursorPosition - 1) + hexInputText.substring(hexCursorPosition); hexCursorPosition--; } return true; }
-            case GLFW.GLFW_KEY_DELETE -> { if (hasHexSelection()) deleteHexSelectedText(); else if (hexCursorPosition < hexInputText.length()) hexInputText = hexInputText.substring(0, hexCursorPosition) + hexInputText.substring(hexCursorPosition + 1); return true; }
-            case GLFW.GLFW_KEY_LEFT -> { moveHexCursor(-1); return true; }
-            case GLFW.GLFW_KEY_RIGHT -> { moveHexCursor(1); return true; }
-            case GLFW.GLFW_KEY_HOME -> { hexCursorPosition = 0; updateHexSelectionAfterCursorMove(); return true; }
-            case GLFW.GLFW_KEY_END -> { hexCursorPosition = hexInputText.length(); updateHexSelectionAfterCursorMove(); return true; }
+            case GLFW.GLFW_KEY_ENTER, GLFW.GLFW_KEY_KP_ENTER -> {
+                applyHexInput();
+                hexInputActive = false;
+                clearHexSelection();
+                return true;
+            }
+            case GLFW.GLFW_KEY_ESCAPE -> {
+                hexInputActive = false;
+                clearHexSelection();
+                return true;
+            }
+            case GLFW.GLFW_KEY_BACKSPACE -> {
+                if (hasHexSelection()) {
+                    deleteHexSelectedText();
+                } else if (hexCursorPosition > 0) {
+                    hexInputText = hexInputText.substring(0, hexCursorPosition - 1) + hexInputText.substring(hexCursorPosition);
+                    hexCursorPosition--;
+                }
+                return true;
+            }
+            case GLFW.GLFW_KEY_DELETE -> {
+                if (hasHexSelection()) {
+                    deleteHexSelectedText();
+                } else if (hexCursorPosition < hexInputText.length()) {
+                    hexInputText = hexInputText.substring(0, hexCursorPosition) + hexInputText.substring(hexCursorPosition + 1);
+                }
+                return true;
+            }
+            case GLFW.GLFW_KEY_LEFT -> {
+                moveHexCursor(-1);
+                return true;
+            }
+            case GLFW.GLFW_KEY_RIGHT -> {
+                moveHexCursor(1);
+                return true;
+            }
+            case GLFW.GLFW_KEY_HOME -> {
+                hexCursorPosition = 0;
+                updateHexSelectionAfterCursorMove();
+                return true;
+            }
+            case GLFW.GLFW_KEY_END -> {
+                hexCursorPosition = hexInputText.length();
+                updateHexSelectionAfterCursorMove();
+                return true;
+            }
         }
 
         return false;
@@ -710,7 +784,9 @@ public class ColorComponent extends AbstractSettingComponent {
         if (!hexInputActive) return false;
 
         if (isHexChar(chr)) {
-            if (hasHexSelection()) deleteHexSelectedText();
+            if (hasHexSelection()) {
+                deleteHexSelectedText();
+            }
             if (hexInputText.length() < 8) {
                 hexInputText = hexInputText.substring(0, hexCursorPosition) + Character.toUpperCase(chr) + hexInputText.substring(hexCursorPosition);
                 hexCursorPosition++;
@@ -745,6 +821,7 @@ public class ColorComponent extends AbstractSettingComponent {
     private void updateHue(double mouseY) {
         float pickerY = y + height + SPACING;
         float contentY = pickerY + SPACING;
+
         float hue = (float)((mouseY - contentY) / PALETTE_SIZE);
         colorSetting.setHue(hue);
     }
@@ -752,6 +829,7 @@ public class ColorComponent extends AbstractSettingComponent {
     private void updateAlpha(double mouseY) {
         float pickerY = y + height + SPACING;
         float contentY = pickerY + SPACING;
+
         float alpha = (float)((mouseY - contentY) / PALETTE_SIZE);
         colorSetting.setAlpha(alpha);
     }
@@ -806,7 +884,8 @@ public class ColorComponent extends AbstractSettingComponent {
     }
 
     @Override
-    public void tick() {}
+    public void tick() {
+    }
 
     @Override
     public boolean isHover(double mouseX, double mouseY) {

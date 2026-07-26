@@ -10,13 +10,12 @@ import rich.screens.clickgui.impl.background.render.CategoryRenderer;
 import rich.screens.clickgui.impl.background.render.HeaderRenderer;
 import rich.screens.clickgui.impl.background.search.SearchHandler;
 import rich.screens.clickgui.impl.background.search.SearchRenderer;
-import rich.screens.clickgui.impl.theme.ClickGuiTheme;
 
 import java.util.List;
 
 public class BackgroundComponent implements IMinecraft {
-    public static final int BG_WIDTH = ClickGuiTheme.BG_WIDTH;
-    public static final int BG_HEIGHT = ClickGuiTheme.BG_HEIGHT;
+    public static final int BG_WIDTH = 400;
+    public static final int BG_HEIGHT = 250;
 
     private final BackgroundRenderer backgroundRenderer;
     private final CategoryRenderer categoryRenderer;
@@ -127,7 +126,7 @@ public class BackgroundComponent implements IMinecraft {
     }
 
     public boolean isSearchBoxHovered(double mouseX, double mouseY, float bgX, float bgY) {
-        return headerRenderer.isSearchBoxHovered(mouseX, mouseY, bgX, bgY, BG_WIDTH);
+        return headerRenderer.isSearchBoxHovered(mouseX, mouseY, bgX, bgY);
     }
 
     public ModuleStructure getSearchModuleAtPosition(double mouseX, double mouseY, float bgX, float bgY) {

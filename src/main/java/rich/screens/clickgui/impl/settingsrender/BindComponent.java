@@ -3,7 +3,6 @@ package rich.screens.clickgui.impl.settingsrender;
 import net.minecraft.client.gui.DrawContext;
 import org.lwjgl.glfw.GLFW;
 import rich.modules.module.setting.implement.BindSetting;
-import rich.screens.clickgui.impl.theme.ClickGuiTheme;
 import rich.util.interfaces.AbstractSettingComponent;
 import rich.util.render.Render2D;
 import rich.util.render.font.Fonts;
@@ -16,11 +15,14 @@ public class BindComponent extends AbstractSettingComponent {
     private float hoverAnimation = 0f;
     private float bindHoverAnimation = 0f;
     private float pulseAnimation = 0f;
+    private float scaleAnimation = 1f;
+    private float glowAnimation = 0f;
     private float textChangeAnimation = 0f;
     private String previousBindText = "";
     private String currentBindText = "";
 
     private long lastUpdateTime = System.currentTimeMillis();
+
     private static final float ANIMATION_SPEED = 8f;
     private static final float FAST_ANIMATION_SPEED = 12f;
     private static final float BIND_BOX_WIDTH = 32f;
@@ -39,148 +41,190 @@ public class BindComponent extends AbstractSettingComponent {
 
     private float getDeltaTime() {
         long currentTime = System.currentTimeMillis();
-        float dt = Math.min((currentTime - lastUpdateTime) / 1000f, 0.1f);
+        float deltaTime = Math.min((currentTime - lastUpdateTime) / 1000f, 0.1f);
         lastUpdateTime = currentTime;
-        return dt;
+        return deltaTime;
     }
 
     private float lerp(float current, float target, float speed) {
         float diff = target - current;
-        if (Math.abs(diff) < 0.001f) return target;
+        if (Math.abs(diff) < 0.001f) {
+            return target;
+        }
         return current + diff * Math.min(speed, 1f);
     }
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         float deltaTime = getDeltaTime();
+
+        boolean hovered = isHover(mouseX, mouseY);
         boolean bindHovered = isBindHover(mouseX, mouseY);
 
-        hoverAnimation = lerp(hoverAnimation, isHover(mouseX, mouseY) ? 1f : 0f, deltaTime * ANIMATION_SPEED);
+        hoverAnimation = lerp(hoverAnimation, hovered ? 1f : 0f, deltaTime * ANIMATION_SPEED);
         bindHoverAnimation = lerp(bindHoverAnimation, bindHovered ? 1f : 0f, deltaTime * ANIMATION_SPEED);
         listeningAnimation = lerp(listeningAnimation, listening ? 1f : 0f, deltaTime * FAST_ANIMATION_SPEED);
-        if (listening) pulseAnimation += deltaTime * 4f;
-        else pulseAnimation = lerp(pulseAnimation, 0f, deltaTime * ANIMATION_SPEED);
+
+        float scaleTarget = listening ? 1.05f : (bindHovered ? 1.02f : 1f);
+        scaleAnimation = lerp(scaleAnimation, scaleTarget, deltaTime * ANIMATION_SPEED);
+
+        glowAnimation = lerp(glowAnimation, listening ? 1f : 0f, deltaTime * ANIMATION_SPEED);
+
+        if (listening) {
+            pulseAnimation += deltaTime * 4f;
+            if (pulseAnimation > Math.PI * 2) {
+                pulseAnimation -= (float)(Math.PI * 2);
+            }
+        } else {
+            pulseAnimation = lerp(pulseAnimation, 0f, deltaTime * ANIMATION_SPEED);
+        }
 
         BindSetting bindSetting = (BindSetting) getSetting();
-        String newBindText = listening ? "..." : getBindDisplayName(bindSetting.getKey(), bindSetting.getType());
+        String newBindText = listening ? "" : getBindDisplayName(bindSetting.getKey(), bindSetting.getType());
+
         if (!newBindText.equals(currentBindText)) {
             previousBindText = currentBindText;
             currentBindText = newBindText;
             textChangeAnimation = 0f;
         }
+
         textChangeAnimation = lerp(textChangeAnimation, 1f, deltaTime * FAST_ANIMATION_SPEED);
 
         int iconAlpha = (int)(200 * alphaMultiplier);
-        Fonts.GUI_ICONS.draw("L", x + 1.5f, y + height / 2 - 6f, 6,
-                ((iconAlpha & 0xFF) << 24) | (ClickGuiTheme.SETTINGS_DESC_ARGB & 0xFFFFFF));
+        Fonts.GUI_ICONS.draw("L", x + 1.5f, y + height / 2 - 6f, 6, new Color(210, 210, 210, iconAlpha).getRGB());
 
-        int nameAlpha = (int)(220 * alphaMultiplier);
-        Fonts.BOLD.draw(getSetting().getName(), x + 9.5f, y + height / 2 - 7.5f, 6,
-                ((nameAlpha & 0xFF) << 24) | (ClickGuiTheme.SETTINGS_TITLE_ARGB & 0xFFFFFF));
+        Fonts.BOLD.draw(getSetting().getName(), x + 9.5f, y + height / 2 - 7.5f, 6, applyAlpha(new Color(210, 210, 220, 200)).getRGB());
 
         String description = getSetting().getDescription();
         if (description != null && !description.isEmpty()) {
-            int descAlpha = (int)(120 * alphaMultiplier);
-            Fonts.BOLD.draw(description, x + 0.5f, y + height / 2 + 0.5f, 5,
-                    ((descAlpha & 0xFF) << 24) | (ClickGuiTheme.SETTINGS_DESC_ARGB & 0xFFFFFF));
+            Fonts.BOLD.draw(description, x + 0.5f, y + height / 2 + 0.5f, 5, applyAlpha(new Color(128, 128, 128, 128)).getRGB());
         }
 
-        renderBindBox(bindSetting);
+        renderBindBox(mouseX, mouseY, bindSetting);
     }
 
-    private void renderBindBox(BindSetting bindSetting) {
+    private void renderBindBox(int mouseX, int mouseY, BindSetting bindSetting) {
         float bindBoxX = x + width - BIND_BOX_WIDTH - 2;
         float bindBoxY = y + height / 2 - BIND_BOX_HEIGHT / 2;
 
-        int bgAlpha = (int) ((30 + bindHoverAnimation * 15 + listeningAnimation * 20) * alphaMultiplier);
-        int bgCol;
+        float scaledWidth = BIND_BOX_WIDTH * scaleAnimation;
+        float scaledHeight = BIND_BOX_HEIGHT * scaleAnimation;
+        float scaledX = bindBoxX - (scaledWidth - BIND_BOX_WIDTH) / 2;
+        float scaledY = bindBoxY - (scaledHeight - BIND_BOX_HEIGHT) / 2;
+
+        int bgAlpha = (int)(25 + bindHoverAnimation * 15 + listeningAnimation * 20);
+        Color bgColor;
         if (listening) {
             float pulse = (float)(Math.sin(pulseAnimation) * 0.15 + 0.85);
-            int aR = (ClickGuiTheme.ACCENT_ARGB >> 16) & 0xFF;
-            int aG = (ClickGuiTheme.ACCENT_ARGB >> 8) & 0xFF;
-            int aB = ClickGuiTheme.ACCENT_ARGB & 0xFF;
-            bgCol = new Color(aR, aG, aB, (int)(bgAlpha * pulse * 0.6f)).getRGB();
+            bgColor = new Color(
+                    (int)(60 + 40 * pulse),
+                    (int)(80 + 40 * pulse),
+                    (int)(120 + 35 * pulse),
+                    (int)(bgAlpha * alphaMultiplier)
+            );
+        } else if (bindSetting.getKey() != GLFW.GLFW_KEY_UNKNOWN && bindSetting.getKey() != -1) {
+            bgColor = applyAlpha(new Color(40, 60, 50, bgAlpha));
         } else {
-            bgCol = ((bgAlpha & 0xFF) << 24) | (ClickGuiTheme.PANEL_BORDER_LIGHT_ARGB & 0xFFFFFF);
+            bgColor = applyAlpha(new Color(40, 40, 45, bgAlpha));
         }
-        Render2D.rect(bindBoxX, bindBoxY, BIND_BOX_WIDTH, BIND_BOX_HEIGHT, bgCol, 3f);
 
-        int outlineAlpha;
+        Render2D.rect(scaledX, scaledY, scaledWidth, scaledHeight, bgColor.getRGB(), 3f);
+
+        float outlineAlpha;
+        Color outlineColor;
+
         if (listening) {
             float pulse = (float)(Math.sin(pulseAnimation) * 0.3 + 0.7);
-            outlineAlpha = (int) (180 * pulse * listeningAnimation * alphaMultiplier);
-            int aR = (ClickGuiTheme.ACCENT_ARGB >> 16) & 0xFF;
-            int aG = (ClickGuiTheme.ACCENT_ARGB >> 8) & 0xFF;
-            int aB = ClickGuiTheme.ACCENT_ARGB & 0xFF;
-            Render2D.outline(bindBoxX, bindBoxY, BIND_BOX_WIDTH, BIND_BOX_HEIGHT, 0.5f,
-                    new Color(aR, aG, aB, outlineAlpha).getRGB(), 3f);
+            outlineAlpha = 150 * pulse * listeningAnimation;
+            outlineColor = new Color(120, 160, 220, (int)(outlineAlpha * alphaMultiplier));
         } else if (bindSetting.getKey() != GLFW.GLFW_KEY_UNKNOWN && bindSetting.getKey() != -1) {
-            outlineAlpha = (int) ((80 + bindHoverAnimation * 40) * alphaMultiplier);
-            int aR = (ClickGuiTheme.ACCENT_ARGB >> 16) & 0xFF;
-            int aG = (ClickGuiTheme.ACCENT_ARGB >> 8) & 0xFF;
-            int aB = ClickGuiTheme.ACCENT_ARGB & 0xFF;
-            Render2D.outline(bindBoxX, bindBoxY, BIND_BOX_WIDTH, BIND_BOX_HEIGHT, 0.5f,
-                    new Color(aR, aG, aB, outlineAlpha).getRGB(), 3f);
+            outlineAlpha = 80 + bindHoverAnimation * 40;
+            outlineColor = new Color(100, 160, 120, (int)(outlineAlpha * alphaMultiplier));
         } else {
-            outlineAlpha = (int) ((50 + bindHoverAnimation * 30) * alphaMultiplier);
-            int oCol = ((outlineAlpha & 0xFF) << 24) | (ClickGuiTheme.PANEL_BORDER_LIGHT_ARGB & 0xFFFFFF);
-            Render2D.outline(bindBoxX, bindBoxY, BIND_BOX_WIDTH, BIND_BOX_HEIGHT, 0.5f, oCol, 3f);
+            outlineAlpha = 60 + bindHoverAnimation * 40;
+            outlineColor = new Color(120, 120, 125, (int)(outlineAlpha * alphaMultiplier));
         }
 
-        renderBindText(bindBoxX, bindBoxY, bindSetting);
+        Render2D.outline(scaledX, scaledY, scaledWidth, scaledHeight, 0.5f, outlineColor.getRGB(), 3f);
 
-        if (listening) renderListeningIndicator(bindBoxX, bindBoxY);
+        renderBindText(scaledX, scaledY, scaledWidth, scaledHeight, bindSetting);
+
+        if (listening) {
+            renderListeningIndicator(scaledX, scaledY, scaledWidth, scaledHeight);
+        }
     }
 
-    private void renderBindText(float boxX, float boxY, BindSetting bindSetting) {
-        float textY = boxY + BIND_BOX_HEIGHT / 2 - 2.5f;
-        float centerX = boxX + BIND_BOX_WIDTH / 2;
+    private void renderBindText(float boxX, float boxY, float boxWidth, float boxHeight, BindSetting bindSetting) {
+        float textY = boxY + boxHeight / 2 - 2.5f;
+        float centerX = boxX + boxWidth / 2;
 
-        int textAlpha;
+        Color textColor;
         if (listening) {
             float pulse = (float)(Math.sin(pulseAnimation * 2) * 0.2 + 0.8);
-            textAlpha = (int)(220 * pulse * alphaMultiplier);
-            int aR = (ClickGuiTheme.ACCENT_ARGB >> 16) & 0xFF;
-            int aG = (ClickGuiTheme.ACCENT_ARGB >> 8) & 0xFF;
-            int aB = ClickGuiTheme.ACCENT_ARGB & 0xFF;
-            Fonts.BOLD.drawCentered(currentBindText, centerX, textY, 5,
-                    new Color(aR, aG, aB, textAlpha).getRGB());
+            int alpha = (int)(220 * pulse * alphaMultiplier);
+            textColor = new Color(180, 200, 240, alpha);
         } else if (bindSetting.getKey() != GLFW.GLFW_KEY_UNKNOWN && bindSetting.getKey() != -1) {
-            textAlpha = (int)(200 * alphaMultiplier);
-            int aR = (ClickGuiTheme.ACCENT_ARGB >> 16) & 0xFF;
-            int aG = (ClickGuiTheme.ACCENT_ARGB >> 8) & 0xFF;
-            int aB = ClickGuiTheme.ACCENT_ARGB & 0xFF;
-            Fonts.BOLD.drawCentered(currentBindText, centerX, textY, 5,
-                    new Color(aR, aG, aB, textAlpha).getRGB());
+            int alpha = (int)(200 * alphaMultiplier);
+            textColor = new Color(140, 200, 150, alpha);
         } else {
-            textAlpha = (int)(140 * alphaMultiplier);
-            Fonts.BOLD.drawCentered(currentBindText, centerX, textY, 5,
-                    ((textAlpha & 0xFF) << 24) | (ClickGuiTheme.SETTINGS_DESC_ARGB & 0xFFFFFF));
+            int alpha = (int)(150 * alphaMultiplier);
+            textColor = new Color(140, 140, 150, alpha);
+        }
+
+        if (textChangeAnimation < 1f && !previousBindText.equals(currentBindText)) {
+            float oldAlpha = 1f - textChangeAnimation;
+            float newAlpha = textChangeAnimation;
+
+            float oldOffsetY = -3f * textChangeAnimation;
+            float newOffsetY = 3f * (1f - textChangeAnimation);
+
+            if (oldAlpha > 0.01f) {
+                Color oldColor = new Color(
+                        textColor.getRed(),
+                        textColor.getGreen(),
+                        textColor.getBlue(),
+                        (int)(textColor.getAlpha() * oldAlpha)
+                );
+                Fonts.BOLD.drawCentered(previousBindText, centerX, textY + oldOffsetY, 5, oldColor.getRGB());
+            }
+
+            Color newColor = new Color(
+                    textColor.getRed(),
+                    textColor.getGreen(),
+                    textColor.getBlue(),
+                    (int)(textColor.getAlpha() * newAlpha)
+            );
+            Fonts.BOLD.drawCentered(currentBindText, centerX, textY + newOffsetY, 5, newColor.getRGB());
+        } else {
+            Fonts.BOLD.drawCentered(currentBindText, centerX, textY, 5, textColor.getRGB());
         }
     }
 
-    private void renderListeningIndicator(float boxX, float boxY) {
+    private void renderListeningIndicator(float boxX, float boxY, float boxWidth, float boxHeight) {
         float dotSpacing = 3f;
         float dotSize = 1.5f;
-        float startX = boxX + (BIND_BOX_WIDTH - dotSpacing * 2) / 2 - dotSize / 2;
-        float dotY = boxY + BIND_BOX_HEIGHT - 5.5f;
-
-        int aR = (ClickGuiTheme.ACCENT_ARGB >> 16) & 0xFF;
-        int aG = (ClickGuiTheme.ACCENT_ARGB >> 8) & 0xFF;
-        int aB = ClickGuiTheme.ACCENT_ARGB & 0xFF;
+        float dotsWidth = dotSpacing * 2;
+        float startX = boxX + (boxWidth - dotsWidth) / 2 - dotSize / 2;
+        float dotY = boxY + boxHeight - 5.5f;
 
         for (int i = 0; i < 3; i++) {
-            float pulse = (float)(Math.sin(pulseAnimation + i * 0.5f) * 0.5 + 0.5);
+            float phase = pulseAnimation + i * 0.5f;
+            float pulse = (float)(Math.sin(phase * 2) * 0.5 + 0.5);
             float currentDotSize = dotSize * (0.5f + pulse * 0.5f);
+
             int alpha = (int)(150 * (0.3f + pulse * 0.7f) * listeningAnimation * alphaMultiplier);
+
             float dotX = startX + i * dotSpacing + (dotSize - currentDotSize) / 2;
-            Render2D.rect(dotX, dotY + (dotSize - currentDotSize) / 2, currentDotSize, currentDotSize,
-                    new Color(aR, aG, aB, alpha).getRGB(), currentDotSize / 2);
+            float adjustedDotY = dotY + (dotSize - currentDotSize) / 2;
+
+            Render2D.rect(dotX, adjustedDotY, currentDotSize, currentDotSize,
+                    new Color(120, 160, 220, alpha).getRGB(), currentDotSize / 2);
         }
     }
 
     private String getBindDisplayName(int key, int type) {
         if (key == GLFW.GLFW_KEY_UNKNOWN || key == -1) return "None";
+
         if (key == SCROLL_UP_BIND) return "ScrollUp";
         if (key == SCROLL_DOWN_BIND) return "ScrollDn";
         if (key == MIDDLE_MOUSE_BIND) return "MMB";
@@ -192,6 +236,9 @@ public class BindComponent extends AbstractSettingComponent {
                 case GLFW.GLFW_MOUSE_BUTTON_MIDDLE -> "MMB";
                 case GLFW.GLFW_MOUSE_BUTTON_4 -> "M4";
                 case GLFW.GLFW_MOUSE_BUTTON_5 -> "M5";
+                case GLFW.GLFW_MOUSE_BUTTON_6 -> "M6";
+                case GLFW.GLFW_MOUSE_BUTTON_7 -> "M7";
+                case GLFW.GLFW_MOUSE_BUTTON_8 -> "M8";
                 default -> "M" + key;
             };
         }
@@ -233,6 +280,26 @@ public class BindComponent extends AbstractSettingComponent {
                 case GLFW.GLFW_KEY_F11 -> "F11";
                 case GLFW.GLFW_KEY_F12 -> "F12";
                 case GLFW.GLFW_KEY_ESCAPE -> "Esc";
+                case GLFW.GLFW_KEY_PRINT_SCREEN -> "Print";
+                case GLFW.GLFW_KEY_SCROLL_LOCK -> "Scroll";
+                case GLFW.GLFW_KEY_PAUSE -> "Pause";
+                case GLFW.GLFW_KEY_NUM_LOCK -> "NumLk";
+                case GLFW.GLFW_KEY_KP_0 -> "Num0";
+                case GLFW.GLFW_KEY_KP_1 -> "Num1";
+                case GLFW.GLFW_KEY_KP_2 -> "Num2";
+                case GLFW.GLFW_KEY_KP_3 -> "Num3";
+                case GLFW.GLFW_KEY_KP_4 -> "Num4";
+                case GLFW.GLFW_KEY_KP_5 -> "Num5";
+                case GLFW.GLFW_KEY_KP_6 -> "Num6";
+                case GLFW.GLFW_KEY_KP_7 -> "Num7";
+                case GLFW.GLFW_KEY_KP_8 -> "Num8";
+                case GLFW.GLFW_KEY_KP_9 -> "Num9";
+                case GLFW.GLFW_KEY_KP_DECIMAL -> "Num.";
+                case GLFW.GLFW_KEY_KP_DIVIDE -> "Num/";
+                case GLFW.GLFW_KEY_KP_MULTIPLY -> "Num*";
+                case GLFW.GLFW_KEY_KP_SUBTRACT -> "Num-";
+                case GLFW.GLFW_KEY_KP_ADD -> "Num+";
+                case GLFW.GLFW_KEY_KP_ENTER -> "NumEnt";
                 default -> "Key" + key;
             };
         }
@@ -249,7 +316,11 @@ public class BindComponent extends AbstractSettingComponent {
     public void handleScrollBind(double vertical) {
         if (listening) {
             BindSetting bindSetting = (BindSetting) getSetting();
-            bindSetting.setKey(vertical > 0 ? SCROLL_UP_BIND : SCROLL_DOWN_BIND);
+            if (vertical > 0) {
+                bindSetting.setKey(SCROLL_UP_BIND);
+            } else {
+                bindSetting.setKey(SCROLL_DOWN_BIND);
+            }
             bindSetting.setType(2);
             listening = false;
         }
@@ -291,8 +362,10 @@ public class BindComponent extends AbstractSettingComponent {
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (listening) {
-            if (keyCode == GLFW.GLFW_KEY_ESCAPE) { listening = false; return true; }
-            else if (keyCode == GLFW.GLFW_KEY_BACKSPACE || keyCode == GLFW.GLFW_KEY_DELETE) {
+            if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
+                listening = false;
+                return true;
+            } else if (keyCode == GLFW.GLFW_KEY_BACKSPACE || keyCode == GLFW.GLFW_KEY_DELETE) {
                 ((BindSetting) getSetting()).setKey(GLFW.GLFW_KEY_UNKNOWN);
                 ((BindSetting) getSetting()).setType(1);
                 listening = false;
@@ -309,12 +382,15 @@ public class BindComponent extends AbstractSettingComponent {
     }
 
     @Override
-    public void tick() {}
+    public void tick() {
+    }
 
     @Override
     public boolean isHover(double mouseX, double mouseY) {
         return mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height;
     }
 
-    public boolean isListening() { return listening; }
+    public boolean isListening() {
+        return listening;
+    }
 }

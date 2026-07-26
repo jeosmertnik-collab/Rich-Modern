@@ -7,9 +7,7 @@ import rich.screens.clickgui.impl.module.handler.ModuleScrollHandler;
 import rich.screens.clickgui.impl.settingsrender.ColorComponent;
 import rich.screens.clickgui.impl.settingsrender.MultiSelectComponent;
 import rich.screens.clickgui.impl.settingsrender.SelectComponent;
-import rich.screens.clickgui.impl.theme.ClickGuiTheme;
 import rich.util.interfaces.AbstractSettingComponent;
-import rich.util.lang.Lang;
 import rich.util.render.Render2D;
 import rich.util.render.shader.Scissor;
 import rich.util.render.font.Fonts;
@@ -20,8 +18,8 @@ import java.util.List;
 
 public class SettingsPanelRenderer {
 
-    private static final float SETTINGS_PANEL_CORNER_RADIUS = 10f;
-    private static final float CORNER_INSET = 4f;
+    private static final float SETTINGS_PANEL_CORNER_RADIUS = 7f;
+    private static final float CORNER_INSET = 3f;
     private static final int SETTING_HEIGHT = 16;
     private static final int SETTING_SPACING = 2;
 
@@ -38,55 +36,35 @@ public class SettingsPanelRenderer {
         animHandler.updateSettingAnimations(settingComponents);
         animHandler.updateVisibilityAnimations(settingComponents);
 
-        int panelAlpha = (int) (20 * alphaMultiplier);
-        int panelBg = ((panelAlpha & 0xFF) << 24) | (ClickGuiTheme.PANEL_BG_ARGB & 0xFFFFFF);
-        Render2D.rect(x, y, width, height, panelBg, SETTINGS_PANEL_CORNER_RADIUS);
-
-        int outlineAlpha = (int) (120 * alphaMultiplier);
-        int borderCol = ((outlineAlpha & 0xFF) << 24) | (ClickGuiTheme.PANEL_BORDER_ARGB & 0xFFFFFF);
-        Render2D.outline(x, y, width, height, 0.5f, borderCol, SETTINGS_PANEL_CORNER_RADIUS);
-
-        int ar = (ClickGuiTheme.ACCENT_ARGB >> 16) & 0xFF;
-        int ag = (ClickGuiTheme.ACCENT_ARGB >> 8) & 0xFF;
-        int ab = ClickGuiTheme.ACCENT_ARGB & 0xFF;
-        int glowA = (int) (12 * alphaMultiplier);
-        if (glowA > 0) {
-            Render2D.rect(x + 4, y, width - 8, 1, new Color(ar, ag, ab, glowA).getRGB(), 0);
-            Render2D.rect(x + 4, y + height - 1, width - 8, 1, new Color(ar, ag, ab, glowA).getRGB(), 0);
-        }
+        int panelAlpha = (int) (15 * alphaMultiplier);
+        int outlineAlpha = (int) (215 * alphaMultiplier);
+        Render2D.rect(x, y, width, height, new Color(64, 64, 64, panelAlpha).getRGB(), SETTINGS_PANEL_CORNER_RADIUS);
+        Render2D.outline(x, y, width, height, 0.5f, new Color(55, 55, 55, outlineAlpha).getRGB(), SETTINGS_PANEL_CORNER_RADIUS);
 
         if (selectedModule == null) {
-            String text = Lang.get().get("select_module_hint");
+            String text = "Select a module";
             float textSize = 6f;
             float textWidth = Fonts.BOLD.getWidth(text, textSize);
             float textHeight = Fonts.BOLD.getHeight(textSize);
             float centerX = x + (width - textWidth) / 2f;
             float centerY = y + (height - textHeight) / 2f;
-            int emptyAlpha = (int) (120 * alphaMultiplier);
-            Fonts.BOLD.draw(text, centerX, centerY, textSize, ((emptyAlpha & 0xFF) << 24) | (ClickGuiTheme.SETTINGS_EMPTY_TEXT_ARGB & 0xFFFFFF));
+            Fonts.BOLD.draw(text, centerX, centerY, textSize, new Color(100, 100, 100, (int) (150 * alphaMultiplier)).getRGB());
             return;
         }
 
-        int titleAlpha = (int) (220 * alphaMultiplier);
-        Fonts.BOLD.draw(selectedModule.getName(), x + 10, y + 10, 7, ((titleAlpha & 0xFF) << 24) | (ClickGuiTheme.SETTINGS_TITLE_ARGB & 0xFFFFFF));
-
+        Fonts.BOLD.draw(selectedModule.getName(), x + 8, y + 8, 7, new Color(255, 255, 255, (int) (200 * alphaMultiplier)).getRGB());
         String desc = selectedModule.getDescription();
         if (desc != null && !desc.isEmpty()) {
-            int descAlpha = (int) (140 * alphaMultiplier);
-            String truncated = desc.length() > 52 ? desc.substring(0, 52) + "..." : desc;
-            Fonts.BOLD.draw(truncated, x + 17, y + 22, 5, ((descAlpha & 0xFF) << 24) | (ClickGuiTheme.SETTINGS_DESC_ARGB & 0xFFFFFF));
-            Fonts.GUI_ICONS.draw("C", x + 10, y + 22, 6, ((descAlpha & 0xFF) << 24) | (ClickGuiTheme.SETTINGS_DESC_ARGB & 0xFFFFFF));
+            Fonts.BOLD.draw(desc.length() > 52 ? desc.substring(0, 55) + "..." : desc, x + 15, y + 20, 5, new Color(128, 128, 128, (int) (150 * alphaMultiplier)).getRGB());
+            Fonts.GUI_ICONS.draw("C", x + 8, y + 20, 6, new Color(128, 128, 128, (int) (150 * alphaMultiplier)).getRGB());
         }
-
-        int divAlpha = (int) (50 * alphaMultiplier);
-        int divCol = ((divAlpha & 0xFF) << 24) | (ClickGuiTheme.SETTINGS_DIVIDER_ARGB & 0xFFFFFF);
-        Render2D.rect(x + 10, y + 32, width - 20, 1f, divCol, 10);
+        Render2D.rect(x + 8, y + 30, width - 16, 1.25f, new Color(64, 64, 64, (int) (64 * alphaMultiplier)).getRGB(), 10);
 
         float sideInset = CORNER_INSET;
         float bottomInset = CORNER_INSET + 3;
 
-        float clipY = y + 33;
-        float clipH = height - 28 - bottomInset;
+        float clipY = y + 31;
+        float clipH = height - 26 - bottomInset;
 
         float clipX = x + sideInset;
         float clipW = width - sideInset * 2;
@@ -95,7 +73,7 @@ public class SettingsPanelRenderer {
 
         List<Float> finalYPositions = new ArrayList<>();
         List<Float> animatedHeights = new ArrayList<>();
-        float posY = y + 40f + (float) scrollHandler.getSettingDisplayScroll();
+        float posY = y + 38f + (float) scrollHandler.getSettingDisplayScroll();
 
         for (AbstractSettingComponent c : settingComponents) {
             float heightAnim = animHandler.getHeightAnimations().getOrDefault(c, c.getSetting().isVisible() ? 1f : 0f);
@@ -164,19 +142,18 @@ public class SettingsPanelRenderer {
         }
 
         if (!hasVisibleSettings) {
-            String text = Lang.get().get("no_settings_desc");
+            String text = "This module doesn't have settings";
             float textSize = 6f;
             float textWidth = Fonts.BOLD.getWidth(text, textSize);
             float textHeight = Fonts.BOLD.getHeight(textSize);
             float centerX = x + (width - textWidth) / 2f;
             float centerY = y + (height - textHeight) / 2f + 10f;
-            int emptyAlpha = (int) (120 * alphaMultiplier);
-            Fonts.BOLD.draw(text, centerX, centerY, textSize, ((emptyAlpha & 0xFF) << 24) | (ClickGuiTheme.SETTINGS_EMPTY_TEXT_ARGB & 0xFFFFFF));
+            Fonts.BOLD.draw(text, centerX, centerY, textSize, new Color(100, 100, 100, (int) (150 * alphaMultiplier)).getRGB());
         }
 
         renderScrollFade(x + sideInset, clipY, width - sideInset * 2, clipH,
                 scrollHandler.getSettingScrollTopFade() * alphaMultiplier,
-                scrollHandler.getSettingScrollBottomFade() * alphaMultiplier);
+                scrollHandler.getSettingScrollBottomFade() * alphaMultiplier, 60, 12);
     }
 
     public float calculateTotalHeight(List<AbstractSettingComponent> settingComponents, ModuleAnimationHandler animHandler) {
@@ -198,21 +175,17 @@ public class SettingsPanelRenderer {
         return SETTING_HEIGHT;
     }
 
-    private void renderScrollFade(float x, float y, float w, float h, float topFade, float bottomFade) {
-        int accentR = (ClickGuiTheme.ACCENT_ARGB >> 16) & 0xFF;
-        int accentG = (ClickGuiTheme.ACCENT_ARGB >> 8) & 0xFF;
-        int accentB = ClickGuiTheme.ACCENT_ARGB & 0xFF;
-
+    private void renderScrollFade(float x, float y, float w, float h, float topFade, float bottomFade, int alpha, int size) {
         if (topFade > 0.01f) {
-            for (int i = 0; i < 10; i++) {
-                float fadeAlpha = 50 * topFade * (1f - i / 10f);
-                Render2D.rect(x, y + i, w, 1, ((int) fadeAlpha << 24) | (ClickGuiTheme.BG_TOP_ARGB & 0xFFFFFF), 0);
+            for (int i = 0; i < size; i++) {
+                float fadeAlpha = alpha * topFade * (1f - i / (float) size);
+                Render2D.rect(x, y + i, w, 1, new Color(20, 20, 20, (int) fadeAlpha).getRGB(), 0);
             }
         }
         if (bottomFade > 0.01f) {
-            for (int i = 0; i < 10; i++) {
-                float fadeAlpha = 50 * bottomFade * (i / 10f);
-                Render2D.rect(x, y + h - 10 + i, w, 1, ((int) fadeAlpha << 24) | (ClickGuiTheme.BG_TOP_ARGB & 0xFFFFFF), 0);
+            for (int i = 0; i < size; i++) {
+                float fadeAlpha = alpha * bottomFade * (i / (float) size);
+                Render2D.rect(x, y + h - size + i, w, 1, new Color(20, 20, 20, (int) fadeAlpha).getRGB(), 0);
             }
         }
     }

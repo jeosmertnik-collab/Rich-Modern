@@ -2,7 +2,6 @@ package rich.screens.hud;
 
 import net.minecraft.client.gui.DrawContext;
 import rich.client.draggables.AbstractHudElement;
-import rich.modules.impl.render.Hud;
 import rich.util.animations.Animation;
 import rich.util.animations.Direction;
 import rich.util.animations.OutBack;
@@ -27,14 +26,6 @@ public class Notifications extends AbstractHudElement {
     private final List<Notification> list = new ArrayList<>();
     private static final float NOTIFICATION_HEIGHT = 16f;
     private static final float NOTIFICATION_GAP = 3f;
-
-    private int accentR = 100, accentG = 150, accentB = 255;
-    private void updateAccent() {
-        int c = Hud.getInstance().getAccentRGB();
-        accentR = (c >> 16) & 0xFF;
-        accentG = (c >> 8) & 0xFF;
-        accentB = c & 0xFF;
-    }
 
     public Notifications() {
         super("Notifications", 0, 0, 110, 16, false);
@@ -139,7 +130,6 @@ public class Notifications extends AbstractHudElement {
 
     @Override
     public void drawDraggable(DrawContext context, int alpha) {
-        updateAccent();
         alpha = clampAlpha(alpha);
         if (alpha <= 0) return;
 
@@ -198,7 +188,7 @@ public class Notifications extends AbstractHudElement {
                         }, 4);
 
                 Render2D.glowOutline(startX, startY, width, NOTIFICATION_HEIGHT, 1.0f,
-                        new Color(accentR, accentG, accentB, (int)(bgAlpha * 0.44f)).getRGB(), 4, 1.0f, 3.0f);
+                        new Color(100, 150, 255, (int)(bgAlpha * 0.44f)).getRGB(), 4, 1.0f, 3.0f);
 
                 Fonts.SFPRO_REGULAR.draw(notification.text, startX + offsetX + 5, startY + 4.5f, 6,
                         new Color(220, 230, 255, bgAlpha).getRGB());

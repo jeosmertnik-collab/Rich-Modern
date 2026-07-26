@@ -5,8 +5,7 @@ import lombok.experimental.FieldDefaults;
 import rich.modules.module.category.ModuleCategory;
 import rich.modules.module.ModuleStructure;
 import rich.modules.module.setting.implement.*;
-import rich.screens.clickgui.impl.theme.ClickGuiStyle;
-import rich.screens.clickgui.impl.theme.ClickGuiTheme;
+
 import rich.util.Instance;
 import rich.util.lang.Lang;
 
@@ -36,7 +35,8 @@ public class Hud extends ModuleStructure {
                     "Durability",
                     "Radar",
                     "FriendsListHud",
-                    "ThirdPersonHud")
+                    "ThirdPersonHud",
+                    "Inventory")
 
             .selected("Watermark",
                     "HotKeys",
@@ -49,7 +49,8 @@ public class Hud extends ModuleStructure {
                     "Durability",
                     "Radar",
                     "FriendsListHud",
-                    "ThirdPersonHud");
+                    "ThirdPersonHud",
+                    "Inventory");
 
     public BooleanSetting showBps = new BooleanSetting("Show BPS", "Показывать блоки в секунду")
             .setValue(true)
@@ -66,7 +67,7 @@ public class Hud extends ModuleStructure {
     public Hud() {
         super("Hud", "Настройка интерфейса", ModuleCategory.RENDER);
         settings(language, menuStyle, interfaceSettings, showBps, showTps, accentColor);
-        accentColor.onChange(() -> ClickGuiTheme.applyAccent(accentColor));
+        accentColor.onChange(() -> {});
         applyLanguage();
     }
 
@@ -78,8 +79,15 @@ public class Hud extends ModuleStructure {
         }
     }
 
-    public ClickGuiStyle getStyle() {
-        int idx = menuStyle.isSelected("Модерн") ? 1 : menuStyle.isSelected("Минимал") ? 2 : 0;
-        return ClickGuiStyle.fromIndex(idx);
+    public int getStyleIndex() {
+        return menuStyle.isSelected("Модерн") ? 1 : menuStyle.isSelected("Минимал") ? 2 : 0;
+    }
+
+    public int getAccentRGB() {
+        return accentColor.getColor() & 0x00FFFFFF;
+    }
+
+    public int getAccentARGB() {
+        return accentColor.getColor();
     }
 }

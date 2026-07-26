@@ -1,6 +1,5 @@
 package rich.screens.clickgui;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.gui.Click;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
@@ -8,13 +7,11 @@ import net.minecraft.client.input.CharInput;
 import net.minecraft.client.input.KeyInput;
 import net.minecraft.client.render.RenderTickCounter;
 import net.minecraft.text.Text;
-import org.joml.Matrix4fStack;
 import org.lwjgl.glfw.GLFW;
 import rich.IMinecraft;
 import rich.Initialization;
 import rich.modules.module.category.ModuleCategory;
 import rich.modules.module.ModuleStructure;
-import rich.modules.impl.render.Hud;
 import rich.screens.clickgui.impl.DragHandler;
 import rich.screens.clickgui.impl.autobuy.autobuyui.AutoBuyRenderer;
 import rich.screens.clickgui.impl.background.BackgroundComponent;
@@ -22,21 +19,16 @@ import rich.screens.clickgui.impl.configs.ConfigsRenderer;
 import rich.screens.clickgui.impl.module.ModuleComponent;
 import rich.screens.clickgui.impl.settingsrender.BindComponent;
 import rich.screens.clickgui.impl.settingsrender.TextComponent;
-import rich.screens.clickgui.impl.theme.ClickGuiTheme;
-import rich.screens.changelog.ChangelogScreen;
 import rich.util.animations.Direction;
-import rich.util.lang.Lang;
 import rich.util.animations.GuiAnimation;
 import rich.util.interfaces.AbstractSettingComponent;
 import rich.util.math.FrameRateCounter;
 import rich.util.render.Render2D;
-import rich.util.render.font.Fonts;
 import rich.util.render.shader.Scissor;
 import rich.util.render.gif.GifRender;
 
-import java.awt.Color;
+import java.awt.*;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 
 public class ClickGui extends Screen implements IMinecraft {
@@ -63,9 +55,6 @@ public class ClickGui extends Screen implements IMinecraft {
     private int lastMouseX;
     private int lastMouseY;
     private float lastDelta;
-
-    private final LinkedList<float[]> cursorTrail = new LinkedList<>();
-    private static final int TRAIL_LENGTH = 8;
 
     public ClickGui() {
         super(Text.of("MenuScreen"));
@@ -114,21 +103,6 @@ public class ClickGui extends Screen implements IMinecraft {
             waitingForSlide = false;
             slideTriggered = false;
             openAnimation.setMs(250).setValue(1.0).setDirection(Direction.FORWARDS).reset();
-
-            try {
-                Hud hud = Hud.getInstance();
-                if (hud != null) {
-                    hud.applyLanguage();
-                    ClickGuiTheme.applyStyle(hud.getStyle());
-                    ClickGuiTheme.applyAccent(hud.accentColor);
-                }
-            } catch (Exception ignored) {}
-
-            if (ChangelogScreen.shouldShow()) {
-                mc.setScreen(new ChangelogScreen());
-                return;
-            }
-
             mc.setScreen(this);
         }
     }
@@ -137,23 +111,15 @@ public class ClickGui extends Screen implements IMinecraft {
     public void tick() {
         GifRender.tick();
         moduleComponent.tick();
-        try {
-            Hud hud = Hud.getInstance();
-            if (hud != null) hud.applyLanguage();
-        } catch (Exception ignored) {}
         super.tick();
     }
-
-    private final float[] bgResult = new float[4];
 
     private float[] calculateBackground(float scale) {
         int vw = mc.getWindow().getWidth() / FIXED_GUI_SCALE;
         int vh = mc.getWindow().getHeight() / FIXED_GUI_SCALE;
-        bgResult[0] = (vw - BackgroundComponent.BG_WIDTH) / 2f + dragHandler.getOffsetX();
-        bgResult[1] = (vh - BackgroundComponent.BG_HEIGHT) / 2f + dragHandler.getOffsetY();
-        bgResult[2] = vw;
-        bgResult[3] = vh;
-        return bgResult;
+        float bgX = (vw - BackgroundComponent.BG_WIDTH) / 2f + dragHandler.getOffsetX();
+        float bgY = (vh - BackgroundComponent.BG_HEIGHT) / 2f + dragHandler.getOffsetY();
+        return new float[]{bgX, bgY, vw, vh};
     }
 
     private boolean isAnyBindListening() {
@@ -234,21 +200,14 @@ public class ClickGui extends Screen implements IMinecraft {
         int screenHeight = mc.getWindow().getScaledHeight();
 
         context.createNewRootLayer();
-        Render2D.beginOverlay();
 
-        Matrix4fStack modelViewStack = RenderSystem.getModelViewStack();
-        modelViewStack.pushMatrix();
-        modelViewStack.identity();
-
-        int dimAlpha = (int) (220 * (animValue < 0.1f ? 0f : animValue));
+        int dimAlpha = (int) (125 * animValue);
         if (dimAlpha > 0) {
-            Render2D.rect(0, 0, 5000, 5000, (dimAlpha << 24), 0);
+            Render2D.rect(0, 0, 5000, 5000, new Color(0, 0, 0, dimAlpha).getRGB(), 0);
         }
 
         int guiScale = mc.getWindow().calculateScaleFactor(mc.options.getGuiScale().getValue(), mc.forcesUnicodeFont());
         float scale = (float) FIXED_GUI_SCALE / guiScale;
-
-        modelViewStack.scale(scale, scale, 1.0f);
 
         float mx = mouseX / scale, my = mouseY / scale;
 
@@ -262,8 +221,8 @@ public class ClickGui extends Screen implements IMinecraft {
         context.getMatrices().scale(scale, scale);
 
         float[] bg = calculateBackground(scale);
-        float bgX = Math.round(bg[0]);
-        float bgY = Math.round(bg[1]);
+        float bgX = bg[0];
+        float bgY = bg[1];
         int vw = (int) bg[2];
         int vh = (int) bg[3];
 
@@ -275,23 +234,17 @@ public class ClickGui extends Screen implements IMinecraft {
         }
         bgY += yOffset;
 
-        float alphaMultiplier = animValue < 0.1f ? 0f : animValue;
+        float alphaMultiplier = animValue;
+
+        context.getMatrices().pushMatrix();
 
         background.render(context, bgX, bgY, selectedCategory, delta, alphaMultiplier);
         background.renderCategoryPanel(bgX, bgY, alphaMultiplier);
-
         background.renderHeader(bgX, bgY, selectedCategory, alphaMultiplier);
         background.renderCategoryNames(bgX, bgY, selectedCategory, alphaMultiplier);
 
-        float mlX = bgX + ClickGuiTheme.CATEGORY_PANEL_WIDTH + ClickGuiTheme.PANEL_INSET * 2 + 4;
-        float mlY = bgY + ClickGuiTheme.PANEL_TOP_OFFSET;
-        float mlW = ClickGuiTheme.MODULE_LIST_WIDTH;
-        float mlH = BackgroundComponent.BG_HEIGHT - ClickGuiTheme.PANEL_TOP_OFFSET - ClickGuiTheme.PANEL_INSET;
-
-        float spX = mlX + mlW + ClickGuiTheme.PANEL_INSET;
-        float spY = bgY + ClickGuiTheme.PANEL_TOP_OFFSET;
-        float spW = ClickGuiTheme.SETTINGS_PANEL_WIDTH;
-        float spH = BackgroundComponent.BG_HEIGHT - ClickGuiTheme.PANEL_TOP_OFFSET - ClickGuiTheme.PANEL_INSET;
+        float mlX = bgX + 92f, mlY = bgY + 38f, mlW = 120f, mlH = BackgroundComponent.BG_HEIGHT - 46f;
+        float spX = bgX + 218f, spY = bgY + 38f, spW = 172f, spH = BackgroundComponent.BG_HEIGHT - 46f;
 
         float normalAlpha = background.getNormalPanelAlpha();
         float searchAlpha = background.getSearchPanelAlpha();
@@ -319,21 +272,7 @@ public class ClickGui extends Screen implements IMinecraft {
 
         Scissor.reset();
 
-        if (!closing && normalAlpha > 0.01f && isModuleCategory(selectedCategory)) {
-            renderTooltip(bgX, bgY, mx, my, mlX, mlY, mlW, mlH, alphaMultiplier);
-        }
-
-        String uid = antidaunleak.api.UserProfile.getInstance().profile("uid");
-        String displayName = (uid != null && !uid.isEmpty() && !uid.equals("null"))
-                ? Lang.get().get("uid") + ": " + uid
-                : Lang.get().get("uid") + ": " + mc.getSession().getUsername();
-        if (displayName.length() > 6) {
-            float uidW = Fonts.BOLD.getWidth(displayName, 5f);
-            float uidX = bgX + ClickGuiTheme.BG_WIDTH / 2f - uidW / 2f;
-            float uidY = bgY - 8f;
-            int uidAlpha = (int) (180 * alphaMultiplier);
-            Fonts.BOLD.draw(displayName, uidX, uidY, 5f, (uidAlpha << 24) | 0xA0A0B4);
-        }
+        context.getMatrices().popMatrix();
 
         float finalHintAlpha = hintAlphaAnimation * alphaMultiplier;
         if (finalHintAlpha > 0.01f) {
@@ -344,25 +283,7 @@ public class ClickGui extends Screen implements IMinecraft {
 //            Fonts.TEST.drawCentered("Press CTRL + ALT to reset position", centerX, textY + 65, 6, new Color(150, 150, 150, hintAlpha).getRGB());
         }
 
-        if (alphaMultiplier > 0.01f) {
-            cursorTrail.addFirst(new float[]{mx, my});
-            while (cursorTrail.size() > TRAIL_LENGTH) cursorTrail.removeLast();
-            int ar = (ClickGuiTheme.ACCENT_ARGB >> 16) & 0xFF;
-            int ag = (ClickGuiTheme.ACCENT_ARGB >> 8) & 0xFF;
-            int ab = ClickGuiTheme.ACCENT_ARGB & 0xFF;
-            for (int i = 0; i < cursorTrail.size(); i++) {
-                float[] t = cursorTrail.get(i);
-                float ratio = 1f - (float) i / TRAIL_LENGTH;
-                int ta = (int) (40 * ratio * ratio * alphaMultiplier);
-                float sz = 1f + 2f * ratio;
-                if (ta > 0) Render2D.rect(t[0] - sz / 2f, t[1] - sz / 2f, sz, sz,
-                        new Color(ar, ag, ab, ta).getRGB(), sz / 2f);
-            }
-        }
-
         context.getMatrices().popMatrix();
-        modelViewStack.popMatrix();
-        Render2D.endOverlay();
     }
 
     @Override
@@ -374,7 +295,7 @@ public class ClickGui extends Screen implements IMinecraft {
         double mx = click.x() / scale, my = click.y() / scale;
 
         float[] bg = calculateBackground(scale);
-        float bgX = Math.round(bg[0]), bgY = Math.round(bg[1]);
+        float bgX = bg[0], bgY = bg[1];
 
         if (background.isSearchBoxHovered(mx, my, bgX, bgY) && click.button() == 0) {
             background.setSearchActive(true);
@@ -389,19 +310,19 @@ public class ClickGui extends Screen implements IMinecraft {
                     return true;
                 }
 
-            float panelX = bgX + ClickGuiTheme.CATEGORY_PANEL_WIDTH + ClickGuiTheme.PANEL_INSET * 2 + 4;
-            float panelY = bgY + ClickGuiTheme.PANEL_TOP_OFFSET;
-            float panelW = ClickGuiTheme.BG_WIDTH - ClickGuiTheme.CATEGORY_PANEL_WIDTH - ClickGuiTheme.PANEL_INSET * 3 - 4;
-            float panelH = BackgroundComponent.BG_HEIGHT - ClickGuiTheme.PANEL_TOP_OFFSET - ClickGuiTheme.PANEL_INSET;
+                float panelX = bgX + 92f;
+                float panelY = bgY + 38f;
+                float panelW = BackgroundComponent.BG_WIDTH - 100f;
+                float panelH = BackgroundComponent.BG_HEIGHT - 46f;
 
-            if (mx >= panelX && mx <= panelX + panelW && my >= panelY && my <= panelY + panelH) {
-                return true;
-            }
+                if (mx >= panelX && mx <= panelX + panelW && my >= panelY && my <= panelY + panelH) {
+                    return true;
+                }
 
-            if (!background.isSearchBoxHovered(mx, my, bgX, bgY)) {
-                background.setSearchActive(false);
-            }
-        } else if (click.button() == 1) {
+                if (!background.isSearchBoxHovered(mx, my, bgX, bgY)) {
+                    background.setSearchActive(false);
+                }
+            } else if (click.button() == 1) {
                 ModuleStructure searchModule = background.getSearchModuleAtPosition(mx, my, bgX, bgY);
                 if (searchModule != null) {
                     background.setSearchActive(false);
@@ -426,10 +347,7 @@ public class ClickGui extends Screen implements IMinecraft {
 //            }
 //        }
 
-        float mlX = bgX + ClickGuiTheme.CATEGORY_PANEL_WIDTH + ClickGuiTheme.PANEL_INSET * 2 + 4;
-        float mlY = bgY + ClickGuiTheme.PANEL_TOP_OFFSET;
-        float mlW = ClickGuiTheme.MODULE_LIST_WIDTH;
-        float mlH = BackgroundComponent.BG_HEIGHT - ClickGuiTheme.PANEL_TOP_OFFSET - ClickGuiTheme.PANEL_INSET - 2f;
+        float mlX = bgX + 92f, mlY = bgY + 38f, mlW = 120f, mlH = BackgroundComponent.BG_HEIGHT - 48f;
 
         if (click.button() == 2) {
             if (isAnyBindListening()) {
@@ -464,13 +382,6 @@ public class ClickGui extends Screen implements IMinecraft {
         }
 
         if (isModuleCategory(selectedCategory)) {
-            ModuleStructure toggleModule = moduleComponent.getModuleAtPosition(mx, my, mlX, mlY, mlW, mlH);
-            if (toggleModule != null && click.button() == 0) {
-                toggleModule.switchState();
-                moduleComponent.triggerToggleFlash(toggleModule);
-                return true;
-            }
-
             ModuleStructure starModule = moduleComponent.getModuleForStarClick(mx, my, mlX, mlY, mlW, mlH);
             if (starModule != null && click.button() == 0) {
                 moduleComponent.toggleFavorite(starModule);
@@ -479,16 +390,13 @@ public class ClickGui extends Screen implements IMinecraft {
 
             ModuleStructure module = moduleComponent.getModuleAtPosition(mx, my, mlX, mlY, mlW, mlH);
             if (module != null) {
-                if (click.button() == 1) moduleComponent.selectModule(module);
-                else if (click.button() == 0) moduleComponent.selectModule(module);
+                if (click.button() == 0) module.switchState();
+                else if (click.button() == 1) moduleComponent.selectModule(module);
                 return true;
             }
 
-            float spX2 = mlX + mlW + ClickGuiTheme.PANEL_INSET;
-            float spY2 = bgY + ClickGuiTheme.PANEL_TOP_OFFSET;
-            float spW2 = ClickGuiTheme.SETTINGS_PANEL_WIDTH;
-            float spH2 = BackgroundComponent.BG_HEIGHT - ClickGuiTheme.PANEL_TOP_OFFSET - ClickGuiTheme.PANEL_INSET - 2f;
-            if (mx >= spX2 && mx <= spX2 + spW2 && my >= spY2 && my <= spY2 + spH2) {
+            float spX = bgX + 218f, spY = bgY + 38f, spW = 172f, spH = BackgroundComponent.BG_HEIGHT - 48f;
+            if (mx >= spX && mx <= spX + spW && my >= spY && my <= spY + spH) {
                 for (AbstractSettingComponent c : moduleComponent.getSettingComponents()) {
                     if (c.getSetting().isVisible() && c.mouseClicked(mx, my, click.button())) return true;
                 }
@@ -541,13 +449,13 @@ public class ClickGui extends Screen implements IMinecraft {
         double mx = mouseX / scale, my = mouseY / scale;
 
         float[] bg = calculateBackground(scale);
-        float bgX = Math.round(bg[0]), bgY = Math.round(bg[1]);
+        float bgX = bg[0], bgY = bg[1];
 
         if (background.isSearchActive()) {
-            float panelX = bgX + ClickGuiTheme.CATEGORY_PANEL_WIDTH + ClickGuiTheme.PANEL_INSET * 2 + 4;
-            float panelY = bgY + ClickGuiTheme.PANEL_TOP_OFFSET;
-            float panelW = ClickGuiTheme.BG_WIDTH - ClickGuiTheme.CATEGORY_PANEL_WIDTH - ClickGuiTheme.PANEL_INSET * 3 - 4;
-            float panelH = BackgroundComponent.BG_HEIGHT - ClickGuiTheme.PANEL_TOP_OFFSET - ClickGuiTheme.PANEL_INSET;
+            float panelX = bgX + 92f;
+            float panelY = bgY + 38f;
+            float panelW = BackgroundComponent.BG_WIDTH - 100f;
+            float panelH = BackgroundComponent.BG_HEIGHT - 46f;
 
             if (mx >= panelX && mx <= panelX + panelW && my >= panelY && my <= panelY + panelH) {
                 background.handleSearchScroll(vertical, panelH);
@@ -567,19 +475,13 @@ public class ClickGui extends Screen implements IMinecraft {
 //            }
 //        }
 
-        float mlX = bgX + ClickGuiTheme.CATEGORY_PANEL_WIDTH + ClickGuiTheme.PANEL_INSET * 2 + 4;
-        float mlY = bgY + ClickGuiTheme.PANEL_TOP_OFFSET;
-        float mlW = ClickGuiTheme.MODULE_LIST_WIDTH;
-        float mlH = BackgroundComponent.BG_HEIGHT - ClickGuiTheme.PANEL_TOP_OFFSET - ClickGuiTheme.PANEL_INSET - 2f;
+        float mlX = bgX + 92f, mlY = bgY + 38f, mlW = 120f, mlH = BackgroundComponent.BG_HEIGHT - 48f;
         if (mx >= mlX && mx <= mlX + mlW && my >= mlY && my <= mlY + mlH) {
             moduleComponent.handleModuleScroll(vertical, mlH);
             return true;
         }
 
-        float spX = mlX + mlW + ClickGuiTheme.PANEL_INSET;
-        float spY = bgY + ClickGuiTheme.PANEL_TOP_OFFSET;
-        float spW = ClickGuiTheme.SETTINGS_PANEL_WIDTH;
-        float spH = BackgroundComponent.BG_HEIGHT - ClickGuiTheme.PANEL_TOP_OFFSET - ClickGuiTheme.PANEL_INSET - 2f;
+        float spX = bgX + 218f, spY = bgY + 38f, spW = 172f, spH = BackgroundComponent.BG_HEIGHT - 48f;
         if (mx >= spX && mx <= spX + spW && my >= spY && my <= spY + spH) {
             moduleComponent.handleSettingScroll(vertical, spH);
             return true;
@@ -674,95 +576,6 @@ public class ClickGui extends Screen implements IMinecraft {
     @Override
     public boolean shouldPause() {
         return false;
-    }
-
-    private void renderTooltip(float bgX, float bgY, float mx, float my,
-                               float mlX, float mlY, float mlW, float mlH, float alphaMultiplier) {
-        ModuleStructure hovered = moduleComponent.getModuleAtPosition(mx, my, mlX, mlY, mlW, mlH);
-        if (hovered == null) return;
-        if (hovered.getDescription() == null || hovered.getDescription().isEmpty()) return;
-
-        String name = hovered.getName();
-        String desc = hovered.getDescription();
-
-        float nameW = Fonts.BOLD.getWidth(name, 6f);
-        float descW = Fonts.BOLD.getWidth(desc, 5f);
-        float maxTextW = Math.max(nameW, descW);
-        float tipW = maxTextW + 16;
-        float tipH = 26f;
-
-        float tipX = mx + 10;
-        float tipY = my - tipH - 6;
-
-        if (tipX + tipW > bgX + ClickGuiTheme.BG_WIDTH) {
-            tipX = bgX + ClickGuiTheme.BG_WIDTH - tipW - 4;
-        }
-        if (tipY < bgY - 4) {
-            tipY = my + 18;
-        }
-        if (tipX < bgX) {
-            tipX = bgX + 4;
-        }
-
-        int bgAlpha = (int) (240 * alphaMultiplier);
-        Render2D.rect(tipX, tipY, tipW, tipH, (bgAlpha << 24) | 0x0D0D18, 5);
-
-        int borderAlpha = (int) (100 * alphaMultiplier);
-        int accentRGB = ClickGuiTheme.ACCENT_ARGB & 0xFFFFFF;
-        Render2D.outline(tipX, tipY, tipW, tipH, 0.4f, (borderAlpha << 24) | accentRGB, 5);
-
-        int lineAlpha = (int) (60 * alphaMultiplier);
-        Render2D.rect(tipX + 6, tipY + 13, tipW - 12, 0.5f, (lineAlpha << 24) | 0x444460, 0);
-
-        int nameAlpha = (int) (255 * alphaMultiplier);
-        Fonts.BOLD.draw(name, tipX + 6, tipY + 3, 6f, (nameAlpha << 24) | 0xFFFFFF);
-
-        int descAlpha = (int) (180 * alphaMultiplier);
-        Fonts.BOLD.draw(desc, tipX + 6, tipY + 15, 5f, (descAlpha << 24) | 0x9898B0);
-    }
-
-    private void renderStatsBar(float bgX, float bgY, float alphaMultiplier) {
-        int bx = Math.round(bgX);
-        int barY = Math.round(bgY + ClickGuiTheme.BG_HEIGHT + 2);
-        float barW = ClickGuiTheme.BG_WIDTH;
-        float barH = 12f;
-
-        int barAlpha = (int) (240 * alphaMultiplier);
-        Render2D.rect(bx, barY, barW, barH, (barAlpha << 24) | 0x0C0C14, 4);
-
-        int enabledCount = 0;
-        int totalCount = 0;
-        try {
-            var repo = Initialization.getInstance().getManager().getModuleRepository();
-            if (repo != null) {
-                for (var m : repo.modules()) {
-                    totalCount++;
-                    if (m.isState()) enabledCount++;
-                }
-            }
-        } catch (Exception ignored) {}
-
-        String server = "";
-        if (mc.getNetworkHandler() != null && mc.getNetworkHandler().getServerInfo() != null) {
-            server = mc.getNetworkHandler().getServerInfo().address;
-            if (server.length() > 20) server = server.substring(0, 20) + "...";
-        }
-
-        String fps = mc.getCurrentFps() + " FPS";
-
-        int textAlpha = (int) (200 * alphaMultiplier);
-        int textCol = (textAlpha << 24) | 0xB4B4C8;
-
-        Fonts.BOLD.draw(Lang.get().get("modules_count") + ": " + enabledCount + "/" + totalCount, bx + 6, barY + 2, 5f, textCol);
-
-        if (!fps.isEmpty()) {
-            Fonts.BOLD.draw(fps, bx + barW / 2 - Fonts.BOLD.getWidth(fps, 5f) / 2, barY + 2, 5f, textCol);
-        }
-
-        if (!server.isEmpty()) {
-            float serverWidth = Fonts.BOLD.getWidth(server, 5f);
-            Fonts.BOLD.draw(server, bx + barW - serverWidth - 6, barY + 2, 5f, textCol);
-        }
     }
 
     private void startActualClose() {

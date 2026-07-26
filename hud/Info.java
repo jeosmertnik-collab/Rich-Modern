@@ -20,14 +20,6 @@ public class Info extends AbstractHudElement {
     private static final double BPS_SMOOTHING = 0.05;
     private static final double DISPLAY_SMOOTHING = 0.03;
 
-    private int accentR = 100, accentG = 150, accentB = 255;
-    private void updateAccent() {
-        int c = Hud.getInstance().getAccentRGB();
-        accentR = (c >> 16) & 0xFF;
-        accentG = (c >> 8) & 0xFF;
-        accentB = c & 0xFF;
-    }
-
     public Info() {
         super("Info", 10, 0, 200, 24, false);
         startAnimation();
@@ -45,7 +37,6 @@ public class Info extends AbstractHudElement {
     public void drawDraggable(DrawContext context, int alpha) {
         if (alpha <= 0) return;
         if (mc.player == null) return;
-        updateAccent();
 
         boolean showBps = Hud.getInstance() != null && Hud.getInstance().showBps.isValue();
 
@@ -124,7 +115,7 @@ public class Info extends AbstractHudElement {
                 4);
 
         Render2D.glowOutline(x + 12, y + 3, coordsWidth, 20, 1.0f,
-                new Color(accentR, accentG, accentB, 100).getRGB(), 4, 1.0f, 3.0f);
+                new Color(100, 150, 255, 100).getRGB(), 4, 1.0f, 3.0f);
 
         float textY = y + 7;
         float textX = x + 12;
@@ -139,7 +130,7 @@ public class Info extends AbstractHudElement {
         Fonts.SFPRO_REGULAR.draw(xValue, offsetX, textY + 3, 6, new Color(220, 230, 255, 255).getRGB());
         offsetX += xValueWidth;
 
-        Fonts.TEST.draw("»", offsetX + 4, textY + 1.5f, 8, new Color(accentR, accentG, accentB, 255).getRGB());
+        Fonts.TEST.draw("»", offsetX + 4, textY + 1.5f, 8, new Color(100, 150, 255, 255).getRGB());
         offsetX += 12;
 
         Fonts.SFPRO_REGULAR.draw(yText, offsetX, textY + 3, 6, new Color(180, 190, 210, 255).getRGB());
@@ -148,7 +139,7 @@ public class Info extends AbstractHudElement {
         Fonts.SFPRO_REGULAR.draw(yValue, offsetX, textY + 3, 6, new Color(220, 230, 255, 255).getRGB());
         offsetX += yValueWidth;
 
-        Fonts.TEST.draw("»", offsetX + 4, textY + 1.5f, 8, new Color(accentR, accentG, accentB, 255).getRGB());
+        Fonts.TEST.draw("»", offsetX + 4, textY + 1.5f, 8, new Color(100, 150, 255, 255).getRGB());
         offsetX += 12;
 
         Fonts.SFPRO_REGULAR.draw(zText, offsetX, textY + 3, 6, new Color(180, 190, 210, 255).getRGB());
@@ -169,13 +160,13 @@ public class Info extends AbstractHudElement {
                     4);
 
             Render2D.glowOutline(bpsBoxX, y + 3, bpsWidth, 20, 1.0f,
-                    new Color(accentR, accentG, accentB, 100).getRGB(), 4, 1.0f, 3.0f);
+                    new Color(100, 150, 255, 100).getRGB(), 4, 1.0f, 3.0f);
 
             Fonts.CATEGORY_ICONS.draw("b", bpsBoxX + 5, textY + 2f, 9, new Color(180, 190, 210, 255).getRGB());
 
             float bpsOffsetX = bpsBoxX + 20;
 
-            Fonts.TEST.draw("»", bpsOffsetX, textY + 1.5f, 8, new Color(accentR, accentG, accentB, 255).getRGB());
+            Fonts.TEST.draw("»", bpsOffsetX, textY + 1.5f, 8, new Color(100, 150, 255, 255).getRGB());
             bpsOffsetX += 10;
 
             Fonts.SFPRO_REGULAR.draw(bpsValue, bpsOffsetX, textY + 3, 6, new Color(220, 230, 255, 255).getRGB());

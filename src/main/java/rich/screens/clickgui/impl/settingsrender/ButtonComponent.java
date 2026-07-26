@@ -2,7 +2,6 @@ package rich.screens.clickgui.impl.settingsrender;
 
 import net.minecraft.client.gui.DrawContext;
 import rich.modules.module.setting.implement.ButtonSetting;
-import rich.screens.clickgui.impl.theme.ClickGuiTheme;
 import rich.util.interfaces.AbstractSettingComponent;
 import rich.util.render.Render2D;
 import rich.util.render.font.Fonts;
@@ -13,6 +12,7 @@ public class ButtonComponent extends AbstractSettingComponent {
     private final ButtonSetting buttonSetting;
     private float pressAnimation = 0f;
     private float hoverAnimation = 0f;
+    private float scaleAnimation = 1f;
     private float rippleAnimation = 0f;
     private float rippleX = 0f;
     private float rippleY = 0f;
@@ -20,6 +20,7 @@ public class ButtonComponent extends AbstractSettingComponent {
     private boolean rippleActive = false;
 
     private long lastUpdateTime = System.currentTimeMillis();
+
     private static final float ANIMATION_SPEED = 8f;
     private static final float FAST_ANIMATION_SPEED = 12f;
     private static final float BUTTON_WIDTH = 65f;
@@ -32,41 +33,56 @@ public class ButtonComponent extends AbstractSettingComponent {
 
     private float getDeltaTime() {
         long currentTime = System.currentTimeMillis();
-        float dt = Math.min((currentTime - lastUpdateTime) / 1000f, 0.1f);
+        float deltaTime = Math.min((currentTime - lastUpdateTime) / 1000f, 0.1f);
         lastUpdateTime = currentTime;
-        return dt;
+        return deltaTime;
     }
 
     private float lerp(float current, float target, float speed) {
         float diff = target - current;
-        if (Math.abs(diff) < 0.001f) return target;
+        if (Math.abs(diff) < 0.001f) {
+            return target;
+        }
         return current + diff * Math.min(speed, 1f);
     }
 
-    private int clamp(int v) { return Math.max(0, Math.min(255, v)); }
+    private int clamp(int value) {
+        return Math.max(0, Math.min(255, value));
+    }
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         float deltaTime = getDeltaTime();
+
         boolean hovered = isButtonHover(mouseX, mouseY);
+
         hoverAnimation = lerp(hoverAnimation, hovered ? 1f : 0f, deltaTime * ANIMATION_SPEED);
+
+        float scaleTarget = wasPressed ? 0.95f : (hovered ? 1.02f : 1f);
+        scaleAnimation = lerp(scaleAnimation, scaleTarget, deltaTime * FAST_ANIMATION_SPEED);
+
         pressAnimation = lerp(pressAnimation, wasPressed ? 1f : 0f, deltaTime * FAST_ANIMATION_SPEED);
-        if (rippleActive) { rippleAnimation += deltaTime * 3f; if (rippleAnimation >= 1f) { rippleAnimation = 0f; rippleActive = false; } }
-        if (pressAnimation < 0.05f && wasPressed) wasPressed = false;
+
+        if (rippleActive) {
+            rippleAnimation += deltaTime * 3f;
+            if (rippleAnimation >= 1f) {
+                rippleAnimation = 0f;
+                rippleActive = false;
+            }
+        }
+
+        if (pressAnimation < 0.05f && wasPressed) {
+            wasPressed = false;
+        }
 
         int iconAlpha = (int)(200 * alphaMultiplier);
-        Fonts.GUI_ICONS.draw("U", x + 0.5f, y + height / 2 - 12f, 13,
-                ((iconAlpha & 0xFF) << 24) | (ClickGuiTheme.SETTINGS_DESC_ARGB & 0xFFFFFF));
+        Fonts.GUI_ICONS.draw("U", x + 0.5f, y + height / 2 - 12f, 13, new Color(210, 210, 210, iconAlpha).getRGB());
 
-        int nameAlpha = (int)(220 * alphaMultiplier);
-        Fonts.BOLD.draw(buttonSetting.getName(), x + 9.5f, y + height / 2 - 7.5f, 6,
-                ((nameAlpha & 0xFF) << 24) | (ClickGuiTheme.SETTINGS_TITLE_ARGB & 0xFFFFFF));
+        Fonts.BOLD.draw(buttonSetting.getName(), x + 9.5f, y + height / 2 - 7.5f, 6, applyAlpha(new Color(210, 210, 220, 200)).getRGB());
 
         String description = buttonSetting.getDescription();
         if (description != null && !description.isEmpty()) {
-            int descAlpha = (int)(120 * alphaMultiplier);
-            Fonts.BOLD.draw(description, x + 0.5f, y + height / 2 + 0.5f, 5,
-                    ((descAlpha & 0xFF) << 24) | (ClickGuiTheme.SETTINGS_DESC_ARGB & 0xFFFFFF));
+            Fonts.BOLD.draw(description, x + 0.5f, y + height / 2 + 0.5f, 5, applyAlpha(new Color(128, 128, 128, 128)).getRGB());
         }
 
         renderButton(mouseX, mouseY);
@@ -75,50 +91,84 @@ public class ButtonComponent extends AbstractSettingComponent {
     private void renderButton(int mouseX, int mouseY) {
         float buttonX = x + width - BUTTON_WIDTH - 2;
         float buttonY = y + height / 2 - BUTTON_HEIGHT / 2;
+
+        float scaledWidth = BUTTON_WIDTH * scaleAnimation;
+        float scaledHeight = BUTTON_HEIGHT * scaleAnimation;
+        float scaledX = buttonX - (scaledWidth - BUTTON_WIDTH) / 2;
+        float scaledY = buttonY - (scaledHeight - BUTTON_HEIGHT) / 2;
+
         float pressOffset = pressAnimation * 1f;
-        float btnY = buttonY + pressOffset;
+        scaledY += pressOffset;
 
-        int aR = (ClickGuiTheme.ACCENT_ARGB >> 16) & 0xFF;
-        int aG = (ClickGuiTheme.ACCENT_ARGB >> 8) & 0xFF;
-        int aB = ClickGuiTheme.ACCENT_ARGB & 0xFF;
+        int bgAlpha = clamp((int)((30 + hoverAnimation * 20 + pressAnimation * 15) * alphaMultiplier));
+        int bgGray = clamp((int)(35 + hoverAnimation * 15 + pressAnimation * 20));
+        Color bgColor = new Color(bgGray, bgGray, bgGray, bgAlpha);
 
-        int bgAlpha = clamp((int) ((25 + hoverAnimation * 20 + pressAnimation * 15) * alphaMultiplier));
-        int bgCol;
-        if (hoverAnimation > 0.01f) {
-            bgCol = new Color(
-                    clamp((int)(aR * 0.3f + hoverAnimation * aR * 0.3f)),
-                    clamp((int)(aG * 0.3f + hoverAnimation * aG * 0.3f)),
-                    clamp((int)(aB * 0.3f + hoverAnimation * aB * 0.3f)),
-                    bgAlpha
-            ).getRGB();
-        } else {
-            bgCol = ((bgAlpha & 0xFF) << 24) | (ClickGuiTheme.PANEL_BORDER_LIGHT_ARGB & 0xFFFFFF);
-        }
-        Render2D.rect(buttonX, btnY, BUTTON_WIDTH, BUTTON_HEIGHT, bgCol, 4f);
+        Render2D.rect(scaledX, scaledY, scaledWidth, scaledHeight, bgColor.getRGB(), 4f);
 
         if (rippleActive && rippleAnimation > 0) {
             float currentRippleSize = 20 * rippleAnimation;
             float rippleAlpha = (1f - rippleAnimation) * 0.4f;
+
             int rippleAlphaInt = clamp((int)(255 * rippleAlpha * alphaMultiplier));
-            float localRippleX = rippleX - buttonX;
-            float localRippleY = rippleY - btnY;
-            Render2D.rect(buttonX + localRippleX - currentRippleSize / 2, btnY + localRippleY - currentRippleSize / 2,
+
+            float localRippleX = rippleX - scaledX;
+            float localRippleY = rippleY - scaledY;
+
+            Render2D.rect(
+                    scaledX + localRippleX - currentRippleSize / 2,
+                    scaledY + localRippleY - currentRippleSize / 2,
                     currentRippleSize, currentRippleSize,
-                    new Color(aR, aG, aB, rippleAlphaInt).getRGB(), currentRippleSize / 2);
+                    new Color(200, 200, 210, rippleAlphaInt).getRGB(),
+                    currentRippleSize / 2
+            );
         }
 
-        int outlineAlpha = clamp((int) ((50 + hoverAnimation * 60 + pressAnimation * 40) * alphaMultiplier));
-        Render2D.outline(buttonX, btnY, BUTTON_WIDTH, BUTTON_HEIGHT, 0.5f,
-                new Color(aR, aG, aB, outlineAlpha).getRGB(), 4f);
+        int outlineAlpha = clamp((int)((60 + hoverAnimation * 60 + pressAnimation * 40) * alphaMultiplier));
+        int outlineGray = clamp((int)(80 + hoverAnimation * 40 + pressAnimation * 30));
+        Color outlineColor = new Color(outlineGray, outlineGray, outlineGray, outlineAlpha);
+        Render2D.outline(scaledX, scaledY, scaledWidth, scaledHeight, 0.5f, outlineColor.getRGB(), 4f);
 
+        renderButtonContent(scaledX, scaledY, scaledWidth, scaledHeight);
+    }
+
+    private void renderButtonContent(float buttonX, float buttonY, float buttonWidth, float buttonHeight) {
         String buttonText = buttonSetting.getButtonName() != null ? buttonSetting.getButtonName() : "Run";
+
+        float iconSize = 4f;
         float textWidth = Fonts.BOLD.getWidth(buttonText, 5);
-        float textX = buttonX + (BUTTON_WIDTH - textWidth) / 2;
-        float textY = btnY + BUTTON_HEIGHT / 2 - 3f;
-        int textAlpha = clamp((int) ((180 + hoverAnimation * 50) * alphaMultiplier));
-        Render2D.rect(textX - 5, textY + 1, 3, 3, new Color(aR, aG, aB, (int)(textAlpha * 0.6f)).getRGB(), 1f);
-        Fonts.BOLD.draw(buttonText, textX, textY, 5,
-                new Color(255, 255, 255, textAlpha).getRGB());
+        float totalWidth = iconSize + 4f + textWidth;
+        float startX = buttonX + (buttonWidth - totalWidth) / 2;
+
+        float iconX = startX;
+        float iconY = buttonY + buttonHeight / 2 - iconSize / 2;
+
+        renderPlayIcon(iconX - 5, iconY, iconSize);
+
+        float textX = startX + iconSize;
+        float textY = buttonY + buttonHeight / 2 - 3f;
+
+        int textAlpha = clamp((int)((180 + hoverAnimation * 50 + pressAnimation * 25) * alphaMultiplier));
+        int textGray = clamp((int)(180 + hoverAnimation * 40 + pressAnimation * 30));
+        Color textColor = new Color(textGray, textGray, textGray, textAlpha);
+
+        Fonts.BOLD.draw(buttonText, textX, textY, 5, textColor.getRGB());
+    }
+
+    private void renderPlayIcon(float iconX, float iconY, float size) {
+        int iconAlpha = clamp((int)((160 + hoverAnimation * 60 + pressAnimation * 35) * alphaMultiplier));
+        int iconGray = clamp((int)(170 + hoverAnimation * 50 + pressAnimation * 30));
+        Color iconColor = new Color(iconGray, iconGray, iconGray, iconAlpha);
+
+        float triangleWidth = size * 0.8f;
+        float triangleHeight = size;
+
+        Render2D.rect(iconX, iconY, triangleWidth * 0.4f, triangleHeight, iconColor.getRGB(), 1f);
+
+        float dotSize = size * 0.35f;
+        float dotX = iconX + triangleWidth * 0.5f;
+        float dotY = iconY + (triangleHeight - dotSize) / 2;
+        Render2D.rect(dotX, dotY, dotSize, dotSize, iconColor.getRGB(), dotSize / 2);
     }
 
     private boolean isButtonHover(double mouseX, double mouseY) {
@@ -131,20 +181,25 @@ public class ButtonComponent extends AbstractSettingComponent {
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (isButtonHover(mouseX, mouseY) && button == 0) {
-            if (buttonSetting.getRunnable() != null) buttonSetting.getRunnable().run();
+            if (buttonSetting.getRunnable() != null) {
+                buttonSetting.getRunnable().run();
+            }
             wasPressed = true;
             pressAnimation = 1f;
+
             rippleActive = true;
             rippleAnimation = 0f;
             rippleX = (float) mouseX;
             rippleY = (float) mouseY;
+
             return true;
         }
         return false;
     }
 
     @Override
-    public void tick() {}
+    public void tick() {
+    }
 
     @Override
     public boolean isHover(double mouseX, double mouseY) {

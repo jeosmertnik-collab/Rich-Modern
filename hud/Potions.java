@@ -8,7 +8,6 @@ import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.util.Identifier;
 import rich.client.draggables.AbstractHudElement;
-import rich.modules.impl.render.Hud;
 import rich.util.animations.Direction;
 import rich.util.render.Render2D;
 import rich.util.render.shader.Scissor;
@@ -24,14 +23,6 @@ public class Potions extends AbstractHudElement {
     private Map<String, Float> effectAnimations = new LinkedHashMap<>();
     private Map<String, StatusEffectInstance> cachedEffects = new LinkedHashMap<>();
     private Set<String> activeEffectIds = new HashSet<>();
-
-    private int accentR = 100, accentG = 150, accentB = 255;
-    private void updateAccent() {
-        int c = Hud.getInstance().getAccentRGB();
-        accentR = (c >> 16) & 0xFF;
-        accentG = (c >> 8) & 0xFF;
-        accentB = c & 0xFF;
-    }
 
     private float animatedWidth = 80;
     private float animatedHeight = 23;
@@ -174,7 +165,6 @@ public class Potions extends AbstractHudElement {
 
     @Override
     public void drawDraggable(DrawContext context, int alpha) {
-        updateAccent();
         if (alpha <= 0) return;
 
         float alphaFactor = alpha / 255.0f;
@@ -272,7 +262,7 @@ public class Potions extends AbstractHudElement {
                     },
                     4);
             Render2D.glowOutline(x, y, getWidth(), contentHeight, 1.0f,
-                    new Color(accentR, accentG, accentB, (int)(bgAlpha * 0.4f)).getRGB(), 4, 1.0f, 3.0f);
+                    new Color(100, 150, 255, (int)(bgAlpha * 0.4f)).getRGB(), 4, 1.0f, 3.0f);
         }
 
         Scissor.enable(x, y, getWidth(), contentHeight, 2);
@@ -292,7 +282,7 @@ public class Potions extends AbstractHudElement {
                 4);
 
         Fonts.HUD_ICONS.draw("f", x + getWidth() - countTextWidth - potionsTextWidth + 5, y + 6, 10,
-                new Color(accentR, accentG, accentB, bgAlpha).getRGB());
+                new Color(100, 150, 255, bgAlpha).getRGB());
 
         Fonts.SFPRO_REGULAR.draw("Potions", x + 8, y + 6.5f, 6, new Color(220, 230, 255, bgAlpha).getRGB());
 
@@ -316,7 +306,7 @@ public class Potions extends AbstractHudElement {
                     4);
 
             Render2D.outline(timerBoxX, y + moduleOffset - 2f, timerWidth + 4, 9, 0.3f,
-                    new Color(accentR, accentG, accentB, (int)(120 * alphaFactor)).getRGB(), 3);
+                    new Color(100, 150, 255, (int)(120 * alphaFactor)).getRGB(), 3);
 
             Identifier randomTexture = getRandomEffectTexture();
             float scale = ICON_SIZE / 18f;
@@ -339,7 +329,7 @@ public class Potions extends AbstractHudElement {
                     new Color(180, 190, 210, bgAlpha).getRGB());
 
             Fonts.SFPRO_REGULAR.draw(timer, timerBoxX + 2, y + moduleOffset - 1, 6,
-                    new Color(accentR, accentG, accentB, bgAlpha).getRGB());
+                    new Color(100, 150, 255, bgAlpha).getRGB());
         } else if (hasAnimatingEffects) {
             for (Map.Entry<String, Float> entry : effectAnimations.entrySet()) {
                 String id = entry.getKey();
@@ -363,7 +353,7 @@ public class Potions extends AbstractHudElement {
 
                 int textColor = new Color(220, 230, 255, blinkAlpha).getRGB();
                 int levelColor = new Color(180, 190, 210, blinkAlpha).getRGB();
-                int timerColor = new Color(accentR, accentG, accentB, blinkAlpha).getRGB();
+                int timerColor = new Color(100, 150, 255, blinkAlpha).getRGB();
 
                 float timerBoxX = x + getWidth() - timerWidth - 11.5f;
 
@@ -377,7 +367,7 @@ public class Potions extends AbstractHudElement {
                         4);
 
                 Render2D.outline(timerBoxX, y + moduleOffset - 2f, timerWidth + 4, 9, 0.3f,
-                        new Color(accentR, accentG, accentB, (int)(blinkAlpha * 0.6f)).getRGB(), 3);
+                        new Color(100, 150, 255, (int)(blinkAlpha * 0.6f)).getRGB(), 3);
 
                 Identifier effectTexture = getEffectTexture(effect.getEffectType());
                 float scale = ICON_SIZE / 18f;

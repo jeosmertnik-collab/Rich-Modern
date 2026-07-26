@@ -8,7 +8,6 @@ import net.minecraft.scoreboard.Scoreboard;
 import net.minecraft.scoreboard.Team;
 import net.minecraft.util.Identifier;
 import rich.client.draggables.AbstractHudElement;
-import rich.modules.impl.render.Hud;
 import rich.util.ColorUtil;
 import rich.util.animations.Direction;
 import rich.util.render.Render2D;
@@ -51,14 +50,6 @@ public class Staff extends AbstractHudElement {
     private static final float ANIMATION_SPEED = 6.0f;
     private static final float FACE_SIZE = 8f;
     private static final float CIRCLE_SIZE = 5f;
-
-    private int accentR = 100, accentG = 150, accentB = 255;
-    private void updateAccent() {
-        int c = Hud.getInstance().getAccentRGB();
-        accentR = (c >> 16) & 0xFF;
-        accentG = (c >> 8) & 0xFF;
-        accentB = c & 0xFF;
-    }
 
     public Staff() {
         super("Staff", 300, 150, 80, 23, true);
@@ -188,7 +179,6 @@ public class Staff extends AbstractHudElement {
     @Override
     public void drawDraggable(DrawContext context, int alpha) {
         if (alpha <= 0) return;
-        updateAccent();
 
         float alphaFactor = alpha / 255.0f;
 
@@ -278,7 +268,7 @@ public class Staff extends AbstractHudElement {
                     },
                     4);
             Render2D.glowOutline(x, y, getWidth(), contentHeight, 1.0f,
-                    new Color(accentR, accentG, accentB, (int)(bgAlpha * 0.4f)).getRGB(), 4, 1.0f, 3.0f);
+                    new Color(100, 150, 255, (int)(bgAlpha * 0.4f)).getRGB(), 4, 1.0f, 3.0f);
         }
 
         Scissor.enable(x, y, getWidth(), contentHeight, 2);
@@ -293,7 +283,7 @@ public class Staff extends AbstractHudElement {
                 4);
 
         Fonts.ICONS.draw("E", x + getWidth() - 15.5f, y + 7.5f, 8,
-                new Color(accentR, accentG, accentB, bgAlpha).getRGB());
+                new Color(100, 150, 255, bgAlpha).getRGB());
         Fonts.SFPRO_REGULAR.draw("Staff", x + 8, y + 6.5f, 6, new Color(220, 230, 255, bgAlpha).getRGB());
 
         int moduleOffset = 23;
@@ -376,7 +366,7 @@ public class Staff extends AbstractHudElement {
                 4);
 
         Render2D.outline(circleX - 3, circleY - 2, 11, 9, 0.3f,
-                new Color(accentR, accentG, accentB, (int)(alpha * 0.6f)).getRGB(), 3);
+                new Color(100, 150, 255, (int)(alpha * 0.6f)).getRGB(), 3);
         Render2D.rect(circleX, circleY, CIRCLE_SIZE, CIRCLE_SIZE,
                 new Color(255, 100, 100, alpha).getRGB(), CIRCLE_SIZE / 2f);
     }

@@ -10,7 +10,6 @@ import rich.util.render.Render2D;
 import rich.util.render.shader.Scissor;
 import rich.util.render.font.Fonts;
 import rich.util.string.KeyHelper;
-import rich.modules.impl.render.Hud;
 
 import java.awt.*;
 import java.util.ArrayList;
@@ -28,14 +27,6 @@ public class HotKeys extends AbstractHudElement {
     private long lastUpdateTime = System.currentTimeMillis();
 
     private static final float ANIMATION_SPEED = 6.0f;
-
-    private int accentR = 100, accentG = 150, accentB = 255;
-    private void updateAccent() {
-        int c = Hud.getInstance().getAccentRGB();
-        accentR = (c >> 16) & 0xFF;
-        accentG = (c >> 8) & 0xFF;
-        accentB = c & 0xFF;
-    }
 
     public HotKeys() {
         super("HotKeys", 300, 40, 80, 23, true);
@@ -86,7 +77,6 @@ public class HotKeys extends AbstractHudElement {
 
     @Override
     public void drawDraggable(DrawContext context, int alpha) {
-        updateAccent();
         if (alpha <= 0) return;
 
         float alphaFactor = alpha / 255.0f;
@@ -153,7 +143,7 @@ public class HotKeys extends AbstractHudElement {
                     },
                     4);
             Render2D.glowOutline(x, y, getWidth(), contentHeight, 1.0f,
-                    new Color(accentR, accentG, accentB, (int)(bgAlpha * 0.4f)).getRGB(), 4, 1.0f, 3.0f);
+                    new Color(100, 150, 255, (int)(bgAlpha * 0.4f)).getRGB(), 4, 1.0f, 3.0f);
         }
 
         Scissor.enable(x, y, getWidth(), contentHeight,2);
@@ -173,7 +163,7 @@ public class HotKeys extends AbstractHudElement {
                 4);
 
         Fonts.HUD_ICONS.draw("g", x + getWidth() - countTextWidth - activeTextWidth + 4, y + 6, 10,
-                new Color(accentR, accentG, accentB, bgAlpha).getRGB());
+                new Color(100, 150, 255, bgAlpha).getRGB());
 
         Fonts.SFPRO_REGULAR.draw("Binds", x + 8, y + 6.5f, 6, new Color(220, 230, 255, bgAlpha).getRGB());
 
@@ -197,14 +187,14 @@ public class HotKeys extends AbstractHudElement {
                     4);
 
             Render2D.outline(bindBoxX, y + moduleOffset - 2f, bindWidth + 4, 9, 0.3f,
-                    new Color(accentR, accentG, accentB, (int)(120 * alphaFactor)).getRGB(), 3);
+                    new Color(100, 150, 255, (int)(120 * alphaFactor)).getRGB(), 3);
 
             Render2D.rect(x + 8, y + moduleOffset - 1, 1f, 7,
-                    new Color(accentR, accentG, accentB, (int) (180 * alphaFactor)).getRGB(), 1);
+                    new Color(100, 150, 255, (int) (180 * alphaFactor)).getRGB(), 1);
             Fonts.SFPRO_REGULAR.draw(name, x + 13, y + moduleOffset - 1.5f, 6,
                     new Color(220, 230, 255, bgAlpha).getRGB());
             Fonts.SFPRO_REGULAR.draw(bind, bindBoxX + 2, y + moduleOffset - 1, 6,
-                    new Color(accentR, accentG, accentB, bgAlpha).getRGB());
+                    new Color(100, 150, 255, bgAlpha).getRGB());
         } else {
             for (ModuleStructure module : keysList) {
                 String bind = "[" + KeyHelper.getKeyName(module.getKey()) + "]";
@@ -212,8 +202,8 @@ public class HotKeys extends AbstractHudElement {
                 float bindWidth = Fonts.SFPRO_REGULAR.getWidth(bind, 6);
 
                 int textColor = new Color(220, 230, 255, bgAlpha).getRGB();
-                int accentColor = new Color(accentR, accentG, accentB, bgAlpha).getRGB();
-                int separatorColor = new Color(accentR, accentG, accentB, (int) (180 * alphaFactor)).getRGB();
+                int accentColor = new Color(100, 150, 255, bgAlpha).getRGB();
+                int separatorColor = new Color(100, 150, 255, (int) (180 * alphaFactor)).getRGB();
 
                 float bindBoxX = x + getWidth() - bindWidth - 11.5f;
 
@@ -227,7 +217,7 @@ public class HotKeys extends AbstractHudElement {
                         4);
 
                 Render2D.outline(bindBoxX, y + moduleOffset - 2f, bindWidth + 4, 9, 0.3f,
-                        new Color(accentR, accentG, accentB, (int)(120 * alphaFactor)).getRGB(), 3);
+                        new Color(100, 150, 255, (int)(120 * alphaFactor)).getRGB(), 3);
 
                 Render2D.rect(x + 8, y + moduleOffset - 1, 1f, 7, separatorColor, 1);
                 Fonts.SFPRO_REGULAR.draw(module.getName(), x + 13, y + moduleOffset - 1.5f, 6, textColor);

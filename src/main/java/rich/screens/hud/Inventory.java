@@ -3,8 +3,10 @@ package rich.screens.hud;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.item.ItemStack;
 import rich.client.draggables.AbstractHudElement;
+import rich.modules.impl.render.Hud;
 import rich.util.animations.Direction;
 import rich.util.render.Render2D;
+import rich.util.render.font.Fonts;
 import rich.util.render.item.ItemRender;
 
 import java.awt.*;
@@ -13,12 +15,18 @@ import java.util.List;
 
 public class Inventory extends AbstractHudElement {
 
-    private static final int SLOT_SIZE = 12;
+    private static final int SLOT_SIZE = 10;
     private static final int SLOTS_PER_ROW = 9;
     private static final int INVENTORY_ROWS = 3;
-    private static final float ITEM_SCALE = 0.5f;
+    private static final float ITEM_SCALE = 0.4f;
 
-    private int filledSlots = 0;
+    private int accentR = 100, accentG = 150, accentB = 255;
+    private void updateAccent() {
+        int c = Hud.getInstance().getAccentRGB();
+        accentR = (c >> 16) & 0xFF;
+        accentG = (c >> 8) & 0xFF;
+        accentB = c & 0xFF;
+    }
 
     public Inventory() {
         super("Inventory", 20, 60, 200, 80, true);
@@ -32,32 +40,12 @@ public class Inventory extends AbstractHudElement {
 
     @Override
     public void tick() {
-        if (mc.player == null) {
-            filledSlots = 0;
-            stopAnimation();
-            return;
-        }
-
-        filledSlots = 0;
-        for (int i = 9; i < 36; i++) {
-            ItemStack stack = mc.player.getInventory().getStack(i);
-            if (!stack.isEmpty()) {
-                filledSlots++;
-            }
-        }
-
-        boolean hasItems = filledSlots > 0;
-        boolean inChat = isChat(mc.currentScreen);
-
-        if (hasItems || inChat) {
-            startAnimation();
-        } else {
-            stopAnimation();
-        }
+        startAnimation();
     }
 
     @Override
     public void drawDraggable(DrawContext context, int alpha) {
+        updateAccent();
         if (alpha <= 0) return;
         if (mc.player == null) return;
 
@@ -66,35 +54,38 @@ public class Inventory extends AbstractHudElement {
         float x = getX();
         float y = getY();
 
-        float padding = 6;
+        float padding = 5;
         float slotGap = 1;
+        float headerHeight = 16;
 
         float slotsWidth = SLOTS_PER_ROW * SLOT_SIZE + (SLOTS_PER_ROW - 1) * slotGap;
         float slotsHeight = INVENTORY_ROWS * SLOT_SIZE + (INVENTORY_ROWS - 1) * slotGap;
 
-        float contentWidth = slotsWidth + padding * 2;
-        float contentHeight = slotsHeight + padding * 2;
+        float contentWidth = Math.max(slotsWidth + padding * 2, 100);
+        float totalHeight = headerHeight + slotsHeight + padding * 2 + 4;
 
         setWidth((int) contentWidth);
-        setHeight((int) (contentHeight + 4));
+        setHeight((int) totalHeight);
 
-        float contentY = y;
+        int bgAlpha = (int) (120 * alphaFactor);
 
-        int bgAlpha = (int) (255 * alphaFactor);
-
-        Render2D.gradientRect(x + 2, contentY + 2, contentWidth - 4, contentHeight - 4,
+        Render2D.gradientRect(x, y, getWidth(), totalHeight,
                 new int[]{
-                        new Color(52, 52, 52, bgAlpha).getRGB(),
-                        new Color(32, 32, 32, bgAlpha).getRGB(),
-                        new Color(52, 52, 52, bgAlpha).getRGB(),
-                        new Color(32, 32, 32, bgAlpha).getRGB()
+                        new Color(25, 30, 40, bgAlpha).getRGB(),
+                        new Color(15, 20, 30, bgAlpha).getRGB(),
+                        new Color(25, 30, 40, bgAlpha).getRGB(),
+                        new Color(15, 20, 30, bgAlpha).getRGB()
                 },
-                5);
+                4);
 
-        Render2D.outline(x + 2, contentY + 2, contentWidth - 4, contentHeight - 4, 0.35f, new Color(90, 90, 90, bgAlpha).getRGB(), 5);
+        Render2D.glowOutline(x, y, getWidth(), totalHeight, 1.0f,
+                new Color(accentR, accentG, accentB, (int)(80 * alphaFactor)).getRGB(), 4, 1.0f, 3.0f);
 
-        float slotsStartX = x + padding;
-        float slotsStartY = contentY + padding;
+        Fonts.SFPRO_REGULAR.draw("Inventory", x + 8, y + 4, 5,
+                new Color(220, 230, 255, (int)(255 * alphaFactor)).getRGB());
+
+        float slotsStartX = x + (getWidth() - slotsWidth) / 2f;
+        float slotsStartY = y + headerHeight + padding;
 
         List<CountLabel> countLabels = new ArrayList<>();
 
@@ -107,7 +98,10 @@ public class Inventory extends AbstractHudElement {
 
                 ItemStack stack = mc.player.getInventory().getStack(slotIndex);
 
-                Render2D.rect(slotX, slotY, SLOT_SIZE, SLOT_SIZE, new Color(28, 28, 28, bgAlpha).getRGB(), 2);
+                Render2D.rect(slotX, slotY, SLOT_SIZE, SLOT_SIZE,
+                        new Color(20, 25, 35, (int)(200 * alphaFactor)).getRGB(), 1.5f);
+                Render2D.outline(slotX, slotY, SLOT_SIZE, SLOT_SIZE, 0.3f,
+                        new Color(accentR, accentG, accentB, (int)(30 * alphaFactor)).getRGB(), 1.5f);
 
                 if (!stack.isEmpty()) {
                     float itemSize = 16 * ITEM_SCALE;
@@ -129,15 +123,14 @@ public class Inventory extends AbstractHudElement {
         }
 
         int textAlpha = (int) (255 * alphaFactor);
-        int textColor = (textAlpha << 24) | 0xFFFFFF;
 
         for (CountLabel label : countLabels) {
             String countText = String.valueOf(label.count);
             int textWidth = mc.textRenderer.getWidth(countText);
-            int textX = (int) (label.slotX + SLOT_SIZE - textWidth);
+            int textX = (int) (label.slotX + SLOT_SIZE - textWidth - 1);
             int textY = (int) (label.slotY + SLOT_SIZE - mc.textRenderer.fontHeight + 1);
 
-            context.drawText(mc.textRenderer, countText, textX, textY, textColor, true);
+            context.drawText(mc.textRenderer, countText, textX, textY, (textAlpha << 24) | 0xFFFFFF, true);
         }
     }
 

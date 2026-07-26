@@ -4,18 +4,15 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.render.entity.EntityRenderer;
 import net.minecraft.client.render.entity.LivingEntityRenderer;
 import net.minecraft.client.render.entity.state.LivingEntityRenderState;
-import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.LivingEntity;
-import net.minecraft.item.ItemStack;
 import net.minecraft.util.Identifier;
 import rich.client.draggables.AbstractHudElement;
 import rich.modules.impl.combat.Aura;
-import rich.modules.impl.render.Hud;
 import rich.util.ColorUtil;
 import rich.util.network.Network;
 import rich.util.render.Render2D;
 import rich.util.render.font.Fonts;
-import rich.util.render.item.ItemRender;
+import rich.util.string.PlayerInteractionHelper;
 import rich.util.timer.StopWatch;
 
 import java.awt.*;
@@ -32,13 +29,8 @@ public class TargetHud extends AbstractHudElement {
     private long lastUpdateTime = System.currentTimeMillis();
     private long startTime = System.currentTimeMillis();
 
-    private static final float ITEM_SCALE = 0.45f;
-    private static final float ICON_SIZE = 10f;
-    private static final float SLOT_SIZE = 11f;
-    private static final float SLOT_GAP = 2f;
-
     public TargetHud() {
-        super("TargetHud", 10, 80, 160, 60, true);
+        super("TargetHud", 10, 80, 112, 40, true);
     }
 
     @Override
@@ -60,13 +52,6 @@ public class TargetHud extends AbstractHudElement {
         } else if (stopWatch.finished(10)) {
             stopAnimation();
         }
-    }
-
-    private int getAccentRGB() {
-        if (Hud.getInstance() != null) {
-            return Hud.getInstance().getAccentRGB();
-        }
-        return 0x6496FF;
     }
 
     private float lerp(float current, float target, float deltaTime, float speed) {
@@ -117,36 +102,20 @@ public class TargetHud extends AbstractHudElement {
         float x = getX();
         float y = getY();
 
-        int accentRGB = getAccentRGB();
-        float faceSize = 24;
-        float faceX = x + 7;
-        float contentX = faceX + faceSize + 6;
-        float nameY = y + 11;
-
-        boolean hasItems = lastTarget instanceof net.minecraft.entity.player.PlayerEntity;
-        int extraRows = hasItems ? 1 : 0;
-
-        float totalWidth = 160;
-        float totalHeight = hasItems ? 62 : 42;
-
-        setWidth((int) totalWidth);
-        setHeight((int) totalHeight);
+        setWidth(112);
+        setHeight(40);
 
         float scaleAlpha = scaleAnimation.getOutput().floatValue();
 
-        drawBackground(x, y, totalWidth, totalHeight, scaleAlpha, accentRGB);
+        drawBackground(x, y, scaleAlpha);
         drawFace(x, y, scaleAlpha);
-        drawContent(x, y, scaleAlpha, deltaTime, contentX, nameY, totalWidth);
-
-        if (hasItems) {
-            drawItems(context, x, y, totalWidth, totalHeight, scaleAlpha, accentRGB);
-        }
+        drawContent(x, y, scaleAlpha, deltaTime);
     }
 
-    private void drawBackground(float x, float y, float w, float h, float alpha, int accentRGB) {
+    private void drawBackground(float x, float y, float alpha) {
         int alphaInt = (int) (120 * alpha);
 
-        Render2D.gradientRect(x, y, w, h,
+        Render2D.gradientRect(x, y, getWidth(), getHeight(),
                 new int[]{
                         new Color(25, 30, 40, alphaInt).getRGB(),
                         new Color(15, 20, 30, alphaInt).getRGB(),
@@ -155,8 +124,11 @@ public class TargetHud extends AbstractHudElement {
                 },
                 4);
 
-        Render2D.glowOutline(x, y, w, h, 1.0f,
-                new Color(accentRGB >> 16 & 0xFF, accentRGB >> 8 & 0xFF, accentRGB & 0xFF, (int)(100 * alpha)).getRGB(), 4, 1.0f, 3.0f);
+        Render2D.glowOutline(x, y, getWidth(), getHeight(), 1.0f,
+                new Color(100, 150, 255, (int)(100 * alpha)).getRGB(), 4, 1.0f, 3.0f);
+
+        int blurTint = ColorUtil.rgba(0, 0, 0, 0);
+        Render2D.blur(x, y, 1, 1, 0f, 7, blurTint);
     }
 
     private void drawFace(float x, float y, float alpha) {
@@ -203,8 +175,11 @@ public class TargetHud extends AbstractHudElement {
                 hatU0, hatV0, hatU1, hatV1, color, 0f, 4f);
     }
 
-    private void drawContent(float x, float y, float alpha, float deltaTime, float contentX, float nameY, float totalWidth) {
-        int accentRGB = getAccentRGB();
+    private void drawContent(float x, float y, float alpha, float deltaTime) {
+        float faceSize = 24;
+        float faceX = x + 7;
+        float contentX = faceX + faceSize + 6;
+        float nameY = y + 11;
 
         float hp = getHealth(lastTarget);
         float maxHp = lastTarget.getMaxHealth();
@@ -230,7 +205,7 @@ public class TargetHud extends AbstractHudElement {
                 new Color(220, 230, 255, (int) (255 * alpha)).getRGB());
 
         int hpColor = new Color(180, 190, 210, (int) (255 * alpha)).getRGB();
-        Fonts.SFPRO_REGULAR.draw(hpStr, x + totalWidth - 10 - hpWidth, nameY, 5.5f, hpColor);
+        Fonts.SFPRO_REGULAR.draw(hpStr, x + getWidth() - 10 - hpWidth, nameY, 5.5f, hpColor);
 
         float targetHealth;
         if (isInvisible) {
@@ -255,7 +230,7 @@ public class TargetHud extends AbstractHudElement {
 
         float barX = contentX;
         float barY = nameY + 12f;
-        float barWidth = totalWidth - contentX - 10;
+        float barWidth = 64;
         float barHeight = 4;
         float barRadius = 2;
 
@@ -280,16 +255,11 @@ public class TargetHud extends AbstractHudElement {
                 float charWave = (float) Math.sin(wavePhase - i * 1.5f);
                 float waveFactor = (charWave + 1f) / 2f;
 
-                int cr = (accentRGB >> 16) & 0xFF;
-                int cg = (accentRGB >> 8) & 0xFF;
-                int cb = accentRGB & 0xFF;
+                int baseValue = (int) (100 + 120 * waveFactor);
+                int blueValue = (int) (150 + 105 * waveFactor);
 
-                int r = (int) (cr * (0.5f + 0.5f * waveFactor));
-                int g = (int) (cg * (0.5f + 0.5f * waveFactor));
-                int b = (int) (cb * (0.5f + 0.5f * waveFactor));
-
-                colors[i * 2] = new Color(r, g, b, (int) (255 * alpha)).getRGB();
-                colors[i * 2 + 1] = new Color(r, g, b, (int) (255 * alpha)).getRGB();
+                colors[i * 2] = new Color(baseValue, baseValue + 20, blueValue, (int) (255 * alpha)).getRGB();
+                colors[i * 2 + 1] = new Color(baseValue, baseValue + 20, blueValue, (int) (255 * alpha)).getRGB();
             }
 
             Render2D.gradientRect(barX, barY, barWidth * healthPercent, barHeight, colors, barRadius);
@@ -315,69 +285,6 @@ public class TargetHud extends AbstractHudElement {
             }
 
             Render2D.gradientRect(barX, barY, barWidth * absorptionPercent, barHeight, goldColors, barRadius);
-        }
-    }
-
-    private void drawItems(DrawContext context, float x, float y, float totalWidth, float totalHeight, float alpha, int accentRGB) {
-        if (!(lastTarget instanceof net.minecraft.entity.player.PlayerEntity player)) return;
-
-        float itemsY = y + totalHeight - SLOT_SIZE - 5;
-        float itemsX = x + 7;
-
-        EquipmentSlot[] armorSlots = {
-                EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET
-        };
-
-        int slotColor = new Color(20, 25, 35, (int)(180 * alpha)).getRGB();
-        int outlineColor = new Color(accentRGB >> 16 & 0xFF, accentRGB >> 8 & 0xFF, accentRGB & 0xFF, (int)(60 * alpha)).getRGB();
-
-        for (int i = 0; i < armorSlots.length; i++) {
-            float slotX = itemsX + i * (SLOT_SIZE + SLOT_GAP);
-            ItemStack stack = player.getEquippedStack(armorSlots[i]);
-
-            Render2D.rect(slotX, itemsY, SLOT_SIZE, SLOT_SIZE, slotColor, 2);
-            Render2D.outline(slotX, itemsY, SLOT_SIZE, SLOT_SIZE, 0.3f, outlineColor, 2);
-
-            if (!stack.isEmpty()) {
-                float itemSize = 16 * ITEM_SCALE;
-                float itemX = slotX + (SLOT_SIZE - itemSize) / 2;
-                float itemY = itemsY + (SLOT_SIZE - itemSize) / 2;
-                if (ItemRender.needsContextRender(stack)) {
-                    ItemRender.drawItemWithContext(context, stack, itemX, itemY, ITEM_SCALE, alpha);
-                } else {
-                    ItemRender.drawItem(stack, itemX, itemY, ITEM_SCALE, alpha);
-                }
-            }
-        }
-
-        float mainHandX = itemsX + 4 * (SLOT_SIZE + SLOT_GAP) + 6;
-        ItemStack mainHand = player.getMainHandStack();
-        Render2D.rect(mainHandX, itemsY, SLOT_SIZE + 4, SLOT_SIZE, slotColor, 2);
-        Render2D.outline(mainHandX, itemsY, SLOT_SIZE + 4, SLOT_SIZE, 0.3f, outlineColor, 2);
-        if (!mainHand.isEmpty()) {
-            float itemSize = 16 * ITEM_SCALE;
-            float itemX = mainHandX + (SLOT_SIZE + 4 - itemSize) / 2;
-            float itemY = itemsY + (SLOT_SIZE - itemSize) / 2;
-            if (ItemRender.needsContextRender(mainHand)) {
-                ItemRender.drawItemWithContext(context, mainHand, itemX, itemY, ITEM_SCALE, alpha);
-            } else {
-                ItemRender.drawItem(mainHand, itemX, itemY, ITEM_SCALE, alpha);
-            }
-        }
-
-        float offHandX = mainHandX + SLOT_SIZE + 10;
-        ItemStack offHand = player.getOffHandStack();
-        Render2D.rect(offHandX, itemsY, SLOT_SIZE, SLOT_SIZE, slotColor, 2);
-        Render2D.outline(offHandX, itemsY, SLOT_SIZE, SLOT_SIZE, 0.3f, outlineColor, 2);
-        if (!offHand.isEmpty()) {
-            float itemSize = 16 * ITEM_SCALE;
-            float itemX = offHandX + (SLOT_SIZE - itemSize) / 2;
-            float itemY = itemsY + (SLOT_SIZE - itemSize) / 2;
-            if (ItemRender.needsContextRender(offHand)) {
-                ItemRender.drawItemWithContext(context, offHand, itemX, itemY, ITEM_SCALE, alpha);
-            } else {
-                ItemRender.drawItem(offHand, itemX, itemY, ITEM_SCALE, alpha);
-            }
         }
     }
 }

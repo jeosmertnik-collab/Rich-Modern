@@ -28,14 +28,6 @@ public class Watermark extends AbstractHudElement {
     private static final long ANIMATION_DURATION = 300;
     private static final float ANIMATION_OFFSET = 10.0f;
 
-    private int accentR = 100, accentG = 150, accentB = 255;
-    private void updateAccent() {
-        int c = Hud.getInstance().getAccentRGB();
-        accentR = (c >> 16) & 0xFF;
-        accentG = (c >> 8) & 0xFF;
-        accentB = c & 0xFF;
-    }
-
     public Watermark() {
         super("Watermark", 10, 10, 200, 24, false);
         startAnimation();
@@ -52,7 +44,6 @@ public class Watermark extends AbstractHudElement {
     @Override
     public void drawDraggable(DrawContext context, int alpha) {
         if (alpha <= 0) return;
-        updateAccent();
 
         float x = -5;
         float y = 5;
@@ -94,7 +85,7 @@ public class Watermark extends AbstractHudElement {
         float timeAnimation = Math.min(1.0f, (currentTime - timeAnimationStart) / (float) ANIMATION_DURATION);
         float tpsAnimation = Math.min(1.0f, (currentTime - tpsAnimationStart) / (float) ANIMATION_DURATION);
 
-        String richText = mc.getSession().getUsername();
+        String richText = "rich";
         float richWidth = Fonts.SFPRO_REGULAR.getWidth(richText, 6);
         float fpsNumberWidth = Fonts.SFPRO_REGULAR.getWidth(fpsNumber, 6);
         float fpsTextWidth = Fonts.SFPRO_REGULAR.getWidth(fpsText, 6);
@@ -126,20 +117,20 @@ public class Watermark extends AbstractHudElement {
                 4);
 
         Render2D.glowOutline(x + 12, y + 3, totalWidth, 20, 1.0f,
-                new Color(accentR, accentG, accentB, outlineAlpha).getRGB(), 4, 1.0f, 3.0f);
+                new Color(100, 150, 255, outlineAlpha).getRGB(), 4, 1.0f, 3.0f);
 
         float textY = y + 7;
         float offsetX = x + 12 + 5;
 
         // Icon "A"
-        Fonts.ICONS.draw("A", offsetX, textY + 0.5f, 12, new Color(accentR, accentG, accentB, 255).getRGB());
+        Fonts.ICONS.draw("A", offsetX, textY + 0.5f, 12, new Color(100, 150, 255, 255).getRGB());
         offsetX += 12 + 2;
 
         // Rich text
         Fonts.SFPRO_REGULAR.draw(richText, offsetX, textY + 3, 6, new Color(220, 230, 255, 255).getRGB());
         offsetX += richWidth + 4;
 
-        Fonts.TEST.draw("»", offsetX, textY + 1.5f, 8, new Color(accentR, accentG, accentB, 255).getRGB());
+        Fonts.TEST.draw("»", offsetX, textY + 1.5f, 8, new Color(100, 150, 255, 255).getRGB());
         offsetX += 8;
 
         Fonts.CATEGORY_ICONS.draw("b", offsetX, textY + 2f, 9, new Color(180, 190, 210, 255).getRGB());
@@ -152,7 +143,7 @@ public class Watermark extends AbstractHudElement {
         Fonts.SFPRO_REGULAR.draw(fpsText, offsetX, textY + 3, 6, new Color(180, 190, 210, 255).getRGB());
         offsetX += fpsTextWidth + 4;
 
-        Fonts.TEST.draw("»", offsetX, textY + 1.5f, 8, new Color(accentR, accentG, accentB, 255).getRGB());
+        Fonts.TEST.draw("»", offsetX, textY + 1.5f, 8, new Color(100, 150, 255, 255).getRGB());
         offsetX += 8;
 
         Fonts.CATEGORY_ICONS.draw("n", offsetX, textY + 2f, 9, new Color(180, 190, 210, 255).getRGB());
@@ -164,7 +155,7 @@ public class Watermark extends AbstractHudElement {
         if (showTps) {
             offsetX += timeWidth + 4;
 
-            Fonts.TEST.draw("»", offsetX, textY + 1.5f, 8, new Color(accentR, accentG, accentB, 255).getRGB());
+            Fonts.TEST.draw("»", offsetX, textY + 1.5f, 8, new Color(100, 150, 255, 255).getRGB());
             offsetX += 8;
 
             Fonts.ICONSTYPETHO.draw("t", offsetX, textY + 0.5f, 12, new Color(180, 190, 210, 255).getRGB());
