@@ -178,15 +178,64 @@ function getHardwareId() {
 }
 
 function findGameRoot() {
-    const exeDir = path.dirname(app.getPath('exe'));
-    const possiblePaths = [
-        path.join(exeDir, '..', '..', '..'),
-        exeDir,
-        process.cwd(),
-    ];
-    for (const p of possiblePaths) {
-        if (fs.existsSync(path.join(p, 'gradlew.bat'))) return p;
+    const saved = loadSavedGameRoot();
+    if (saved) {
+        try {
+            if (fs.existsSync(path.join(saved, 'gradlew.bat'))) return saved;
+        } catch (e) {}
     }
+
+    const exeDir = path.dirname(app.getPath('exe'));
+    const portableDir = process.env.PORTABLE_EXECUTABLE_DIR || '';
+    const cwd = process.cwd();
+    const home = process.env.USERPROFILE || process.env.HOME || '';
+
+    const candidates = [
+        exeDir,
+        portableDir,
+        cwd,
+    ];
+
+    if (home) {
+        candidates.push(
+            path.join(home, 'Desktop', 'Rich-Modern'),
+            path.join(home, 'Desktop', 'Rich Modern'),
+            path.join(home, 'Documents', 'Rich-Modern'),
+            path.join(home, 'Projects', 'Rich-Modern'),
+        );
+    }
+
+    for (const p of candidates) {
+        if (!p) continue;
+        try {
+            if (fs.existsSync(path.join(p, 'gradlew.bat'))) {
+                saveGameRoot(p);
+                return p;
+            }
+        } catch (e) {}
+    }
+    return null;
+}
+
+const GAME_ROOT_FILE = path.join(app.getPath('userData'), 'gameroot.json');
+
+function loadSavedGameRoot() {
+    try {
+        if (fs.existsSync(GAME_ROOT_FILE)) {
+            const data = JSON.parse(fs.readFileSync(GAME_ROOT_FILE, 'utf8'));
+            if (data.path && fs.existsSync(data.path)) return data.path;
+        }
+    } catch (e) {}
+    return null;
+}
+
+function saveGameRoot(rootPath) {
+    try {
+        const dir = path.dirname(GAME_ROOT_FILE);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(GAME_ROOT_FILE, JSON.stringify({ path: rootPath }, null, 2), 'utf8');
+    } catch (e) {}
+}
     return null;
 }
 
