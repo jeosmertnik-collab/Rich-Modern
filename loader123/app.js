@@ -7,6 +7,14 @@ const { spawn } = require('child_process');
 
 let win;
 
+const LOG_FILE = path.join(app.getPath('userData'), 'launch.log');
+
+function log(msg) {
+    const line = `[${new Date().toISOString()}] ${msg}\n`;
+    try { fs.appendFileSync(LOG_FILE, line); } catch (e) {}
+    console.log(line.trim());
+}
+
 const USERS_FILE = path.join(app.getPath('userData'), 'users.json');
 const LICENSE_FILE = path.join(app.getPath('userData'), 'license.json');
 const LICENSE_DB_FILE = path.join(app.getPath('userData'), 'licenses.json');
@@ -178,10 +186,20 @@ function getHardwareId() {
 }
 
 function findGameRoot() {
+    log('findGameRoot called');
+    log('PORTABLE_EXECUTABLE_DIR=' + (process.env.PORTABLE_EXECUTABLE_DIR || 'UNSET'));
+    log('app.getPath(exe)=' + app.getPath('exe'));
+    log('cwd=' + process.cwd());
+
     const saved = loadSavedGameRoot();
     if (saved) {
+        log('Saved game root: ' + saved);
         try {
-            if (fs.existsSync(path.join(saved, 'gradlew.bat'))) return saved;
+            if (fs.existsSync(path.join(saved, 'gradlew.bat'))) {
+                log('Saved root has gradlew.bat, using it');
+                return saved;
+            }
+            log('Saved root missing gradlew.bat, searching...');
         } catch (e) {}
     }
 
@@ -209,6 +227,7 @@ function findGameRoot() {
             if (!dir || dir.length < 3) break;
             try {
                 if (fs.existsSync(path.join(dir, 'gradlew.bat'))) {
+                    log('Found gradlew.bat at: ' + dir);
                     saveGameRoot(dir);
                     return dir;
                 }
@@ -218,6 +237,7 @@ function findGameRoot() {
             dir = parent;
         }
     }
+    log('findGameRoot: NOT FOUND');
     return null;
 }
 
