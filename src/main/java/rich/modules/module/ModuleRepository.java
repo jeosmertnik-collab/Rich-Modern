@@ -110,6 +110,8 @@ public class ModuleRepository {
                 .add(new AiAssistant())
                 .add(new VoiceAlert())
                 .add(new ClanHelper())
+                .add(new ChatSpammer())
+                .add(new LeafFarmer())
                 .hidden(new AutoParser());
     }
 

@@ -116,9 +116,24 @@ document.addEventListener('DOMContentLoaded', () => {
     changeLanguage(currentLanguage);
 
     // Auto-login if remembered
-    const savedUser = localStorage.getItem('launcher_remember');
-    if (savedUser) {
-        loginAs(savedUser);
+    const savedCredentials = localStorage.getItem('launcher_credentials');
+    if (savedCredentials) {
+        try {
+            const { user, pass } = JSON.parse(savedCredentials);
+            if (user) {
+                if (loginUser) loginUser.value = user;
+                if (loginPassword) loginPassword.value = pass || '';
+                if (rememberCheck) rememberCheck.checked = true;
+                loginAs(user, pass);
+            }
+        } catch (e) {
+            // Fallback for old format (plain username string)
+            const savedUser = localStorage.getItem('launcher_remember');
+            if (savedUser) {
+                if (loginUser) loginUser.value = savedUser;
+                loginAs(savedUser);
+            }
+        }
     }
 
     if (langSelectorBtn && langDropdownMenu) {
@@ -179,7 +194,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     showError(t.error_exists || 'Account already exists');
                     return;
                 }
-                loginAs(username);
+                loginAs(username, password);
             } else {
                 if (!password) {
                     showError(t.error_auth || 'Invalid username or password.');
@@ -190,7 +205,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     showError(t.error_auth || 'Invalid username or password.');
                     return;
                 }
-                loginAs(result.user.login);
+                loginAs(result.user.login, password);
             }
         });
     }
@@ -201,11 +216,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (pswdGroup) { pswdGroup.classList.add('error'); setTimeout(() => pswdGroup.classList.remove('error'), 400); }
     }
 
-    function loginAs(username) {
+    function loginAs(username, password) {
         currentUser = username;
-        if (rememberCheck && rememberCheck.checked) {
-            localStorage.setItem('launcher_remember', username);
+        if (rememberCheck && rememberCheck.checked && password) {
+            localStorage.setItem('launcher_credentials', JSON.stringify({ user: username, pass: password }));
+        } else {
+            localStorage.removeItem('launcher_credentials');
         }
+        localStorage.setItem('launcher_remember', username);
         if (loginGroup) loginGroup.classList.remove('error');
         if (pswdGroup) pswdGroup.classList.remove('error');
         if (errorHint) errorHint.style.display = 'none';
@@ -247,6 +265,7 @@ document.addEventListener('DOMContentLoaded', () => {
         logoutBtn.addEventListener('click', () => {
             currentUser = null;
             localStorage.removeItem('launcher_remember');
+            localStorage.removeItem('launcher_credentials');
             if (loginUser) loginUser.value = '';
             if (loginPassword) loginPassword.value = '';
             if (rememberCheck) rememberCheck.checked = false;

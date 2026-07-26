@@ -381,6 +381,23 @@ public class ClickGui extends Screen implements IMinecraft {
             return true;
         }
 
+        if (background.isChangelogOpen()) {
+            if (background.isChangelogCloseHovered((float) mx, (float) my, bgX, bgY) && click.button() == 0) {
+                background.closeChangelog();
+                return true;
+            }
+            if (background.isChangelogPopupHovered((float) mx, (float) my, bgX, bgY)) {
+                return true;
+            }
+            background.closeChangelog();
+            return true;
+        }
+
+        if (background.isChangelogHovered((float) mx, (float) my, bgX, bgY) && click.button() == 0) {
+            background.toggleChangelog();
+            return true;
+        }
+
         if (isModuleCategory(selectedCategory)) {
             ModuleStructure starModule = moduleComponent.getModuleForStarClick(mx, my, mlX, mlY, mlW, mlH);
             if (starModule != null && click.button() == 0) {
@@ -463,6 +480,15 @@ public class ClickGui extends Screen implements IMinecraft {
             }
         }
 
+        if (background.isChangelogOpen()) {
+            if (background.isChangelogPopupHovered((float) mx, (float) my, bgX, bgY)) {
+                background.scrollChangelog((float) vertical);
+                return true;
+            }
+            background.closeChangelog();
+            return true;
+        }
+
         if (selectedCategory == ModuleCategory.AUTOBUY) {
             if (autoBuyRenderer.mouseScrolled(mx, my, vertical, bgX, bgY, selectedCategory)) {
                 return true;
@@ -500,6 +526,10 @@ public class ClickGui extends Screen implements IMinecraft {
             }
             if (background.isSearchActive()) {
                 background.setSearchActive(false);
+                return true;
+            }
+            if (background.isChangelogOpen()) {
+                background.closeChangelog();
                 return true;
             }
             close();

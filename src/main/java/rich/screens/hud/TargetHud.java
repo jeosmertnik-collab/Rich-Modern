@@ -32,13 +32,13 @@ public class TargetHud extends AbstractHudElement {
     private long lastUpdateTime = System.currentTimeMillis();
     private long startTime = System.currentTimeMillis();
 
-    private static final float ITEM_SCALE = 0.45f;
-    private static final float ICON_SIZE = 10f;
-    private static final float SLOT_SIZE = 11f;
+    private static final float ITEM_SCALE = 0.35f;
+    private static final float ICON_SIZE = 9f;
+    private static final float SLOT_SIZE = 9f;
     private static final float SLOT_GAP = 2f;
 
     public TargetHud() {
-        super("TargetHud", 10, 80, 160, 60, true);
+        super("TargetHud", 10, 80, 160, 42, true);
     }
 
     @Override
@@ -118,16 +118,16 @@ public class TargetHud extends AbstractHudElement {
         float y = getY();
 
         int accentRGB = getAccentRGB();
-        float faceSize = 24;
+        float faceSize = 20;
         float faceX = x + 7;
+        float faceY = y + (42 - faceSize) / 2f;
         float contentX = faceX + faceSize + 6;
         float nameY = y + 11;
 
         boolean hasItems = lastTarget instanceof net.minecraft.entity.player.PlayerEntity;
-        int extraRows = hasItems ? 1 : 0;
 
         float totalWidth = 160;
-        float totalHeight = hasItems ? 62 : 42;
+        float totalHeight = 42;
 
         setWidth((int) totalWidth);
         setHeight((int) totalHeight);
@@ -135,7 +135,7 @@ public class TargetHud extends AbstractHudElement {
         float scaleAlpha = scaleAnimation.getOutput().floatValue();
 
         drawBackground(x, y, totalWidth, totalHeight, scaleAlpha, accentRGB);
-        drawFace(x, y, scaleAlpha);
+        drawFace(x, y, scaleAlpha, faceSize, faceY);
         drawContent(x, y, scaleAlpha, deltaTime, contentX, nameY, totalWidth);
 
         if (hasItems) {
@@ -159,7 +159,7 @@ public class TargetHud extends AbstractHudElement {
                 new Color(accentRGB >> 16 & 0xFF, accentRGB >> 8 & 0xFF, accentRGB & 0xFF, (int)(100 * alpha)).getRGB(), 4, 1.0f, 3.0f);
     }
 
-    private void drawFace(float x, float y, float alpha) {
+    private void drawFace(float x, float y, float alpha, float faceSize, float faceY) {
         EntityRenderer<? super LivingEntity, ?> baseRenderer = mc.getEntityRenderDispatcher().getRenderer(lastTarget);
         if (!(baseRenderer instanceof LivingEntityRenderer<?, ?, ?>)) {
             return;
@@ -172,9 +172,7 @@ public class TargetHud extends AbstractHudElement {
         LivingEntityRenderState state = renderer.getAndUpdateRenderState(lastTarget, lastTickDelta);
         Identifier textureLocation = renderer.getTexture(state);
 
-        float faceSize = 24;
         float faceX = x + 7;
-        float faceY = y + 8;
 
         float hurtPercent = lastTarget.hurtTime > 0 ? lastTarget.hurtTime / 10.0f : 0.0f;
         int r = 255;
@@ -321,7 +319,7 @@ public class TargetHud extends AbstractHudElement {
     private void drawItems(DrawContext context, float x, float y, float totalWidth, float totalHeight, float alpha, int accentRGB) {
         if (!(lastTarget instanceof net.minecraft.entity.player.PlayerEntity player)) return;
 
-        float itemsY = y + totalHeight - SLOT_SIZE - 5;
+        float itemsY = y + 26;
         float itemsX = x + 7;
 
         EquipmentSlot[] armorSlots = {
