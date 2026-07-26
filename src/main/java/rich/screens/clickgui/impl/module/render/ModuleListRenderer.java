@@ -12,379 +12,231 @@ import rich.util.render.Render2D;
 import rich.util.render.shader.Scissor;
 import rich.util.render.font.Fonts;
 
+import java.awt.*;
 import java.util.List;
 import java.util.Map;
 
 public class ModuleListRenderer {
 
-    private static final float MODULE_ITEM_HEIGHT = 26f;
-    private static final float MODULE_LIST_CORNER_RADIUS = ClickGuiTheme.PANEL_CORNER_RADIUS;
-    private static final float CORNER_INSET = 3f;
-    private static final float STATE_BALL_SIZE = 3f;
-    private static final float STATE_TEXT_OFFSET = 6f;
-    private static final float BIND_BOX_HEIGHT = 9f;
-    private static final float BIND_BOX_MIN_WIDTH = 18f;
-    private static final float BIND_BOX_PADDING = 6f;
-    private static final float BIND_WIDTH_ANIM_SPEED = 12f;
+    private static final float ITEM_H = 32f;
+    private static final float CORNER_R = ClickGuiTheme.PANEL_CORNER_RADIUS;
+    private static final float INSET = 3f;
+    private static final float TOGGLE_W = 20f;
+    private static final float TOGGLE_H = 11f;
+    private static final float TOGGLE_R = 5.5f;
+    private static final float KNOB_SIZE = 8f;
+    private static final float STRIPE_W = 2.5f;
+    private static final float BIND_H = 9f;
+    private static final float BIND_MIN_W = 18f;
+    private static final float BIND_PAD = 6f;
+    private static final float BIND_SPEED = 12f;
 
     private final ModuleAnimationHandler animationHandler;
     private final ModuleBindHandler bindHandler;
     private final ModuleDisplayHelper displayHelper;
 
-    public ModuleListRenderer(ModuleAnimationHandler animationHandler, ModuleBindHandler bindHandler, ModuleDisplayHelper displayHelper) {
-        this.animationHandler = animationHandler;
-        this.bindHandler = bindHandler;
-        this.displayHelper = displayHelper;
+    public ModuleListRenderer(ModuleAnimationHandler ah, ModuleBindHandler bh, ModuleDisplayHelper dh) {
+        this.animationHandler = ah;
+        this.bindHandler = bh;
+        this.displayHelper = dh;
     }
 
-    public void render(DrawContext context, List<ModuleStructure> displayModules, ModuleStructure selectedModule,
-                       ModuleStructure bindingModule, float x, float y, float width, float height,
-                       float mouseX, float mouseY, int guiScale, float alphaMultiplier,
-                       ModuleAnimationHandler animHandler, ModuleScrollHandler scrollHandler) {
+    public void render(DrawContext ctx, List<ModuleStructure> mods, ModuleStructure sel,
+                       ModuleStructure binding, float x, float y, float w, float h,
+                       float mx, float my, int gs, float alpha,
+                       ModuleAnimationHandler ah, ModuleScrollHandler sh) {
 
-        int panelBg = ClickGuiTheme.panelAlpha(0.4f * alphaMultiplier);
-        int panelBorder = ClickGuiTheme.borderAlpha(0.6f * alphaMultiplier);
-        Render2D.rect(x, y, width, height, panelBg, MODULE_LIST_CORNER_RADIUS);
-        Render2D.outline(x, y, width, height, 0.5f, panelBorder, MODULE_LIST_CORNER_RADIUS);
+        int panelBg = ClickGuiTheme.panelAlpha(0.3f * alpha);
+        int panelBd = ClickGuiTheme.borderAlpha(0.45f * alpha);
+        Render2D.rect(x, y, w, h, panelBg, CORNER_R);
+        Render2D.outline(x, y, w, h, 0.5f, panelBd, CORNER_R);
 
-        float topInset = CORNER_INSET;
-        float bottomInset = CORNER_INSET;
-        float sideInset = CORNER_INSET;
+        Scissor.enable(x + INSET, y + INSET - 1.5f, w - INSET * 2, h - INSET * 2 + 3, gs);
 
-        Scissor.enable(x + sideInset, y + topInset - 1.5f, width - sideInset * 2, height - topInset - bottomInset + 3, guiScale);
-
-        if (animHandler.isCategoryTransitioning() && !animHandler.getOldModules().isEmpty()) {
-            float oldAlpha = (1f - animHandler.getCategoryTransitionProgress()) * alphaMultiplier;
-            float oldOffsetX = animHandler.easeInCubic(animHandler.getCategoryTransitionProgress()) * -animHandler.getCategorySlideDistance();
-            float oldScale = 1f - animHandler.getCategoryTransitionProgress() * 0.1f;
-
-            renderModuleItems(context, animHandler.getOldModules(), animHandler.getOldModuleAnimations(),
-                    selectedModule, bindingModule, x, y, width, height, mouseX, mouseY,
-                    oldAlpha, oldOffsetX, oldScale, (float) animHandler.getOldModuleDisplayScroll(), false, topInset, bottomInset, animHandler);
+        if (ah.isCategoryTransitioning() && !ah.getOldModules().isEmpty()) {
+            float oA = (1f - ah.getCategoryTransitionProgress()) * alpha;
+            float oX = ah.easeInCubic(ah.getCategoryTransitionProgress()) * -ah.getCategorySlideDistance();
+            float oS = 1f - ah.getCategoryTransitionProgress() * 0.1f;
+            renderItems(ctx, ah.getOldModules(), ah.getOldModuleAnimations(), sel, binding,
+                    x, y, w, h, mx, my, oA, oX, oS, (float) ah.getOldModuleDisplayScroll(), false, ah);
         }
 
-        float newAlpha;
-        float newOffsetX;
-        float newScale;
-
-        if (animHandler.isCategoryTransitioning()) {
-            float entryProgress = Math.max(0f, (animHandler.getCategoryTransitionProgress() - 0.2f) / 0.8f);
-            entryProgress = animHandler.easeOutQuart(entryProgress);
-            newAlpha = entryProgress * alphaMultiplier;
-            newOffsetX = (1f - entryProgress) * animHandler.getCategorySlideDistance();
-            newScale = 0.9f + entryProgress * 0.1f;
+        float nA, nX, nS;
+        if (ah.isCategoryTransitioning()) {
+            float ep = Math.max(0f, (ah.getCategoryTransitionProgress() - 0.2f) / 0.8f);
+            ep = ah.easeOutQuart(ep);
+            nA = ep * alpha;
+            nX = (1f - ep) * ah.getCategorySlideDistance();
+            nS = 0.92f + ep * 0.08f;
         } else {
-            newAlpha = alphaMultiplier;
-            newOffsetX = 0f;
-            newScale = 1f;
+            nA = alpha;
+            nX = 0f;
+            nS = 1f;
         }
 
-        renderModuleItems(context, displayModules, animHandler.getModuleAnimations(),
-                selectedModule, bindingModule, x, y, width, height, mouseX, mouseY,
-                newAlpha, newOffsetX, newScale, (float) scrollHandler.getModuleDisplayScroll(), true, topInset, bottomInset, animHandler);
+        renderItems(ctx, mods, ah.getModuleAnimations(), sel, binding,
+                x, y, w, h, mx, my, nA, nX, nS, (float) sh.getModuleDisplayScroll(), true, ah);
 
         Scissor.disable();
-
-        renderScrollFade(x, y + topInset, width, height - topInset - bottomInset,
-                scrollHandler.getModuleScrollTopFade() * alphaMultiplier,
-                scrollHandler.getModuleScrollBottomFade() * alphaMultiplier, 80, 15);
+        renderFade(x, y + INSET, w, h - INSET * 2, sh.getModuleScrollTopFade() * alpha, sh.getModuleScrollBottomFade() * alpha);
     }
 
-    private void renderModuleItems(DrawContext context, List<ModuleStructure> moduleList, Map<ModuleStructure, Float> animations,
-                                   ModuleStructure selectedModule, ModuleStructure bindingModule,
-                                   float x, float y, float width, float height, float mouseX, float mouseY,
-                                   float alphaMultiplier, float offsetX, float scale, float scrollOffset,
-                                   boolean interactive, float topInset, float bottomInset, ModuleAnimationHandler animHandler) {
-        if (alphaMultiplier <= 0.01f) return;
+    private void renderItems(DrawContext ctx, List<ModuleStructure> list, Map<ModuleStructure, Float> anims,
+                             ModuleStructure sel, ModuleStructure binding,
+                             float x, float y, float w, float h, float mx, float my,
+                             float alpha, float offX, float scale, float scroll, boolean inter, ModuleAnimationHandler ah) {
+        if (alpha <= 0.01f) return;
 
-        float startY = y + topInset + 2f + scrollOffset;
-        float centerY = y + height / 2f;
-        float visibleTop = y + topInset;
-        float visibleBottom = y + height - bottomInset;
+        float startY = y + INSET + 2f + scroll;
+        float centerY = y + h / 2f;
+        float visTop = y + INSET;
+        float visBot = y + h - INSET;
+        float sw = w - 6;
 
-        for (int i = 0; i < moduleList.size(); i++) {
-            ModuleStructure module = moduleList.get(i);
-            float modY = startY + i * (MODULE_ITEM_HEIGHT + 2);
+        for (int i = 0; i < list.size(); i++) {
+            ModuleStructure m = list.get(i);
+            float my2 = startY + i * (ITEM_H + 2);
+            if (my2 + ITEM_H < visTop || my2 > visBot) continue;
 
-            if (modY + MODULE_ITEM_HEIGHT < visibleTop || modY > visibleBottom) continue;
+            float ip = anims.getOrDefault(m, 1f);
+            float pa = ah.getPositionAnimations().getOrDefault(m, 1f);
+            float aa = ah.getModuleAlphaAnimations().getOrDefault(m, 1f);
+            float ca = ip * alpha * aa;
+            if (ca <= 0.01f) continue;
 
-            float itemProgress = animations.getOrDefault(module, 1f);
-            float posAnim = animHandler.getPositionAnimations().getOrDefault(module, 1f);
-            float alphaAnim = animHandler.getModuleAlphaAnimations().getOrDefault(module, 1f);
-            float combinedAlpha = itemProgress * alphaMultiplier * alphaAnim;
+            float iOff = (1f - ip) * 18f;
+            float pOff = (1f - easeOutCubic(pa)) * 12f;
+            float sY = centerY + (my2 - centerY) * scale;
+            float sH = ITEM_H * scale;
+            float aX = x + 3 + offX + iOff + pOff;
 
-            if (combinedAlpha <= 0.01f) continue;
+            boolean isSel = inter && m == sel;
+            boolean isHi = inter && m == ah.getHighlightedModule() && ah.getHighlightAnimation() > 0.01f;
+            float hover = inter ? ah.getHoverAnimations().getOrDefault(m, 0f) : 0f;
+            float state = inter ? ah.getStateAnimations().getOrDefault(m, m.isState() ? 1f : 0f) : (m.isState() ? 1f : 0f);
+            float fav = inter ? ah.getFavoriteAnimations().getOrDefault(m, 0f) : 0f;
+            boolean hasSet = displayHelper.hasSettings(m);
 
-            float itemAnimOffset = (1f - itemProgress) * 20f;
-            float posAnimOffset = (1f - easeOutCubic(posAnim)) * 15f;
+            int bg;
+            if (isSel) bg = ClickGuiTheme.moduleSelectedBg(ca);
+            else bg = ClickGuiTheme.moduleBg(ca * (0.5f + hover * 0.5f));
+            Render2D.rect(aX, sY, sw, sH, bg, 7);
 
-            float scaledModY = centerY + (modY - centerY) * scale;
-            float scaledHeight = MODULE_ITEM_HEIGHT * scale;
-
-            float animX = x + 3 + offsetX + itemAnimOffset + posAnimOffset;
-
-            boolean selected = interactive && module == selectedModule;
-            boolean isHighlighted = interactive && module == animHandler.getHighlightedModule() && animHandler.getHighlightAnimation() > 0.01f;
-            float hoverAnim = interactive ? animHandler.getHoverAnimations().getOrDefault(module, 0f) : 0f;
-            float stateAnim = interactive ? animHandler.getStateAnimations().getOrDefault(module, module.isState() ? 1f : 0f) : (module.isState() ? 1f : 0f);
-            float selectedIconAnim = interactive ? animHandler.getSelectedIconAnimations().getOrDefault(module, 0f) : 0f;
-            float favoriteAnim = interactive ? animHandler.getFavoriteAnimations().getOrDefault(module, 0f) : 0f;
-            boolean hasSettings = displayHelper.hasSettings(module);
-
-            float scaledWidth = (width - 6) * scale;
-
-            int bgColor;
-            if (selected) {
-                bgColor = ClickGuiTheme.moduleSelectedBg(alphaMultiplier * combinedAlpha);
-            } else {
-                int hoverBoost = (int) (hoverAnim * 20);
-                bgColor = ClickGuiTheme.moduleBg(alphaMultiplier * combinedAlpha * (0.6f + hoverAnim * 0.4f));
+            if (state > 0.5f) {
+                int aR = (ClickGuiTheme.ACCENT_ARGB >> 16) & 0xFF;
+                int aG = (ClickGuiTheme.ACCENT_ARGB >> 8) & 0xFF;
+                int aB = ClickGuiTheme.ACCENT_ARGB & 0xFF;
+                int stripeA = (int) (180 * state * ca);
+                Render2D.rect(aX, sY + 4, STRIPE_W, sH - 8, new Color(aR, aG, aB, stripeA).getRGB(), 1.25f);
             }
 
-            Render2D.rect(animX, scaledModY, scaledWidth, scaledHeight, bgColor, 5);
-
-            if (selected) {
-                float pulseValue = (float) (Math.sin(animHandler.getSelectedPulseAnimation()) * 0.5 + 0.5);
-                float highlightBoost = isHighlighted ? animHandler.getHighlightAnimation() * 0.5f : 0f;
-
-                int outlineAlpha = (int) ((60 + 40 * pulseValue + 40 * highlightBoost) * combinedAlpha);
-                int outlineColor = ((outlineAlpha & 0xFF) << 24) | (ClickGuiTheme.ACCENT_ARGB & 0xFFFFFF);
-                Render2D.outline(animX, scaledModY, scaledWidth, scaledHeight, 0.5f, outlineColor, 5);
-
-                float glowAlpha = (20 + 20 * highlightBoost) * combinedAlpha;
-                int glowColor = ClickGuiTheme.glowColor(glowAlpha);
-                Render2D.rect(animX, scaledModY, scaledWidth, scaledHeight, glowColor, 5);
-            } else if (hoverAnim > 0.01f) {
-                int outlineAlpha = (int) (40 * hoverAnim * combinedAlpha);
-                int outlineColor = ((outlineAlpha & 0xFF) << 24) | (ClickGuiTheme.PANEL_BORDER_LIGHT_ARGB & 0xFFFFFF);
-                Render2D.outline(animX, scaledModY, scaledWidth, scaledHeight, 0.5f, outlineColor, 5);
+            if (isSel) {
+                float pulse = (float) (Math.sin(ah.getSelectedPulseAnimation()) * 0.5 + 0.5);
+                float hlBoost = isHi ? ah.getHighlightAnimation() * 0.4f : 0f;
+                int oA = (int) ((40 + 25 * pulse + 25 * hlBoost) * ca);
+                int aR = (ClickGuiTheme.ACCENT_ARGB >> 16) & 0xFF;
+                int aG = (ClickGuiTheme.ACCENT_ARGB >> 8) & 0xFF;
+                int aB = ClickGuiTheme.ACCENT_ARGB & 0xFF;
+                Render2D.outline(aX, sY, sw, sH, 0.5f, new Color(aR, aG, aB, oA).getRGB(), 7);
+                int gA = (int) (12 * ca);
+                Render2D.rect(aX, sY, sw, sH, ClickGuiTheme.glowColor(gA), 7);
+            } else if (hover > 0.01f) {
+                int oA = (int) (25 * hover * ca);
+                int oC = ((oA & 0xFF) << 24) | (ClickGuiTheme.PANEL_BORDER_LIGHT_ARGB & 0xFFFFFF);
+                Render2D.outline(aX, sY, sw, sH, 0.5f, oC, 7);
             }
 
-            float stateTextOffset = stateAnim * STATE_TEXT_OFFSET;
+            float toggleX = aX + sw - TOGGLE_W - 8;
+            float toggleY = sY + (sH - TOGGLE_H) / 2f;
+            renderToggle(toggleX, toggleY, state, ca);
 
-            if (stateAnim > 0.01f) {
-                float ballAlpha = stateAnim * 200 * combinedAlpha;
-                float ballX = animX + 4;
-                float ballY = scaledModY + (scaledHeight - STATE_BALL_SIZE * scale) / 2f + 1F;
-                int ballColor = ((int) ballAlpha << 24) | (ClickGuiTheme.ACCENT_ARGB & 0xFFFFFF);
-                Render2D.rect(ballX, ballY, STATE_BALL_SIZE * scale, STATE_BALL_SIZE * scale,
-                        ballColor, STATE_BALL_SIZE * scale / 2f);
-            }
+            String name = m.getName();
+            int tB;
+            int tA;
+            if (state > 0.5f) { tB = 245; tA = (int) (255 * ca); }
+            else if (hover > 0.01f) { tB = 200; tA = (int) (210 * ca); }
+            else { tB = 140; tA = (int) (170 * ca); }
+            if (isHi) tB = (int) Math.min(255, tB + 25 * ah.getHighlightAnimation());
 
-            String name = module.getName();
+            int tc = ((Math.min(255, tA) & 0xFF) << 24) | ((tB & 0xFF) << 16) | ((tB & 0xFF) << 8) | (tB & 0xFF);
+            float tX = aX + 8;
+            float tY = sY + (sH - 5.5f * scale) / 2f;
+            Fonts.BOLD.draw(name, tX, tY, 5.5f * scale, tc);
 
-            int textBrightness;
-            int textAlphaValue;
-            if (stateAnim > 0.5f) {
-                textBrightness = 240;
-                textAlphaValue = (int) (255 * combinedAlpha);
-            } else if (hoverAnim > 0.01f) {
-                textBrightness = 200;
-                textAlphaValue = (int) (200 * combinedAlpha);
-            } else {
-                textBrightness = 160;
-                textAlphaValue = (int) (180 * combinedAlpha);
-            }
-
-            if (isHighlighted) {
-                textBrightness = (int) Math.min(255, textBrightness + 30 * animHandler.getHighlightAnimation());
-            }
-
-            int textColor = ((Math.min(255, textAlphaValue) & 0xFF) << 24) | ((textBrightness & 0xFF) << 16) | ((textBrightness & 0xFF) << 8) | (textBrightness & 0xFF);
-
-            float textX = animX + 5 + stateTextOffset;
-            float textY = scaledModY + (scaledHeight - 6f * scale) / 2f;
-            Fonts.BOLD.draw(name, textX, textY, 6 * scale, textColor);
-
-            if (interactive) {
-                renderBindBox(module, bindingModule, animX, scaledModY, scaledWidth, scaledHeight, scale, combinedAlpha, stateTextOffset, animHandler);
-
-                float iconBaseX = animX + scaledWidth - 14;
-                float iconY = scaledModY + (scaledHeight - 8f * scale) / 2f;
-
-                float starX;
-                if (hasSettings) {
-                    starX = iconBaseX - 12;
-                } else {
-                    starX = iconBaseX;
-                }
-
-                int starR = (int) (80 + (255 - 80) * favoriteAnim);
-                int starG = (int) (80 + (215 - 80) * favoriteAnim);
-                int starB = (int) (80 + (0 - 80) * favoriteAnim);
-                float starAlpha = (80 + 120 * favoriteAnim + 55 * hoverAnim) * combinedAlpha;
-
-                Fonts.GUI_ICONS.draw("D", starX, iconY + 1, 8 * scale, new java.awt.Color(starR, starG, starB, (int) starAlpha).getRGB());
-
-                if (hasSettings) {
-                    if (selectedIconAnim > 0.01f) {
-                        float gearAlpha = (150 + 50 * (isHighlighted ? animHandler.getHighlightAnimation() : 0f)) * selectedIconAnim * combinedAlpha;
-                        Fonts.GUI_ICONS.draw("B", iconBaseX, iconY + 1, 8 * scale, new java.awt.Color(200, 200, 200, (int) gearAlpha).getRGB());
-                    }
-
-                    if (selectedIconAnim < 0.99f) {
-                        float dotsAlpha = 120 * (1f - selectedIconAnim) * combinedAlpha;
-                        Fonts.BOLD.draw("...", iconBaseX + 1f, iconY - 1f, 7 * scale, new java.awt.Color(150, 150, 150, (int) dotsAlpha).getRGB());
-                    }
-                }
+            if (inter && fav > 0.01f) {
+                float fX = aX + 8 + Fonts.BOLD.getWidth(name, 5.5f * scale) + 4;
+                float fY = sY + (sH - 6f * scale) / 2f;
+                int fA = (int) ((60 + 140 * fav + 30 * hover) * ca);
+                int fR = (int) (80 + (255 - 80) * fav);
+                int fG = (int) (80 + (215 - 80) * fav);
+                Fonts.GUI_ICONS.draw("D", fX, fY + 1, 7 * scale, new Color(fR, fG, 0, fA).getRGB());
             }
         }
     }
 
-    private void renderBindBox(ModuleStructure module, ModuleStructure bindingModule, float moduleX, float moduleY,
-                               float moduleWidth, float moduleHeight, float scale, float combinedAlpha,
-                               float stateTextOffset, ModuleAnimationHandler animHandler) {
-        boolean isBinding = module == bindingModule;
-        int key = module.getKey();
+    private void renderToggle(float x, float y, float state, float alpha) {
+        int aR = (ClickGuiTheme.ACCENT_ARGB >> 16) & 0xFF;
+        int aG = (ClickGuiTheme.ACCENT_ARGB >> 8) & 0xFF;
+        int aB = ClickGuiTheme.ACCENT_ARGB & 0xFF;
 
-        float bindAlpha = animHandler.getBindBoxAlphaAnimations().getOrDefault(module, 0f);
-
-        if (bindAlpha <= 0.01f && !isBinding && (key == GLFW.GLFW_KEY_UNKNOWN || key == -1)) {
-            return;
-        }
-
-        String bindText;
-        if (isBinding) {
-            bindText = "...";
+        int trackA = (int) (80 + 120 * state);
+        int trackBg;
+        if (state > 0.5f) {
+            trackBg = new Color(aR, aG, aB, (int) (trackA * alpha)).getRGB();
         } else {
-            bindText = bindHandler.getBindDisplayName(key);
+            trackBg = new Color(40, 50, 70, (int) (trackA * alpha)).getRGB();
         }
+        Render2D.rect(x, y, TOGGLE_W, TOGGLE_H, trackBg, TOGGLE_R);
 
-        float textWidth = Fonts.BOLD.getWidth(bindText, 5 * scale);
-        float targetWidth = Math.max(BIND_BOX_MIN_WIDTH, textWidth + BIND_BOX_PADDING * 2);
+        float knobX = x + 1.5f + state * (TOGGLE_W - KNOB_SIZE - 3f);
+        int knobA = (int) (255 * alpha);
+        Render2D.rect(knobX, y + (TOGGLE_H - KNOB_SIZE) / 2f, KNOB_SIZE, KNOB_SIZE,
+                new Color(255, 255, 255, knobA).getRGB(), KNOB_SIZE / 2f);
+    }
 
-        float currentWidth = animHandler.getBindBoxWidthAnimations().getOrDefault(module, targetWidth);
-
-        float widthDiff = targetWidth - currentWidth;
-        if (Math.abs(widthDiff) > 0.1f) {
-            currentWidth += widthDiff * BIND_WIDTH_ANIM_SPEED * 0.016f;
-            animHandler.getBindBoxWidthAnimations().put(module, currentWidth);
-        } else {
-            currentWidth = targetWidth;
-            animHandler.getBindBoxWidthAnimations().put(module, currentWidth);
+    private void renderFade(float x, float y, float w, float h, float topF, float botF) {
+        if (topF > 0.01f) for (int i = 0; i < 12; i++) {
+            int a = (int) (60 * topF * (1f - i / 12f));
+            Render2D.rect(x, y + i, w, 1, ((a & 0xFF) << 24) | (ClickGuiTheme.BG_TOP_ARGB & 0xFFFFFF), 0);
         }
-
-        float boxHeight = BIND_BOX_HEIGHT * scale;
-        float boxWidth = currentWidth * scale * bindAlpha;
-
-        float nameWidth = Fonts.BOLD.getWidth(module.getName(), 6 * scale);
-        float boxX = moduleX + 5 + stateTextOffset + nameWidth;
-        float boxY = moduleY + (moduleHeight - boxHeight) / 2f + 0.5f;
-
-        float finalAlpha = combinedAlpha * bindAlpha;
-
-        int bgAlpha = (int) (30 * finalAlpha);
-        int bgColor = ((bgAlpha & 0xFF) << 24) | (ClickGuiTheme.PANEL_BG_ARGB & 0xFFFFFF);
-        Render2D.rect(boxX + 3, boxY + 0.5f, boxWidth - 6, boxHeight, bgColor, 3f * scale);
-
-        int outlineAlpha = (int) (60 * finalAlpha);
-        int outlineColor = ((outlineAlpha & 0xFF) << 24) | (ClickGuiTheme.PANEL_BORDER_ARGB & 0xFFFFFF);
-        Render2D.outline(boxX + 3, boxY + 0.5f, boxWidth - 6, boxHeight, 0.5f, outlineColor, 3f * scale);
-
-        if (bindAlpha > 0.5f) {
-            int textAlpha = (int) (160 * finalAlpha);
-            int textColor = ((textAlpha & 0xFF) << 24) | (ClickGuiTheme.MODULE_TEXT_ARGB & 0xFFFFFF);
-
-            float textX = boxX + (boxWidth - textWidth) / 2f;
-            float textY = boxY + (boxHeight - 5f * scale) / 2f;
-            Fonts.BOLD.draw(bindText, textX, textY, 5 * scale, textColor);
+        if (botF > 0.01f) for (int i = 0; i < 12; i++) {
+            int a = (int) (60 * botF * (i / 12f));
+            Render2D.rect(x, y + h - 12 + i, w, 1, ((a & 0xFF) << 24) | (ClickGuiTheme.BG_TOP_ARGB & 0xFFFFFF), 0);
         }
     }
 
-    private void renderScrollFade(float x, float y, float w, float h, float topFade, float bottomFade, int alpha, int size) {
-        if (topFade > 0.01f) {
-            for (int i = 0; i < size; i++) {
-                float fadeAlpha = alpha * topFade * (1f - i / (float) size);
-                int fadeColor = ((int) fadeAlpha << 24) | (ClickGuiTheme.BG_TOP_ARGB & 0xFFFFFF);
-                Render2D.rect(x, y + i, w, 1, fadeColor, 0);
-            }
+    public ModuleStructure getModuleAtPosition(List<ModuleStructure> list, double mx, double my,
+                                               float lx, float ly, float lw, float lh, double scroll, boolean trans) {
+        if (trans) return null;
+        if (mx < lx || mx > lx + lw || my < ly || my > ly + lh) return null;
+        float sy = ly + INSET + 2f + (float) scroll;
+        for (int i = 0; i < list.size(); i++) {
+            float mY = sy + i * (ITEM_H + 2);
+            if (mx >= lx + 3 && mx <= lx + lw - 3 && my >= mY && my <= mY + ITEM_H) return list.get(i);
         }
-        if (bottomFade > 0.01f) {
-            for (int i = 0; i < size; i++) {
-                float fadeAlpha = alpha * bottomFade * (i / (float) size);
-                int fadeColor = ((int) fadeAlpha << 24) | (ClickGuiTheme.BG_TOP_ARGB & 0xFFFFFF);
-                Render2D.rect(x, y + h - size + i, w, 1, fadeColor, 0);
-            }
-        }
+        return null;
     }
 
-    public ModuleStructure getModuleAtPosition(List<ModuleStructure> displayModules, double mouseX, double mouseY,
-                                               float listX, float listY, float listWidth, float listHeight,
-                                               double scrollOffset, boolean isTransitioning) {
-        if (isTransitioning) return null;
-        if (mouseX < listX || mouseX > listX + listWidth || mouseY < listY || mouseY > listY + listHeight) return null;
+    public boolean isStarClicked(List<ModuleStructure> list, double mx, double my,
+                                 float lx, float ly, float lw, float lh, double scroll, ModuleDisplayHelper dh, boolean trans) {
+        return getModuleForStarClick(list, mx, my, lx, ly, lw, lh, scroll, dh, trans) != null;
+    }
 
-        float startY = listY + CORNER_INSET + 2f + (float) scrollOffset;
-        for (int i = 0; i < displayModules.size(); i++) {
-            float modY = startY + i * (MODULE_ITEM_HEIGHT + 2);
-            if (mouseX >= listX + 3 && mouseX <= listX + listWidth - 3 && mouseY >= modY && mouseY <= modY + MODULE_ITEM_HEIGHT) {
-                return displayModules.get(i);
+    public ModuleStructure getModuleForStarClick(List<ModuleStructure> list, double mx, double my,
+                                                 float lx, float ly, float lw, float lh, double scroll, ModuleDisplayHelper dh, boolean trans) {
+        if (trans) return null;
+        float sy = ly + INSET + 2f + (float) scroll;
+        for (int i = 0; i < list.size(); i++) {
+            ModuleStructure m = list.get(i);
+            float mY = sy + i * (ITEM_H + 2);
+            if (my >= mY && my <= mY + ITEM_H) {
+                float nw = Fonts.BOLD.getWidth(m.getName(), 5.5f);
+                float fX = lx + 3 + 8 + nw + 4;
+                if (mx >= fX && mx <= fX + 12) return m;
             }
         }
         return null;
     }
 
-    public boolean isStarClicked(List<ModuleStructure> displayModules, double mouseX, double mouseY,
-                                 float listX, float listY, float listWidth, float listHeight,
-                                 double scrollOffset, ModuleDisplayHelper displayHelper, boolean isTransitioning) {
-        if (isTransitioning) return false;
-
-        float startY = listY + CORNER_INSET + 2f + (float) scrollOffset;
-        for (int i = 0; i < displayModules.size(); i++) {
-            ModuleStructure module = displayModules.get(i);
-            float modY = startY + i * (MODULE_ITEM_HEIGHT + 2);
-
-            if (mouseY >= modY && mouseY <= modY + MODULE_ITEM_HEIGHT) {
-                float scaledWidth = listWidth - 6;
-                float animX = listX + 3;
-                boolean hasSettings = displayHelper.hasSettings(module);
-
-                float starX;
-                if (hasSettings) {
-                    starX = animX + scaledWidth - 14 - 12;
-                } else {
-                    starX = animX + scaledWidth - 14;
-                }
-
-                if (mouseX >= starX && mouseX <= starX + 10) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    public ModuleStructure getModuleForStarClick(List<ModuleStructure> displayModules, double mouseX, double mouseY,
-                                                 float listX, float listY, float listWidth, float listHeight,
-                                                 double scrollOffset, ModuleDisplayHelper displayHelper, boolean isTransitioning) {
-        if (isTransitioning) return null;
-
-        float startY = listY + CORNER_INSET + 2f + (float) scrollOffset;
-        for (int i = 0; i < displayModules.size(); i++) {
-            ModuleStructure module = displayModules.get(i);
-            float modY = startY + i * (MODULE_ITEM_HEIGHT + 2);
-
-            if (mouseY >= modY && mouseY <= modY + MODULE_ITEM_HEIGHT) {
-                float scaledWidth = listWidth - 6;
-                float animX = listX + 3;
-                boolean hasSettings = displayHelper.hasSettings(module);
-
-                float starX;
-                if (hasSettings) {
-                    starX = animX + scaledWidth - 14 - 12;
-                } else {
-                    starX = animX + scaledWidth - 14;
-                }
-
-                if (mouseX >= starX && mouseX <= starX + 10) {
-                    return module;
-                }
-            }
-        }
-        return null;
-    }
-
-    private float easeOutCubic(float x) {
-        return 1f - (float) Math.pow(1 - x, 3);
-    }
+    private float easeOutCubic(float x) { return 1f - (float) Math.pow(1 - x, 3); }
 }
