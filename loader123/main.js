@@ -476,15 +476,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (updateProgressText) updateProgressText.textContent = t.update_downloading || 'Загрузка...';
 
-            const root = await ipcRenderer.invoke('game:findRoot');
-            if (!root) {
-                if (updateBanner) updateBanner.classList.add('error');
-                if (updateProgressText) updateProgressText.textContent = t.update_error || 'Ошибка: игра не найдена';
-                return;
-            }
-
             const jarName = 'rich-' + pendingUpdate.clientVersion + '.jar';
-            const targetPath = require('path').join(root, 'build', 'libs', jarName);
+            let targetPath;
+
+            const root = await ipcRenderer.invoke('game:findRoot');
+            if (root) {
+                targetPath = require('path').join(root, 'build', 'libs', jarName);
+            } else {
+                const gameDataDir = await ipcRenderer.invoke('game:getGameDataDir');
+                targetPath = require('path').join(gameDataDir, jarName);
+            }
 
             ipcRenderer.send('update:download', {
                 url: pendingUpdate.downloadUrl,

@@ -183,12 +183,33 @@ function findGameRoot() {
         path.join(exeDir, '..', '..', '..'),
         exeDir,
         process.cwd(),
-        path.join('C:', 'Users', process.env.USERNAME || 'Oxeo', 'Desktop', 'Rich-Modern'),
     ];
     for (const p of possiblePaths) {
         if (fs.existsSync(path.join(p, 'gradlew.bat'))) return p;
     }
     return null;
+}
+
+function findMinecraftDir() {
+    const appData = process.env.APPDATA;
+    if (!appData) return null;
+    const mcDir = path.join(appData, '.minecraft');
+    if (fs.existsSync(mcDir)) return mcDir;
+    return null;
+}
+
+function findModsDir() {
+    const mcDir = findMinecraftDir();
+    if (!mcDir) return null;
+    const modsDir = path.join(mcDir, 'mods');
+    if (!fs.existsSync(modsDir)) fs.mkdirSync(modsDir, { recursive: true });
+    return modsDir;
+}
+
+function getGameDataDir() {
+    const dir = path.join(app.getPath('userData'), 'game');
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    return dir;
 }
 
 function createWindow() {
@@ -239,6 +260,10 @@ ipcMain.handle('auth:login', (event, { login, password }) => {
 
 ipcMain.handle('game:findRoot', () => {
     return findGameRoot();
+});
+
+ipcMain.handle('game:getGameDataDir', () => {
+    return getGameDataDir();
 });
 
 function loadLocalVersion() {
@@ -429,22 +454,33 @@ ipcMain.on('game:launch', (event, { nickname, ram }) => {
 
     const root = findGameRoot();
     log('findGameRoot: ' + root);
-    if (!root) {
-        event.reply('game:launch-status', { status: 'error', message: 'Game root not found (gradlew.bat)' });
-        return;
+
+    const mcDir = findMinecraftDir();
+    log('findMinecraftDir: ' + mcDir);
+
+    const nickFile = (() => {
+        const targetDir = root ? root : (mcDir || path.join(app.getPath('userData')));
+        const nf = path.join(targetDir, 'Rich', 'configs', 'lastnick.txt');
+        try {
+            const nd = path.dirname(nf);
+            if (!fs.existsSync(nd)) fs.mkdirSync(nd, { recursive: true });
+            fs.writeFileSync(nf, nickname, 'utf8');
+        } catch (e) {}
+        return nf;
+    })();
+    log('nickFile: ' + nickFile);
+
+    if (root) {
+        launchViaGradlew(event, root, nickname, ram, log);
+    } else if (mcDir) {
+        launchViaMinecraft(event, mcDir, nickname, ram, log);
+    } else {
+        log('ERROR: Neither gradlew.bat nor .minecraft found');
+        event.reply('game:launch-status', { status: 'error', message: 'Game not found. Install Minecraft or clone the project.' });
     }
+});
 
-    const gradlewPath = path.join(root, 'gradlew.bat');
-    log('gradlew.bat exists: ' + fs.existsSync(gradlewPath));
-    log('JAVA_HOME will be set');
-
-    const nickFile = path.join(root, 'Rich', 'configs', 'lastnick.txt');
-    try {
-        const nickDir = path.dirname(nickFile);
-        if (!fs.existsSync(nickDir)) fs.mkdirSync(nickDir, { recursive: true });
-        fs.writeFileSync(nickFile, nickname, 'utf8');
-    } catch (e) {}
-
+function launchViaGradlew(event, root, nickname, ram, log) {
     const env = Object.assign({}, process.env);
     if (ram) {
         env.GRADLE_OPTS = `-Xmx${ram}M`;
@@ -488,8 +524,6 @@ ipcMain.on('game:launch', (event, { nickname, ram }) => {
 
     game.on('close', (code) => {
         log('process closed, code=' + code);
-        log('stdout (last 500): ' + stdout.slice(-500));
-        log('stderr (last 500): ' + stderr.slice(-500));
         if (win) { win.show(); }
         if (code !== 0) {
             event.reply('game:launch-status', { status: 'error', message: 'Exit ' + code + ': ' + stderr.slice(-300) });
@@ -499,13 +533,134 @@ ipcMain.on('game:launch', (event, { nickname, ram }) => {
     });
 
     game.unref();
-
     event.reply('game:launch-status', { status: 'started', message: 'Game started' });
+    setTimeout(() => { if (win) { win.hide(); } }, 3000);
+}
 
-    setTimeout(() => {
-        if (win) { win.hide(); }
-    }, 3000);
-});
+function launchViaMinecraft(event, mcDir, nickname, ram, log) {
+    log('Launching via .minecraft directory');
+
+    const gameDataDir = getGameDataDir();
+    const jarName = 'rich-1.0.01.jar';
+    const sourceJar = path.join(gameDataDir, jarName);
+    const modsDir = path.join(mcDir, 'mods');
+    const targetJar = path.join(modsDir, jarName);
+
+    if (!fs.existsSync(modsDir)) {
+        try { fs.mkdirSync(modsDir, { recursive: true }); } catch (e) {}
+    }
+
+    if (fs.existsSync(sourceJar)) {
+        try {
+            if (!fs.existsSync(targetJar) || fs.statSync(sourceJar).mtimeMs > fs.statSync(targetJar).mtimeMs) {
+                fs.copyFileSync(sourceJar, targetJar);
+                log('Copied JAR to mods folder');
+            }
+        } catch (e) {
+            log('Copy error: ' + e.message);
+        }
+    }
+
+    const versionsDir = path.join(mcDir, 'versions');
+    let fabricJar = null;
+    let fabricVersion = null;
+
+    if (fs.existsSync(versionsDir)) {
+        const versions = fs.readdirSync(versionsDir).filter(v => v.toLowerCase().includes('fabric'));
+        if (versions.length > 0) {
+            fabricVersion = versions.sort().reverse()[0];
+            const versionDir = path.join(versionsDir, fabricVersion);
+            const jsonFiles = fs.readdirSync(versionDir).filter(f => f.endsWith('.json'));
+            if (jsonFiles.length > 0) {
+                fabricJar = path.join(versionDir, fabricVersion + '.jar');
+            }
+        }
+    }
+
+    let javaExe = 'javaw';
+    const localJre = path.join(mcDir, '..', 'jre', 'bin', 'javaw.exe');
+    const gameJre = path.join(mcDir, 'jre', 'bin', 'javaw.exe');
+
+    if (fs.existsSync(localJre)) javaExe = localJre;
+    else if (fs.existsSync(gameJre)) javaExe = gameJre;
+
+    event.reply('game:launch-status', { status: 'launching', message: 'Launching via Minecraft...' });
+
+    if (fabricVersion) {
+        log('Found Fabric version: ' + fabricVersion);
+        const versionDir = path.join(versionsDir, fabricVersion);
+        const jsonPath = path.join(versionDir, fabricVersion + '.json');
+
+        try {
+            const versionJson = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+            const mainClass = versionJson.mainClass || 'net.fabricmc.loader.impl.launch.knot.KnotClient';
+            const classpath = (versionJson.classpath || []).map(p => {
+                const libPath = path.join(mcDir, 'libraries', ...p.split('/'));
+                return libPath;
+            });
+
+            const gameJar = path.join(versionDir, fabricVersion + '.jar');
+            if (!fs.existsSync(gameJar)) {
+                log('Game jar not found: ' + gameJar);
+                event.reply('game:launch-status', { status: 'error', message: 'Fabric version jar not found. Run Minecraft with Fabric first.' });
+                return;
+            }
+
+            const cpStr = [...classpath, gameJar].join(';');
+
+            const env = Object.assign({}, process.env);
+            const jvmArgs = [
+                `-Xmx${ram || 2048}M`,
+                `-Xms${Math.min(parseInt(ram || 2048), 512)}M`,
+                `-Djava.library.path=${path.join(mcDir, 'versions', fabricVersion, 'natives')}`,
+                `-cp`, cpStr,
+                mainClass,
+                '--username', nickname,
+                '--version', fabricVersion,
+                '--gameDir', mcDir,
+                '--assetsDir', path.join(mcDir, 'assets'),
+            ];
+
+            log('Java: ' + javaExe);
+            log('MainClass: ' + mainClass);
+
+            const game = spawn(javaExe, jvmArgs, {
+                cwd: mcDir,
+                env: env,
+                detached: true,
+                stdio: ['ignore', 'pipe', 'pipe']
+            });
+
+            let stderr = '';
+            game.stderr.on('data', d => { stderr += d.toString(); });
+
+            game.on('error', (err) => {
+                log('SPAWN ERROR: ' + err.message);
+                event.reply('game:launch-status', { status: 'error', message: 'Java error: ' + err.message });
+            });
+
+            game.on('close', (code) => {
+                log('process closed, code=' + code);
+                if (win) { win.show(); }
+                if (code !== 0) {
+                    event.reply('game:launch-status', { status: 'error', message: 'Exit ' + code + ': ' + stderr.slice(-300) });
+                } else {
+                    event.reply('game:launch-status', { status: 'closed', message: 'Game closed' });
+                }
+            });
+
+            game.unref();
+            event.reply('game:launch-status', { status: 'started', message: 'Game started' });
+            setTimeout(() => { if (win) { win.hide(); } }, 3000);
+        } catch (e) {
+            log('Failed to parse Fabric version json: ' + e.message);
+            event.reply('game:launch-status', { status: 'error', message: 'Failed to read Fabric version: ' + e.message });
+        }
+    } else {
+        log('No Fabric version found');
+        event.reply('game:launch-status', { status: 'error', message: 'Fabric not found. Install Fabric for Minecraft 1.21.11 first.' });
+    }
+}
 
 app.whenReady().then(() => {
     startLicenseServer();
