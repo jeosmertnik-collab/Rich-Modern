@@ -13,3 +13,5 @@ loader123/build/
 dist/
 RichModern.exe
 RichModern-*.exe
+RichModern/
+build_output/
