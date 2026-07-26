@@ -68,6 +68,10 @@ public class Loading {
         return instance;
     }
 
+    public static void resetInstance() {
+        instance = null;
+    }
+
     private void initParticles() {
         for (int i = 0; i < particles.length; i++) {
             particles[i] = new Particle();

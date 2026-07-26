@@ -72,6 +72,7 @@ public abstract class SplashOverlayMixin {
             loadingScreen.reset();
             loadingScreen = null;
             resourcesMarkedComplete = false;
+            Loading.resetInstance();
         }
     }
 }
