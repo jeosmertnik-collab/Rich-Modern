@@ -515,14 +515,29 @@ function launchViaGradlew(event, root, nickname, ram, log) {
         env.JAVA_OPTS = `-Xmx${ram}M -Xms${Math.min(parseInt(ram), 512)}M`;
     }
 
-    const localJre = path.join(root, 'jre', 'bin', 'java.exe');
-    if (fs.existsSync(localJre)) {
-        env.JAVA_HOME = path.join(root, 'jre');
-    }
+    const localJre = path.join(root, 'jre', 'bin', 'javaw.exe');
+    const systemJava = 'javaw';
+    let javaExe = fs.existsSync(localJre) ? localJre : systemJava;
+    if (fs.existsSync(localJre)) env.JAVA_HOME = path.join(root, 'jre');
+
+    const wrapperJar = path.join(root, 'gradle', 'wrapper', 'gradle-wrapper.jar');
+    const wrapperProps = path.join(root, 'gradle', 'wrapper', 'gradle-wrapper.properties');
+
+    log('java: ' + javaExe);
+    log('wrapperJar: ' + wrapperJar);
 
     event.reply('game:launch-status', { status: 'launching', message: 'Launching game...' });
 
-    const game = spawn('cmd.exe', ['/c', 'gradlew.bat', '--no-daemon', 'runClient'], {
+    const jvmArgs = [];
+    if (ram) jvmArgs.push(`-Xmx${ram}M`, `-Xms${Math.min(parseInt(ram), 512)}M`);
+    jvmArgs.push(
+        '-Dorg.gradle.appname=RichModern',
+        '-classpath', wrapperJar,
+        'org.gradle.wrapper.GradleWrapperMain',
+        '--no-daemon', 'runClient'
+    );
+
+    const game = spawn(javaExe, jvmArgs, {
         cwd: root,
         env: env,
         detached: true,
