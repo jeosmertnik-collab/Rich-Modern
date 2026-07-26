@@ -1,6 +1,7 @@
 package rich.screens.clickgui.impl.background.render;
 
 import net.minecraft.client.gui.DrawContext;
+import rich.modules.impl.render.Hud;
 import rich.util.render.Render2D;
 import rich.util.render.font.Fonts;
 
@@ -53,40 +54,111 @@ public class BackgroundRenderer {
                 && mouseY >= popupY && mouseY <= popupY + 150;
     }
 
+    private ThemeColors getThemeColors() {
+        Hud hud = Hud.getInstance();
+        String preset = hud != null ? hud.getThemePreset() : "Тёмная";
+        Color bg, panel, outline;
+        boolean blur;
+
+        switch (preset) {
+            case "Светлая" -> {
+                bg = new Color(240, 240, 245, 255);
+                panel = new Color(220, 220, 225, 60);
+                outline = new Color(180, 180, 190, 255);
+                blur = false;
+            }
+            case "Синяя" -> {
+                bg = new Color(15, 20, 35, 255);
+                panel = new Color(25, 35, 55, 60);
+                outline = new Color(60, 90, 140, 255);
+                blur = true;
+            }
+            case "Кастомная" -> {
+                int bgC = hud.customBgColor.getColor();
+                int panelC = hud.customPanelColor.getColor();
+                int outlineC = hud.customOutlineColor.getColor();
+                bg = new Color((bgC >> 16) & 0xFF, (bgC >> 8) & 0xFF, bgC & 0xFF, 255);
+                panel = new Color((panelC >> 16) & 0xFF, (panelC >> 8) & 0xFF, panelC & 0xFF, 60);
+                outline = new Color((outlineC >> 16) & 0xFF, (outlineC >> 8) & 0xFF, outlineC & 0xFF, 255);
+                blur = hud.customBlur.isValue();
+            }
+            default -> {
+                bg = new Color(18, 18, 28, 255);
+                panel = new Color(128, 128, 128, 25);
+                outline = new Color(55, 55, 55, 255);
+                blur = true;
+            }
+        }
+        return new ThemeColors(bg, panel, outline, blur);
+    }
+
+    private record ThemeColors(Color bg, Color panel, Color outline, boolean blur) {}
+
+    private int getAccentR() {
+        int rgb = Hud.getInstance() != null ? Hud.getInstance().getAccentRGB() : 0x6496FF;
+        return (rgb >> 16) & 0xFF;
+    }
+
+    private int getAccentG() {
+        int rgb = Hud.getInstance() != null ? Hud.getInstance().getAccentRGB() : 0x6496FF;
+        return (rgb >> 8) & 0xFF;
+    }
+
+    private int getAccentB() {
+        int rgb = Hud.getInstance() != null ? Hud.getInstance().getAccentRGB() : 0x6496FF;
+        return rgb & 0xFF;
+    }
+
+    private int accentColor(int alpha) {
+        return new Color(getAccentR(), getAccentG(), getAccentB(), alpha).getRGB();
+    }
+
     public void render(DrawContext context, float bgX, float bgY, float alphaMultiplier) {
-        int baseAlpha = (int) (255 * alphaMultiplier);
+        ThemeColors theme = getThemeColors();
+        int baseAlpha = (int) (theme.bg.getAlpha() * alphaMultiplier);
+
         int[] gradientColors = {
-                new Color(26, 26, 26, baseAlpha).getRGB(),
+                new Color(theme.bg.getRed(), theme.bg.getGreen(), theme.bg.getBlue(), baseAlpha).getRGB(),
                 new Color(0, 0, 0, baseAlpha).getRGB(),
-                new Color(26, 26, 26, baseAlpha).getRGB(),
+                new Color(theme.bg.getRed(), theme.bg.getGreen(), theme.bg.getBlue(), baseAlpha).getRGB(),
                 new Color(0, 0, 0, baseAlpha).getRGB(),
-                new Color(26, 26, 20, baseAlpha).getRGB()
+                new Color(theme.bg.getRed(), theme.bg.getGreen(), theme.bg.getBlue(), baseAlpha).getRGB()
         };
 
         Render2D.gradientRect(bgX, bgY, 400, 250, gradientColors, 15);
     }
 
     public void renderCategoryPanel(float bgX, float bgY, float bgHeight, float alphaMultiplier) {
-        int panelAlpha = (int) (25 * alphaMultiplier);
-        int outlineAlpha = (int) (255 * alphaMultiplier);
+        ThemeColors theme = getThemeColors();
+        int panelAlpha = (int) (theme.panel.getAlpha() * alphaMultiplier);
+        int outlineAlpha = (int) (theme.outline.getAlpha() * alphaMultiplier);
         int blurAlpha = (int) (155 * alphaMultiplier);
 
-        Render2D.rect(bgX + 7.5f, bgY + 7.5f, 80, bgHeight - 15, new Color(128, 128, 128, panelAlpha).getRGB(), 10);
-        Render2D.outline(bgX + 7.5f, bgY + 7.5f, 80, bgHeight - 15, 0.5f, new Color(55, 55, 55, outlineAlpha).getRGB(), 10);
+        int panelR = theme.panel.getRed();
+        int panelG = theme.panel.getGreen();
+        int panelB = theme.panel.getBlue();
+        int outlineR = theme.outline.getRed();
+        int outlineG = theme.outline.getGreen();
+        int outlineB = theme.outline.getBlue();
 
-        Render2D.outline(bgX + 12.5f, bgY + 220.5f, 70, 17, 0.5f, new Color(55, 55, 55, outlineAlpha).getRGB(), 5);
+        Render2D.rect(bgX + 7.5f, bgY + 7.5f, 80, bgHeight - 15, new Color(panelR, panelG, panelB, panelAlpha).getRGB(), 10);
+        Render2D.outline(bgX + 7.5f, bgY + 7.5f, 80, bgHeight - 15, 0.5f, new Color(outlineR, outlineG, outlineB, outlineAlpha).getRGB(), 10);
+
+        Render2D.outline(bgX + 12.5f, bgY + 220.5f, 70, 17, 0.5f, new Color(outlineR, outlineG, outlineB, outlineAlpha).getRGB(), 5);
 
         Fonts.GUI_ICONS.draw("X", bgX + 21.15f, bgY + 217.5f, 19, new Color(58, 58, 58, outlineAlpha).getRGB());
         Fonts.GUI_ICONS.draw("Y", bgX + 40f, bgY + 217f, 20, new Color(58, 58, 58, outlineAlpha).getRGB());
         Fonts.GUI_ICONS.draw("Z", bgX + 60f, bgY + 217f, 20, new Color(58, 58, 58, outlineAlpha).getRGB());
 
-        Render2D.blur(bgX + 12.5f, bgY + 220.5f, 70, 17, 4, 5, new Color(25, 25, 25, blurAlpha).getRGB());
+        if (theme.blur) {
+            Render2D.blur(bgX + 12.5f, bgY + 220.5f, 70, 17, 4, 5, new Color(25, 25, 25, blurAlpha).getRGB());
+        }
 
         int accentAlpha2 = (int) (220 * alphaMultiplier);
         int labelAlpha = (int) (160 * alphaMultiplier);
 
-        Fonts.SFPRO_REGULAR.draw("Changelog", bgX + 15f, bgY + 221.5f, 4.5f, new Color(100, 150, 255, accentAlpha2).getRGB());
-        Fonts.SFPRO_REGULAR.draw(">", bgX + 70f, bgY + 221.5f, 4.5f, new Color(100, 150, 255, labelAlpha).getRGB());
+        Fonts.SFPRO_REGULAR.draw("Changelog", bgX + 15f, bgY + 221.5f, 4.5f, accentColor(accentAlpha2));
+        Fonts.SFPRO_REGULAR.draw(">", bgX + 70f, bgY + 221.5f, 4.5f, accentColor(labelAlpha));
 
         renderChangelogPopup(bgX, bgY, alphaMultiplier);
     }
@@ -99,7 +171,7 @@ public class BackgroundRenderer {
             return;
         }
 
-        int overlayAlpha = (int) (100 * changelogAlpha * alphaMultiplier);
+        int overlayAlpha = (int) (204 * changelogAlpha * alphaMultiplier);
         Render2D.rect(0, 0, 4000, 4000, new Color(0, 0, 0, overlayAlpha).getRGB(), 0);
 
         float popupW = 200;
@@ -107,8 +179,8 @@ public class BackgroundRenderer {
         float popupX = bgX + (400 - popupW) / 2f;
         float popupY = bgY + (250 - popupH) / 2f;
 
-        int bgAlpha = (int) (240 * changelogAlpha * alphaMultiplier);
-        int outAlpha = (int) (200 * changelogAlpha * alphaMultiplier);
+        int bgAlpha = (int) (255 * changelogAlpha * alphaMultiplier);
+        int outAlpha = (int) (255 * changelogAlpha * alphaMultiplier);
         int accentA = (int) (255 * changelogAlpha * alphaMultiplier);
 
         Render2D.rect(popupX, popupY, popupW, popupH, new Color(18, 18, 28, bgAlpha).getRGB(), 8);
@@ -120,6 +192,12 @@ public class BackgroundRenderer {
         Fonts.SFPRO_REGULAR.draw("X", popupX + popupW - 15, popupY + 6, 5.5f, new Color(200, 80, 80, accentA).getRGB());
 
         String[] entries = {
+                "v1.0.14",
+                "Changelog popup menu",
+                "Compact TargetHud + items",
+                "LeafFarmer auto-farm leaves",
+                "Launcher remembers login",
+                "",
                 "v1.0.13",
                 "ClickGUI replaced from Rich-Modern1",
                 "New HUD theme SFPRO+blue",

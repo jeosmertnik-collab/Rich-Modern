@@ -3,12 +3,14 @@ package rich.modules.impl.render;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
 import lombok.experimental.NonFinal;
+import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.Arm;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.RotationAxis;
 import rich.events.api.EventHandler;
+import rich.events.impl.DrawEvent;
 import rich.events.impl.HandAnimationEvent;
 import rich.events.impl.SwingDurationEvent;
 import rich.modules.impl.combat.Aura;
@@ -17,6 +19,10 @@ import rich.modules.module.category.ModuleCategory;
 import rich.modules.module.setting.implement.BooleanSetting;
 import rich.modules.module.setting.implement.SelectSetting;
 import rich.modules.module.setting.implement.SliderSettings;
+import rich.modules.impl.render.Hud;
+import rich.util.render.Render2D;
+
+import java.awt.*;
 
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class SwingAnimation extends ModuleStructure {
@@ -32,6 +38,11 @@ public class SwingAnimation extends ModuleStructure {
 
     BooleanSetting onlyAura = new BooleanSetting("Только при включенной КиллАуре", "Показывает анимацию только при включенной киллауре")
             .setValue(false);
+
+    @NonFinal
+    private float renderSwingProgress = 0f;
+    @NonFinal
+    private long lastSwingTime = 0;
 
     public SwingAnimation() {
         super("SwingAnimation", "Анимация взмаха руки", ModuleCategory.RENDER);
@@ -59,6 +70,8 @@ public class SwingAnimation extends ModuleStructure {
         if (isMainHand) {
             MatrixStack matrix = e.getMatrices();
             float swingProgress = e.getSwingProgress();
+            renderSwingProgress = swingProgress;
+            lastSwingTime = System.currentTimeMillis();
             int i = mc.player.getMainArm().equals(Arm.RIGHT) ? 1 : -1;
             float sin1 = MathHelper.sin(swingProgress * swingProgress * (float) Math.PI);
             float sin2 = MathHelper.sin(MathHelper.sqrt(swingProgress) * (float) Math.PI);
@@ -152,5 +165,37 @@ public class SwingAnimation extends ModuleStructure {
             }
             e.cancel();
         }
+    }
+
+    @EventHandler
+    public void onDraw(DrawEvent e) {
+        if (mc.player == null) return;
+
+        long elapsed = System.currentTimeMillis() - lastSwingTime;
+        float fadeTime = 200 * swingSpeedSetting.getValue();
+        if (elapsed > fadeTime) {
+            renderSwingProgress = 0f;
+            return;
+        }
+
+        float fadeAlpha = 1f - (elapsed / fadeTime);
+        fadeAlpha = Math.max(0f, Math.min(1f, fadeAlpha));
+
+        int accentRGB = Hud.getInstance() != null ? Hud.getInstance().getAccentRGB() : 0x6496FF;
+
+        float centerX = mc.getWindow().getScaledWidth() / 2f;
+        float centerY = mc.getWindow().getScaledHeight() / 2f;
+
+        float radius = 20f + renderSwingProgress * 15f;
+        float arcDegree = renderSwingProgress * 270f;
+        float rotation = -135f;
+
+        int r = (accentRGB >> 16) & 0xFF;
+        int g = (accentRGB >> 8) & 0xFF;
+        int b = accentRGB & 0xFF;
+        int alpha = (int) (fadeAlpha * 180);
+
+        int color = new Color(r, g, b, alpha).getRGB();
+        Render2D.arc(centerX, centerY, radius * 2, 2f, arcDegree, rotation, color);
     }
 }

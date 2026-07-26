@@ -2,6 +2,7 @@ package rich.screens.clickgui.impl.settingsrender;
 
 import net.minecraft.client.gui.DrawContext;
 import org.lwjgl.glfw.GLFW;
+import rich.modules.impl.render.Hud;
 import rich.util.interfaces.AbstractSettingComponent;
 import rich.modules.module.setting.implement.SliderSettings;
 import rich.util.render.Render2D;
@@ -185,8 +186,9 @@ public class SliderComponent extends AbstractSettingComponent {
         float filledWidth = sliderTrackWidth * animatedPercentage;
 
         if (filledWidth > 0) {
+            int accentRGB = Hud.getInstance() != null ? Hud.getInstance().getAccentRGB() : 0x6496FF;
             Render2D.rect(x + sliderPadding, sliderY, filledWidth, sliderHeight,
-                    applyAlpha(new Color(130, 130, 135, 230)).getRGB(), 2f);
+                    new Color((accentRGB >> 16) & 0xFF, (accentRGB >> 8) & 0xFF, accentRGB & 0xFF, 230).getRGB(), 2f);
         }
 
         float knobBaseSize = 5f;
@@ -197,8 +199,9 @@ public class SliderComponent extends AbstractSettingComponent {
         knobX = Math.max(x + sliderPadding - (knobSize / 2f),
                 Math.min(knobX, x + sliderPadding + sliderTrackWidth - (knobSize / 2f)));
 
+        int knobAccentRGB = Hud.getInstance() != null ? Hud.getInstance().getAccentRGB() : 0x6496FF;
         Render2D.rect(knobX, knobY, knobSize, knobSize,
-                applyAlpha(new Color(180, 180, 185, 255)).getRGB(), knobSize / 2f);
+                new Color((knobAccentRGB >> 16) & 0xFF, (knobAccentRGB >> 8) & 0xFF, knobAccentRGB & 0xFF, 255).getRGB(), knobSize / 2f);
     }
 
     private boolean isValueHover(double mouseX, double mouseY) {

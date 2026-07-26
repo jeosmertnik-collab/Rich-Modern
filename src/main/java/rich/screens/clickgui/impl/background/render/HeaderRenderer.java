@@ -1,6 +1,7 @@
 package rich.screens.clickgui.impl.background.render;
 
 import rich.modules.module.category.ModuleCategory;
+import rich.modules.impl.render.Hud;
 import rich.screens.clickgui.impl.background.search.SearchHandler;
 import rich.util.render.Render2D;
 import rich.util.render.shader.Scissor;
@@ -12,13 +13,21 @@ public class HeaderRenderer {
 
     private static final float HEADER_SLIDE_DISTANCE = 8f;
 
+    private float getFontScale() {
+        Hud hud = Hud.getInstance();
+        if (hud != null) return hud.getFontSize() / 12f;
+        return 1f;
+    }
+
     public void render(float bgX, float bgY, float bgWidth, ModuleCategory selectedCategory,
                        ModuleCategory previousCategory, ModuleCategory currentCategory,
                        float headerTransition, SearchHandler searchHandler, float alphaMultiplier) {
 
+        float fontScale = getFontScale();
+
         renderHeaderPanel(bgX, bgY, bgWidth, alphaMultiplier);
-        renderSearchBox(bgX, bgY, searchHandler, alphaMultiplier);
-        renderCategoryLabel(bgX, bgY, previousCategory, currentCategory, headerTransition, searchHandler, alphaMultiplier);
+        renderSearchBox(bgX, bgY, searchHandler, alphaMultiplier, fontScale);
+        renderCategoryLabel(bgX, bgY, previousCategory, currentCategory, headerTransition, searchHandler, alphaMultiplier, fontScale);
     }
 
     private void renderHeaderPanel(float bgX, float bgY, float bgWidth, float alphaMultiplier) {
@@ -29,7 +38,7 @@ public class HeaderRenderer {
         Render2D.outline(bgX + 92f, bgY + 7.5f, bgWidth - 100f, 25, 0.5f, new Color(55, 55, 55, outlineAlpha).getRGB(), 8);
     }
 
-    private void renderSearchBox(float bgX, float bgY, SearchHandler searchHandler, float alphaMultiplier) {
+    private void renderSearchBox(float bgX, float bgY, SearchHandler searchHandler, float alphaMultiplier, float fontScale) {
         float searchBoxX = bgX + 315f;
         float searchBoxY = bgY + 12.5f;
         float searchBoxW = 70f;
@@ -38,8 +47,10 @@ public class HeaderRenderer {
         int outlineAlpha = (int) (255 * alphaMultiplier);
         int panelAlpha = (int) (25 * alphaMultiplier);
 
+        int accentRGB = Hud.getInstance() != null ? Hud.getInstance().getAccentRGB() : 0x6496FF;
+
         Color searchOutline = searchHandler.isSearchActive()
-                ? new Color(180, 180, 180, outlineAlpha)
+                ? new Color((accentRGB >> 16) & 0xFF, (accentRGB >> 8) & 0xFF, accentRGB & 0xFF, outlineAlpha)
                 : new Color(55, 55, 55, outlineAlpha);
 
         int searchBgAlpha = (int) ((25 + searchHandler.getSearchFocusAnimation() * 15) * alphaMultiplier);
@@ -49,11 +60,11 @@ public class HeaderRenderer {
         float textAreaX = searchBoxX + 5;
 
         if (searchHandler.isSearchActive() && !searchHandler.getSearchText().isEmpty()) {
-            renderSearchText(searchBoxX, searchBoxY, searchBoxW, searchBoxH, textAreaX, searchHandler, alphaMultiplier);
+            renderSearchText(searchBoxX, searchBoxY, searchBoxW, searchBoxH, textAreaX, searchHandler, alphaMultiplier, fontScale);
         } else if (searchHandler.isSearchActive()) {
-            renderSearchPlaceholder(searchBoxX, searchBoxY, searchBoxH, textAreaX, searchHandler, alphaMultiplier, true);
+            renderSearchPlaceholder(searchBoxX, searchBoxY, searchBoxH, textAreaX, searchHandler, alphaMultiplier, true, fontScale);
         } else {
-            Fonts.BOLD.draw("Search Modules...", textAreaX, searchBoxY + 5f, 5, new Color(128, 128, 128, outlineAlpha).getRGB());
+            Fonts.BOLD.draw("Search Modules...", textAreaX, searchBoxY + 5f, 5 * fontScale, new Color(128, 128, 128, outlineAlpha).getRGB());
         }
 
         Render2D.rect(searchBoxX + 53, searchBoxY + 3.5f, 1, searchBoxH - 7, new Color(128, 128, 128, panelAlpha).getRGB(), 8);
@@ -61,14 +72,14 @@ public class HeaderRenderer {
     }
 
     private void renderSearchText(float searchBoxX, float searchBoxY, float searchBoxW, float searchBoxH,
-                                  float textAreaX, SearchHandler searchHandler, float alphaMultiplier) {
+                                  float textAreaX, SearchHandler searchHandler, float alphaMultiplier, float fontScale) {
         Scissor.enable(searchBoxX + 3, searchBoxY, searchBoxW - 20, searchBoxH, 2);
 
         if (searchHandler.hasSearchSelection() && searchHandler.getSearchSelectionAnimation() > 0.01f) {
             renderSearchSelection(textAreaX, searchBoxY, searchBoxH, searchHandler, alphaMultiplier);
         }
 
-        Fonts.BOLD.draw(searchHandler.getSearchText(), textAreaX, searchBoxY + 5f, 5,
+        Fonts.BOLD.draw(searchHandler.getSearchText(), textAreaX, searchBoxY + 5f, 5 * fontScale,
                 new Color(210, 210, 220, (int) (255 * alphaMultiplier)).getRGB());
         Scissor.disable();
 
@@ -88,8 +99,9 @@ public class HeaderRenderer {
         float selectionWidth = Fonts.BOLD.getWidth(selection, 5);
 
         int selAlpha = (int) (100 * searchHandler.getSearchSelectionAnimation() * alphaMultiplier);
+        int accentRGB = Hud.getInstance() != null ? Hud.getInstance().getAccentRGB() : 0x6496FF;
         Render2D.rect(selectionX, searchBoxY + 2, selectionWidth, searchBoxH - 4,
-                new Color(100, 140, 180, selAlpha).getRGB(), 2f);
+                new Color((accentRGB >> 16) & 0xFF, (accentRGB >> 8) & 0xFF, accentRGB & 0xFF, selAlpha).getRGB(), 2f);
     }
 
     private void renderSearchCursor(float textAreaX, float searchBoxY, float searchBoxH,
@@ -104,8 +116,8 @@ public class HeaderRenderer {
     }
 
     private void renderSearchPlaceholder(float searchBoxX, float searchBoxY, float searchBoxH,
-                                         float textAreaX, SearchHandler searchHandler, float alphaMultiplier, boolean showCursor) {
-        Fonts.BOLD.draw("Type to search...", textAreaX, searchBoxY + 5f, 5,
+                                         float textAreaX, SearchHandler searchHandler, float alphaMultiplier, boolean showCursor, float fontScale) {
+        Fonts.BOLD.draw("Type to search...", textAreaX, searchBoxY + 5f, 5 * fontScale,
                 new Color(100, 100, 105, (int) (150 * alphaMultiplier)).getRGB());
 
         if (showCursor) {
@@ -118,9 +130,9 @@ public class HeaderRenderer {
         }
     }
 
-    private void renderCategoryLabel(float bgX, float bgY, ModuleCategory previousCategory,
-                                     ModuleCategory currentCategory, float headerTransition,
-                                     SearchHandler searchHandler, float alphaMultiplier) {
+private void renderCategoryLabel(float bgX, float bgY, ModuleCategory previousCategory,
+                                      ModuleCategory currentCategory, float headerTransition,
+                                      SearchHandler searchHandler, float alphaMultiplier, float fontScale) {
         float baseX = bgX + 100f;
         float baseY = bgY + 16f;
 
@@ -135,7 +147,7 @@ public class HeaderRenderer {
                 int oldAlphaInt = (int) (128 * oldAlpha);
                 if (oldAlphaInt > 0) {
                     String oldName = previousCategory.getReadableName();
-                    Fonts.BOLD.draw(oldName, baseX, baseY + oldOffsetY, 7, new Color(128, 128, 128, oldAlphaInt).getRGB());
+                    Fonts.BOLD.draw(oldName, baseX, baseY + oldOffsetY, 7 * fontScale, new Color(128, 128, 128, oldAlphaInt).getRGB());
                 }
             }
 
@@ -146,7 +158,7 @@ public class HeaderRenderer {
                 int newAlphaInt = (int) (128 * newAlpha);
                 if (newAlphaInt > 0) {
                     String newName = currentCategory.getReadableName();
-                    Fonts.BOLD.draw(newName, baseX, baseY + newOffsetY, 7, new Color(128, 128, 128, newAlphaInt).getRGB());
+                    Fonts.BOLD.draw(newName, baseX, baseY + newOffsetY, 7 * fontScale, new Color(128, 128, 128, newAlphaInt).getRGB());
                 }
             }
         }
@@ -160,7 +172,7 @@ public class HeaderRenderer {
                 if (!searchText.isEmpty()) {
                     searchLabel = "Results for \"" + (searchText.length() > 12 ? searchText.substring(0, 12) + "..." : searchText) + "\"";
                 }
-                Fonts.BOLD.draw(searchLabel, baseX, baseY, 7, new Color(160, 160, 160, searchLabelAlphaInt).getRGB());
+                Fonts.BOLD.draw(searchLabel, baseX, baseY, 7 * fontScale, new Color(160, 160, 160, searchLabelAlphaInt).getRGB());
             }
         }
     }
