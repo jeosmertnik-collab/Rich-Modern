@@ -236,8 +236,6 @@ function saveGameRoot(rootPath) {
         fs.writeFileSync(GAME_ROOT_FILE, JSON.stringify({ path: rootPath }, null, 2), 'utf8');
     } catch (e) {}
 }
-    return null;
-}
 
 const MC_PATH_FILE = path.join(app.getPath('userData'), 'mcpath.json');
 
