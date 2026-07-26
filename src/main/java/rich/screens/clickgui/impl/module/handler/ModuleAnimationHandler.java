@@ -27,6 +27,7 @@ public class ModuleAnimationHandler {
     private Map<ModuleStructure, Float> moduleAlphaAnimations = new HashMap<>();
     private Map<ModuleStructure, Float> bindBoxWidthAnimations = new HashMap<>();
     private Map<ModuleStructure, Float> bindBoxAlphaAnimations = new HashMap<>();
+    private Map<ModuleStructure, Float> toggleFlashAnimations = new HashMap<>();
 
     private List<ModuleStructure> oldModules = new ArrayList<>();
     private double oldModuleDisplayScroll = 0;
@@ -130,6 +131,7 @@ public class ModuleAnimationHandler {
         updateFavoriteAnimations(displayModules);
         updateBindAnimations(displayModules);
         updateHighlightAnimation();
+        updateToggleFlashAnimations(displayModules);
         updateHoverAnimations(displayModules, mouseX, mouseY, listX, listY, listWidth, listHeight, scrollOffset);
     }
 
@@ -327,6 +329,21 @@ public class ModuleAnimationHandler {
     public void clearScrollTarget() {
         scrollToModule = false;
         scrollTargetModule = null;
+    }
+
+    public void triggerToggleFlash(ModuleStructure module) {
+        toggleFlashAnimations.put(module, 1f);
+    }
+
+    private void updateToggleFlashAnimations(List<ModuleStructure> displayModules) {
+        float deltaTime = 1f / 20f;
+        Iterator<Map.Entry<ModuleStructure, Float>> it = toggleFlashAnimations.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry<ModuleStructure, Float> e = it.next();
+            float val = e.getValue() - deltaTime * 3f;
+            if (val <= 0f) it.remove();
+            else e.setValue(val);
+        }
     }
 
     private float animateTowards(float current, float target, float speed, float deltaTime) {

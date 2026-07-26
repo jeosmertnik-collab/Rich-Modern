@@ -13,6 +13,7 @@ import rich.util.render.shader.Scissor;
 import rich.util.render.font.Fonts;
 
 import java.awt.*;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -50,6 +51,15 @@ public class ModuleListRenderer {
         int panelBd = ClickGuiTheme.borderAlpha(0.45f * alpha);
         Render2D.rect(x, y, w, h, panelBg, CORNER_R);
         Render2D.outline(x, y, w, h, 0.5f, panelBd, CORNER_R);
+
+        int ar = (ClickGuiTheme.ACCENT_ARGB >> 16) & 0xFF;
+        int ag = (ClickGuiTheme.ACCENT_ARGB >> 8) & 0xFF;
+        int ab = ClickGuiTheme.ACCENT_ARGB & 0xFF;
+        int glowA = (int) (12 * alpha);
+        if (glowA > 0) {
+            Render2D.rect(x + 4, y, w - 8, 1, new Color(ar, ag, ab, glowA).getRGB(), 0);
+            Render2D.rect(x + 4, y + h - 1, w - 8, 1, new Color(ar, ag, ab, glowA).getRGB(), 0);
+        }
 
         Scissor.enable(x + INSET, y + INSET - 1.5f, w - INSET * 2, h - INSET * 2 + 3, gs);
 
@@ -122,6 +132,15 @@ public class ModuleListRenderer {
             else bg = ClickGuiTheme.moduleBg(ca * (0.5f + hover * 0.5f));
             Render2D.rect(aX, sY, sw, sH, bg, 7);
 
+            float flashAnim = ah.getToggleFlashAnimations().getOrDefault(m, 0f);
+            if (flashAnim > 0.01f) {
+                int aR2 = (ClickGuiTheme.ACCENT_ARGB >> 16) & 0xFF;
+                int aG2 = (ClickGuiTheme.ACCENT_ARGB >> 8) & 0xFF;
+                int aB2 = ClickGuiTheme.ACCENT_ARGB & 0xFF;
+                int flashAlpha = (int) (60 * flashAnim * ca);
+                Render2D.rect(aX, sY, sw, sH, new Color(aR2, aG2, aB2, flashAlpha).getRGB(), 7);
+            }
+
             if (state > 0.5f) {
                 int aR = (ClickGuiTheme.ACCENT_ARGB >> 16) & 0xFF;
                 int aG = (ClickGuiTheme.ACCENT_ARGB >> 8) & 0xFF;
@@ -178,6 +197,12 @@ public class ModuleListRenderer {
         int aR = (ClickGuiTheme.ACCENT_ARGB >> 16) & 0xFF;
         int aG = (ClickGuiTheme.ACCENT_ARGB >> 8) & 0xFF;
         int aB = ClickGuiTheme.ACCENT_ARGB & 0xFF;
+
+        if (state > 0.5f) {
+            int glowA = (int) (25 * state * alpha);
+            Render2D.rect(x - 2, y - 2, TOGGLE_W + 4, TOGGLE_H + 4,
+                    new Color(aR, aG, aB, glowA).getRGB(), TOGGLE_R + 2);
+        }
 
         int trackA = (int) (80 + 120 * state);
         int trackBg;

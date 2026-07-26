@@ -34,7 +34,9 @@ import rich.util.render.font.Fonts;
 import rich.util.render.shader.Scissor;
 import rich.util.render.gif.GifRender;
 
+import java.awt.Color;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 
 public class ClickGui extends Screen implements IMinecraft {
@@ -61,6 +63,9 @@ public class ClickGui extends Screen implements IMinecraft {
     private int lastMouseX;
     private int lastMouseY;
     private float lastDelta;
+
+    private final LinkedList<float[]> cursorTrail = new LinkedList<>();
+    private static final int TRAIL_LENGTH = 8;
 
     public ClickGui() {
         super(Text.of("MenuScreen"));
@@ -339,6 +344,22 @@ public class ClickGui extends Screen implements IMinecraft {
 //            Fonts.TEST.drawCentered("Press CTRL + ALT to reset position", centerX, textY + 65, 6, new Color(150, 150, 150, hintAlpha).getRGB());
         }
 
+        if (alphaMultiplier > 0.01f) {
+            cursorTrail.addFirst(new float[]{mx, my});
+            while (cursorTrail.size() > TRAIL_LENGTH) cursorTrail.removeLast();
+            int ar = (ClickGuiTheme.ACCENT_ARGB >> 16) & 0xFF;
+            int ag = (ClickGuiTheme.ACCENT_ARGB >> 8) & 0xFF;
+            int ab = ClickGuiTheme.ACCENT_ARGB & 0xFF;
+            for (int i = 0; i < cursorTrail.size(); i++) {
+                float[] t = cursorTrail.get(i);
+                float ratio = 1f - (float) i / TRAIL_LENGTH;
+                int ta = (int) (40 * ratio * ratio * alphaMultiplier);
+                float sz = 1f + 2f * ratio;
+                if (ta > 0) Render2D.rect(t[0] - sz / 2f, t[1] - sz / 2f, sz, sz,
+                        new Color(ar, ag, ab, ta).getRGB(), sz / 2f);
+            }
+        }
+
         context.getMatrices().popMatrix();
         modelViewStack.popMatrix();
         Render2D.endOverlay();
@@ -446,6 +467,7 @@ public class ClickGui extends Screen implements IMinecraft {
             ModuleStructure toggleModule = moduleComponent.getModuleAtPosition(mx, my, mlX, mlY, mlW, mlH);
             if (toggleModule != null && click.button() == 0) {
                 toggleModule.switchState();
+                moduleComponent.triggerToggleFlash(toggleModule);
                 return true;
             }
 

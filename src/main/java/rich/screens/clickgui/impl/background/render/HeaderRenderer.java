@@ -18,8 +18,25 @@ public class HeaderRenderer {
                        ModuleCategory prev, ModuleCategory cur, float trans,
                        SearchHandler sh, float alpha) {
         renderAccentLine(bgX, bgY, bgW, alpha);
+        renderLogo(bgX, bgY, alpha);
         renderSearchBox(bgX, bgY, bgW, sh, alpha);
         renderLabel(bgX, bgY, prev, cur, trans, sh, alpha);
+    }
+
+    private void renderLogo(float bgX, float bgY, float alpha) {
+        float inset = ClickGuiTheme.PANEL_INSET;
+        float catW = ClickGuiTheme.CATEGORY_PANEL_WIDTH;
+        float lx = bgX + inset + catW / 2f;
+        float ly = bgY + inset + 4f;
+
+        int ar = (ClickGuiTheme.ACCENT_ARGB >> 16) & 0xFF;
+        int ag = (ClickGuiTheme.ACCENT_ARGB >> 8) & 0xFF;
+        int ab = ClickGuiTheme.ACCENT_ARGB & 0xFF;
+        int logoA = (int) (200 * alpha);
+        if (logoA > 0) {
+            int logoColor = ((logoA & 0xFF) << 24) | ((ar & 0xFF) << 16) | ((ag & 0xFF) << 8) | (ab & 0xFF);
+            Fonts.BOLD.draw("RICH", lx - Fonts.BOLD.getWidth("RICH", 7) / 2f, ly, 7, logoColor);
+        }
     }
 
     private void renderAccentLine(float bgX, float bgY, float bgW, float alpha) {

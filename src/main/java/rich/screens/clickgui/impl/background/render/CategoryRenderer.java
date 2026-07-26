@@ -86,6 +86,16 @@ public class CategoryRenderer {
             int bgAlpha = (int) (40 * anim * alphaMultiplier);
             Render2D.rect(bgX + inset, itemY, catW, ITEM_SIZE,
                     new Color(accentR, accentG, accentB, bgAlpha).getRGB(), 8f);
+
+            float ringAlphaF = anim * alphaMultiplier;
+            for (int ring = 3; ring >= 1; ring--) {
+                float ringSize = ITEM_SIZE + ring * 8f;
+                int ringAlpha = (int) (8 * ringAlphaF / ring);
+                if (ringAlpha > 0) {
+                    Render2D.rect(centerX - ringSize / 2f, itemY + (ITEM_SIZE - ringSize) / 2f,
+                            ringSize, ringSize, new Color(accentR, accentG, accentB, ringAlpha).getRGB(), ringSize / 2f);
+                }
+            }
         }
 
         int iconAlpha;

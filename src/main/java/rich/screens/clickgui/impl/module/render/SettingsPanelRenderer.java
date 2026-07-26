@@ -46,6 +46,15 @@ public class SettingsPanelRenderer {
         int borderCol = ((outlineAlpha & 0xFF) << 24) | (ClickGuiTheme.PANEL_BORDER_ARGB & 0xFFFFFF);
         Render2D.outline(x, y, width, height, 0.5f, borderCol, SETTINGS_PANEL_CORNER_RADIUS);
 
+        int ar = (ClickGuiTheme.ACCENT_ARGB >> 16) & 0xFF;
+        int ag = (ClickGuiTheme.ACCENT_ARGB >> 8) & 0xFF;
+        int ab = ClickGuiTheme.ACCENT_ARGB & 0xFF;
+        int glowA = (int) (12 * alphaMultiplier);
+        if (glowA > 0) {
+            Render2D.rect(x + 4, y, width - 8, 1, new Color(ar, ag, ab, glowA).getRGB(), 0);
+            Render2D.rect(x + 4, y + height - 1, width - 8, 1, new Color(ar, ag, ab, glowA).getRGB(), 0);
+        }
+
         if (selectedModule == null) {
             String text = Lang.get().get("select_module_hint");
             float textSize = 6f;

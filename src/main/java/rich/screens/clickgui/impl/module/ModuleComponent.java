@@ -124,6 +124,10 @@ public class ModuleComponent implements IMinecraft {
         animationHandler.initSettingAnimations(settingComponents);
     }
 
+    public void triggerToggleFlash(ModuleStructure module) {
+        animationHandler.triggerToggleFlash(module);
+    }
+
     public void renderModuleList(DrawContext context, float x, float y, float width, float height,
                                  float mouseX, float mouseY, int guiScale, float alphaMultiplier) {
         lastMouseX = mouseX;
