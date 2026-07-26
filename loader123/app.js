@@ -185,82 +185,6 @@ function getHardwareId() {
     return 'UNKNOWN';
 }
 
-function findGameRoot() {
-    log('findGameRoot called');
-    log('PORTABLE_EXECUTABLE_DIR=' + (process.env.PORTABLE_EXECUTABLE_DIR || 'UNSET'));
-    log('app.getPath(exe)=' + app.getPath('exe'));
-    log('cwd=' + process.cwd());
-
-    const saved = loadSavedGameRoot();
-    if (saved) {
-        log('Saved game root: ' + saved);
-        try {
-            if (fs.existsSync(path.join(saved, 'gradlew.bat'))) {
-                log('Saved root has gradlew.bat, using it');
-                return saved;
-            }
-            log('Saved root missing gradlew.bat, searching...');
-        } catch (e) {}
-    }
-
-    const home = process.env.USERPROFILE || process.env.HOME || '';
-    const desktop = home ? path.join(home, 'Desktop') : '';
-    const appData = process.env.APPDATA || '';
-
-    const searchDirs = [
-        process.env.PORTABLE_EXECUTABLE_DIR || '',
-        path.dirname(app.getPath('exe')),
-        process.cwd(),
-        desktop,
-        desktop ? path.join(desktop, 'Rich-Modern') : '',
-        desktop ? path.join(desktop, 'Rich Modern') : '',
-        'C:\\Users\\Oxeo\\Desktop\\Rich-Modern',
-        'C:\\Users\\Oxeo\\Desktop\\Rich Modern',
-        appData ? path.join(appData, '..', 'Desktop', 'Rich-Modern') : '',
-        appData ? path.join(appData, '..', 'Desktop', 'Rich Modern') : '',
-    ];
-
-    for (const startDir of searchDirs) {
-        if (!startDir) continue;
-        let dir = startDir;
-        for (let i = 0; i < 10; i++) {
-            if (!dir || dir.length < 3) break;
-            try {
-                if (fs.existsSync(path.join(dir, 'gradlew.bat'))) {
-                    log('Found gradlew.bat at: ' + dir);
-                    saveGameRoot(dir);
-                    return dir;
-                }
-            } catch (e) {}
-            const parent = path.dirname(dir);
-            if (parent === dir) break;
-            dir = parent;
-        }
-    }
-    log('findGameRoot: NOT FOUND');
-    return null;
-}
-
-const GAME_ROOT_FILE = path.join(app.getPath('userData'), 'gameroot.json');
-
-function loadSavedGameRoot() {
-    try {
-        if (fs.existsSync(GAME_ROOT_FILE)) {
-            const data = JSON.parse(fs.readFileSync(GAME_ROOT_FILE, 'utf8'));
-            if (data.path && fs.existsSync(data.path)) return data.path;
-        }
-    } catch (e) {}
-    return null;
-}
-
-function saveGameRoot(rootPath) {
-    try {
-        const dir = path.dirname(GAME_ROOT_FILE);
-        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-        fs.writeFileSync(GAME_ROOT_FILE, JSON.stringify({ path: rootPath }, null, 2), 'utf8');
-    } catch (e) {}
-}
-
 const MC_PATH_FILE = path.join(app.getPath('userData'), 'mcpath.json');
 
 function loadCustomMcPath() {
@@ -372,7 +296,7 @@ ipcMain.handle('auth:login', (event, { login, password }) => {
 });
 
 ipcMain.handle('game:findRoot', () => {
-    return findGameRoot();
+    return findMinecraftDir();
 });
 
 ipcMain.handle('game:getGameDataDir', () => {
@@ -588,23 +512,13 @@ ipcMain.handle('license:remove', () => {
 });
 
 ipcMain.on('game:launch', (event, { nickname, ram }) => {
-    const logFile = path.join(app.getPath('userData'), 'launch.log');
-    const log = (msg) => { const line = `[${new Date().toISOString()}] ${msg}\n`; fs.appendFileSync(logFile, line); };
     log('=== LAUNCH START ===');
-    log('exe: ' + app.getPath('exe'));
-    log('cwd: ' + process.cwd());
-    log('PORTABLE_EXECUTABLE_DIR: ' + (process.env.PORTABLE_EXECUTABLE_DIR || 'NOT SET'));
-    log('USERPROFILE: ' + (process.env.USERPROFILE || 'NOT SET'));
-    log('APPDATA: ' + (process.env.APPDATA || 'NOT SET'));
-
-    const root = findGameRoot();
-    log('findGameRoot: ' + root);
 
     const mcDir = findMinecraftDir();
     log('findMinecraftDir: ' + mcDir);
 
     const nickFile = (() => {
-        const targetDir = root ? root : (mcDir || path.join(app.getPath('userData')));
+        const targetDir = mcDir || path.join(app.getPath('userData'));
         const nf = path.join(targetDir, 'Rich', 'configs', 'lastnick.txt');
         try {
             const nd = path.dirname(nf);
@@ -615,73 +529,13 @@ ipcMain.on('game:launch', (event, { nickname, ram }) => {
     })();
     log('nickFile: ' + nickFile);
 
-    if (root) {
-        launchViaGradlew(event, root, nickname, ram, log);
-    } else if (mcDir) {
+    if (mcDir) {
         launchViaMinecraft(event, mcDir, nickname, ram, log);
     } else {
-        log('ERROR: Neither gradlew.bat nor .minecraft found');
+        log('ERROR: .minecraft not found');
         event.reply('game:launch-status', { status: 'error', message: 'Minecraft not found. Press "Select Folder" to choose .minecraft path manually.' });
     }
 });
-
-function launchViaGradlew(event, root, nickname, ram, log) {
-    const env = Object.assign({}, process.env);
-    if (ram) {
-        env.GRADLE_OPTS = `-Xmx${ram}M`;
-        env.JAVA_OPTS = `-Xmx${ram}M -Xms${Math.min(parseInt(ram), 512)}M`;
-        log('RAM: ' + ram);
-    }
-
-    const localJre = path.join(root, 'jre', 'bin', 'java.exe');
-    const tempJre = path.join(process.env.TEMP || '', 'jdk21', 'jdk-21.0.2', 'bin', 'java.exe');
-
-    if (fs.existsSync(localJre)) {
-        env.JAVA_HOME = path.join(root, 'jre');
-        log('Java: local jre');
-    } else if (fs.existsSync(tempJre)) {
-        env.JAVA_HOME = path.join(process.env.TEMP || '', 'jdk21', 'jdk-21.0.2');
-        log('Java: temp jdk21');
-    } else {
-        log('Java: using system PATH');
-    }
-
-    event.reply('game:launch-status', { status: 'launching', message: 'Launching game...' });
-
-    const game = spawn('cmd.exe', ['/c', 'gradlew.bat', '--no-daemon', 'runClient'], {
-        cwd: root,
-        env: env,
-        detached: true,
-        stdio: ['ignore', 'pipe', 'pipe'],
-        windowsHide: true
-    });
-
-    log('spawn returned, pid: ' + game.pid);
-
-    let stderr = '';
-    let stdout = '';
-    game.stdout.on('data', d => { stdout += d.toString(); });
-    game.stderr.on('data', d => { stderr += d.toString(); });
-
-    game.on('error', (err) => {
-        log('SPAWN ERROR: ' + err.message);
-        event.reply('game:launch-status', { status: 'error', message: 'Spawn error: ' + err.message });
-    });
-
-    game.on('close', (code) => {
-        log('process closed, code=' + code);
-        if (win) { win.show(); }
-        if (code !== 0) {
-            event.reply('game:launch-status', { status: 'error', message: 'Exit ' + code + ': ' + stderr.slice(-300) });
-        } else {
-            event.reply('game:launch-status', { status: 'closed', message: 'Game closed' });
-        }
-    });
-
-    game.unref();
-    event.reply('game:launch-status', { status: 'started', message: 'Game started' });
-    setTimeout(() => { if (win) { win.hide(); } }, 3000);
-}
 
 function launchViaMinecraft(event, mcDir, nickname, ram, log) {
     log('Launching via .minecraft directory');
