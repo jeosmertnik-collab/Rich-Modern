@@ -10,3 +10,6 @@ WiNGS/
 loader123/node_modules/
 loader123/dist/
 loader123/build/
+dist/
+RichModern.exe
+RichModern-*.exe
