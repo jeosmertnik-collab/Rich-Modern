@@ -187,14 +187,19 @@ function findGameRoot() {
 
     const home = process.env.USERPROFILE || process.env.HOME || '';
     const desktop = home ? path.join(home, 'Desktop') : '';
+    const appData = process.env.APPDATA || '';
 
     const searchDirs = [
-        path.dirname(app.getPath('exe')),
         process.env.PORTABLE_EXECUTABLE_DIR || '',
+        path.dirname(app.getPath('exe')),
         process.cwd(),
         desktop,
         desktop ? path.join(desktop, 'Rich-Modern') : '',
         desktop ? path.join(desktop, 'Rich Modern') : '',
+        'C:\\Users\\Oxeo\\Desktop\\Rich-Modern',
+        'C:\\Users\\Oxeo\\Desktop\\Rich Modern',
+        appData ? path.join(appData, '..', 'Desktop', 'Rich-Modern') : '',
+        appData ? path.join(appData, '..', 'Desktop', 'Rich Modern') : '',
     ];
 
     for (const startDir of searchDirs) {
@@ -566,6 +571,11 @@ ipcMain.on('game:launch', (event, { nickname, ram }) => {
     const logFile = path.join(app.getPath('userData'), 'launch.log');
     const log = (msg) => { const line = `[${new Date().toISOString()}] ${msg}\n`; fs.appendFileSync(logFile, line); };
     log('=== LAUNCH START ===');
+    log('exe: ' + app.getPath('exe'));
+    log('cwd: ' + process.cwd());
+    log('PORTABLE_EXECUTABLE_DIR: ' + (process.env.PORTABLE_EXECUTABLE_DIR || 'NOT SET'));
+    log('USERPROFILE: ' + (process.env.USERPROFILE || 'NOT SET'));
+    log('APPDATA: ' + (process.env.APPDATA || 'NOT SET'));
 
     const root = findGameRoot();
     log('findGameRoot: ' + root);
@@ -816,31 +826,21 @@ function selfUpdate() {
 
             if (!needUpdate || !remote.launcherUrl) return resolve(false);
 
-            const currentExe = app.getPath('exe');
-            const tempExe = currentExe + '.new';
-            const batFile = path.join(app.getPath('temp'), 'rich-update.bat');
+            const originalDir = process.env.PORTABLE_EXECUTABLE_DIR || '';
+            const downloadedPath = path.join(app.getPath('temp'), 'RichModern-update.exe');
 
-            await downloadFile(remote.launcherUrl, tempExe);
+            await downloadFile(remote.launcherUrl, downloadedPath);
 
-            const bat = `@echo off
-timeout /t 2 /nobreak >nul
-taskkill /f /im "Rich Modern.exe" >nul 2>&1
-taskkill /f /im "RichModern.exe" >nul 2>&1
-timeout /t 1 /nobreak >nul
-del "%~dp0Rich Modern.exe" 2>nul
-del "%~dp0RichModern.exe" 2>nul
-copy "%TEMP%\\RichModern.exe.new" "%~dp0RichModern.exe" >nul 2>&1
-copy "%TEMP%\\RichModern.exe.new" "%~dp0Rich Modern.exe" >nul 2>&1
-del "%TEMP%\\RichModern.exe.new" 2>nul
-start "" "%~dp0RichModern.exe"
-del "%~f0"
-`;
-            fs.writeFileSync(batFile, bat, 'utf8');
+            if (originalDir && fs.existsSync(path.join(originalDir, 'RichModern.exe'))) {
+                try {
+                    fs.copyFileSync(downloadedPath, path.join(originalDir, 'RichModern.exe'));
+                    fs.unlinkSync(downloadedPath);
+                } catch (e) {}
+            }
 
             local.launcherVersion = remoteLauncherVer;
             saveLocalVersion(local);
 
-            spawn('cmd.exe', ['/c', batFile], { detached: true, stdio: 'ignore' }).unref();
             app.quit();
             resolve(true);
         } catch (e) {
