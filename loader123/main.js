@@ -360,18 +360,37 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    const selectMinecraftBtn = document.getElementById('selectMinecraftBtn');
+    if (selectMinecraftBtn) {
+        selectMinecraftBtn.addEventListener('click', async () => {
+            const selectedPath = await ipcRenderer.invoke('game:selectMinecraftDir');
+            if (selectedPath) {
+                selectMinecraftBtn.style.display = 'none';
+                if (launchStatus) {
+                    launchStatus.textContent = 'Minecraft found: ' + selectedPath;
+                    launchStatus.style.color = '#22c55e';
+                    setTimeout(() => { launchStatus.style.display = 'none'; launchStatus.style.color = ''; }, 3000);
+                }
+            }
+        });
+    }
+
     ipcRenderer.on('game:launch-status', async (event, data) => {
         const t = await loadTranslations(currentLanguage);
         if (launchStatus) launchStatus.textContent = data.message;
+
+        const selectMinecraftBtn = document.getElementById('selectMinecraftBtn');
 
         if (data.status === 'error') {
             launchGameBtn.disabled = false;
             launchGameBtn.style.opacity = '1';
             launchGameBtn.style.pointerEvents = 'all';
             launchGameBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> ${t.btn_launch || 'ЗАПУСТИТЬ'}`;
-        } else if (data.status === 'building') {
-            launchGameBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="animation: spin 1s linear infinite;"><circle cx="12" cy="12" r="10"></circle></svg> ${t.btn_building || 'СБОРКА...'}`;
-        } else if (data.status === 'launching') {
+            if (data.message && (data.message.includes('not found') || data.message.includes('not installed'))) {
+                if (selectMinecraftBtn) selectMinecraftBtn.style.display = 'block';
+            }
+        } else if (data.status === 'building' || data.status === 'launching') {
+            if (selectMinecraftBtn) selectMinecraftBtn.style.display = 'none';
             launchGameBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="animation: spin 1s linear infinite;"><circle cx="12" cy="12" r="10"></circle></svg> ${t.btn_launching || 'ЗАПУСК...'}`;
         } else if (data.status === 'started') {
             launchGameBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"></circle><polyline points="8 12 11 15 16 9"></polyline></svg> ${t.status_started || 'ИГРА ЗАПУЩЕНА'}`;

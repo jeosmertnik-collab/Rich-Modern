@@ -190,11 +190,53 @@ function findGameRoot() {
     return null;
 }
 
+const MC_PATH_FILE = path.join(app.getPath('userData'), 'mcpath.json');
+
+function loadCustomMcPath() {
+    try {
+        if (fs.existsSync(MC_PATH_FILE)) {
+            const data = JSON.parse(fs.readFileSync(MC_PATH_FILE, 'utf8'));
+            if (data.path && fs.existsSync(data.path)) return data.path;
+        }
+    } catch (e) {}
+    return null;
+}
+
+function saveCustomMcPath(mcPath) {
+    try {
+        const dir = path.dirname(MC_PATH_FILE);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(MC_PATH_FILE, JSON.stringify({ path: mcPath }, null, 2), 'utf8');
+    } catch (e) {}
+}
+
 function findMinecraftDir() {
+    const custom = loadCustomMcPath();
+    if (custom) return custom;
+
     const appData = process.env.APPDATA;
-    if (!appData) return null;
-    const mcDir = path.join(appData, '.minecraft');
-    if (fs.existsSync(mcDir)) return mcDir;
+    const home = process.env.USERPROFILE || process.env.HOME || '';
+    const localAppData = process.env.LOCALAPPDATA || '';
+
+    const candidates = [
+        appData ? path.join(appData, '.minecraft') : null,
+        home ? path.join(home, '.minecraft') : null,
+        localAppData ? path.join(localAppData, '.minecraft') : null,
+        appData ? path.join(appData, 'TLauncher', '.minecraft') : null,
+        appData ? path.join(appData, 'HMCL', '.minecraft') : null,
+        home ? path.join(home, 'AppData', 'Roaming', '.minecraft') : null,
+        home ? path.join(home, 'AppData', 'Local', 'Programs', '.minecraft') : null,
+        'C:\\Program Files\\.minecraft',
+        'C:\\Program Files (x86)\\.minecraft',
+        'D:\\.minecraft',
+        'E:\\.minecraft',
+        'D:\\Minecraft\\.minecraft',
+        'E:\\Minecraft\\.minecraft',
+    ];
+
+    for (const c of candidates) {
+        if (c && fs.existsSync(c)) return c;
+    }
     return null;
 }
 
@@ -264,6 +306,33 @@ ipcMain.handle('game:findRoot', () => {
 
 ipcMain.handle('game:getGameDataDir', () => {
     return getGameDataDir();
+});
+
+ipcMain.handle('game:selectMinecraftDir', async () => {
+    const result = await dialog.showOpenDialog(win, {
+        title: 'Выберите папку .minecraft',
+        properties: ['openDirectory'],
+        defaultPath: process.env.APPDATA || '',
+    });
+    if (result.canceled || result.filePaths.length === 0) return null;
+    const selected = result.filePaths[0];
+    const hasVersions = fs.existsSync(path.join(selected, 'versions'));
+    const hasMods = fs.existsSync(path.join(selected, 'mods'));
+    if (hasVersions || hasMods || fs.existsSync(path.join(selected, 'fabric-api*'))) {
+        saveCustomMcPath(selected);
+        return selected;
+    }
+    saveCustomMcPath(selected);
+    return selected;
+});
+
+ipcMain.handle('game:getMinecraftDir', () => {
+    return findMinecraftDir();
+});
+
+ipcMain.handle('game:resetMinecraftPath', () => {
+    try { fs.unlinkSync(MC_PATH_FILE); } catch (e) {}
+    return findMinecraftDir();
 });
 
 function loadLocalVersion() {
@@ -476,7 +545,7 @@ ipcMain.on('game:launch', (event, { nickname, ram }) => {
         launchViaMinecraft(event, mcDir, nickname, ram, log);
     } else {
         log('ERROR: Neither gradlew.bat nor .minecraft found');
-        event.reply('game:launch-status', { status: 'error', message: 'Game not found. Install Minecraft or clone the project.' });
+        event.reply('game:launch-status', { status: 'error', message: 'Minecraft not found. Press "Select Folder" to choose .minecraft path manually.' });
     }
 });
 
