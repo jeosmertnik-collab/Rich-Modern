@@ -185,34 +185,33 @@ function findGameRoot() {
         } catch (e) {}
     }
 
-    const exeDir = path.dirname(app.getPath('exe'));
-    const portableDir = process.env.PORTABLE_EXECUTABLE_DIR || '';
-    const cwd = process.cwd();
     const home = process.env.USERPROFILE || process.env.HOME || '';
+    const desktop = home ? path.join(home, 'Desktop') : '';
 
-    const candidates = [
-        exeDir,
-        portableDir,
-        cwd,
+    const searchDirs = [
+        path.dirname(app.getPath('exe')),
+        process.env.PORTABLE_EXECUTABLE_DIR || '',
+        process.cwd(),
+        desktop,
+        desktop ? path.join(desktop, 'Rich-Modern') : '',
+        desktop ? path.join(desktop, 'Rich Modern') : '',
     ];
 
-    if (home) {
-        candidates.push(
-            path.join(home, 'Desktop', 'Rich-Modern'),
-            path.join(home, 'Desktop', 'Rich Modern'),
-            path.join(home, 'Documents', 'Rich-Modern'),
-            path.join(home, 'Projects', 'Rich-Modern'),
-        );
-    }
-
-    for (const p of candidates) {
-        if (!p) continue;
-        try {
-            if (fs.existsSync(path.join(p, 'gradlew.bat'))) {
-                saveGameRoot(p);
-                return p;
-            }
-        } catch (e) {}
+    for (const startDir of searchDirs) {
+        if (!startDir) continue;
+        let dir = startDir;
+        for (let i = 0; i < 10; i++) {
+            if (!dir || dir.length < 3) break;
+            try {
+                if (fs.existsSync(path.join(dir, 'gradlew.bat'))) {
+                    saveGameRoot(dir);
+                    return dir;
+                }
+            } catch (e) {}
+            const parent = path.dirname(dir);
+            if (parent === dir) break;
+            dir = parent;
+        }
     }
     return null;
 }
@@ -623,7 +622,8 @@ function launchViaGradlew(event, root, nickname, ram, log) {
         cwd: root,
         env: env,
         detached: true,
-        stdio: ['ignore', 'pipe', 'pipe']
+        stdio: ['ignore', 'pipe', 'pipe'],
+        windowsHide: true
     });
 
     log('spawn returned, pid: ' + game.pid);
@@ -744,7 +744,8 @@ function launchViaMinecraft(event, mcDir, nickname, ram, log) {
                 cwd: mcDir,
                 env: env,
                 detached: true,
-                stdio: ['ignore', 'pipe', 'pipe']
+                stdio: ['ignore', 'pipe', 'pipe'],
+                windowsHide: true
             });
 
             let stderr = '';
