@@ -731,7 +731,80 @@ function launchViaMinecraft(event, mcDir, nickname, ram, log) {
     }
 }
 
-app.whenReady().then(() => {
+function downloadFile(url, dest) {
+    return new Promise((resolve, reject) => {
+        const client = url.startsWith('https') ? https : http;
+        client.get(url, { timeout: 120000 }, (res) => {
+            if (res.statusCode === 301 || res.statusCode === 302) {
+                return downloadFile(res.headers.location, dest).then(resolve).catch(reject);
+            }
+            if (res.statusCode !== 200) return reject(new Error('HTTP ' + res.statusCode));
+            const fileStream = fs.createWriteStream(dest);
+            res.pipe(fileStream);
+            fileStream.on('finish', () => { fileStream.close(); resolve(); });
+            fileStream.on('error', reject);
+        }).on('error', reject);
+    });
+}
+
+function selfUpdate() {
+    return new Promise(async (resolve) => {
+        try {
+            const remoteJson = await fetchUrl(VERSION_URL);
+            const remote = JSON.parse(remoteJson);
+            const local = loadLocalVersion();
+            const remoteLauncherVer = remote.launcherVersion || remote.version || '0.0.0';
+            const localLauncherVer = local.launcherVersion || local.version || '0.0.0';
+
+            const rParts = remoteLauncherVer.split('.').map(Number);
+            const lParts = localLauncherVer.split('.').map(Number);
+            let needUpdate = false;
+            for (let i = 0; i < 3; i++) {
+                const r = rParts[i] || 0;
+                const l = lParts[i] || 0;
+                if (r > l) { needUpdate = true; break; }
+                if (r < l) break;
+            }
+
+            if (!needUpdate || !remote.launcherUrl) return resolve(false);
+
+            const currentExe = app.getPath('exe');
+            const tempExe = currentExe + '.new';
+            const batFile = path.join(app.getPath('temp'), 'rich-update.bat');
+
+            await downloadFile(remote.launcherUrl, tempExe);
+
+            const bat = `@echo off
+timeout /t 2 /nobreak >nul
+taskkill /f /im "Rich Modern.exe" >nul 2>&1
+taskkill /f /im "RichModern.exe" >nul 2>&1
+timeout /t 1 /nobreak >nul
+del "%~dp0Rich Modern.exe" 2>nul
+del "%~dp0RichModern.exe" 2>nul
+copy "%TEMP%\\RichModern.exe.new" "%~dp0RichModern.exe" >nul 2>&1
+copy "%TEMP%\\RichModern.exe.new" "%~dp0Rich Modern.exe" >nul 2>&1
+del "%TEMP%\\RichModern.exe.new" 2>nul
+start "" "%~dp0RichModern.exe"
+del "%~f0"
+`;
+            fs.writeFileSync(batFile, bat, 'utf8');
+
+            local.launcherVersion = remoteLauncherVer;
+            saveLocalVersion(local);
+
+            spawn('cmd.exe', ['/c', batFile], { detached: true, stdio: 'ignore' }).unref();
+            app.quit();
+            resolve(true);
+        } catch (e) {
+            console.log('Self-update check failed:', e.message);
+            resolve(false);
+        }
+    });
+}
+
+app.whenReady().then(async () => {
+    const updated = await selfUpdate();
+    if (updated) return;
     startLicenseServer();
     createWindow();
     app.on('activate', () => {

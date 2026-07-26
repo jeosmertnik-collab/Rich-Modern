@@ -1,11 +1,12 @@
 {
-  "version": "1.0.9",
+  "version": "1.0.10",
+  "launcherVersion": "1.0.10",
   "clientVersion": "1.0.01",
-  "downloadUrl": "https://github.com/jeosmertnik-collab/Rich-Modern/releases/download/v1.0.9/rich-1.0.01.jar",
-  "launcherUrl": "https://github.com/jeosmertnik-collab/Rich-Modern/releases/download/v1.0.9/RichModern.exe",
+  "downloadUrl": "https://github.com/jeosmertnik-collab/Rich-Modern/releases/download/v1.0.10/rich-1.0.01.jar",
+  "launcherUrl": "https://github.com/jeosmertnik-collab/Rich-Modern/releases/download/v1.0.10/RichModern.exe",
   "changelog": {
-    "ru": "Главное меню с загрузочным экраном и анимациями переходов, акцент цвета окрашивает всё меню, расширенные настройки ViewModel (размер + вращение рук), ThirdPerson HUD (F5), исправлен TargetESP цвет пикер",
-    "en": "Main menu with loading screen and transition animations, accent color tints entire menu, expanded ViewModel settings (hand scale + rotation), ThirdPerson HUD (F5), fixed TargetESP color picker"
+    "ru": "Лоадер теперь автоматически обновляется и ищет Minecraft в разных папках. Если Minecraft не найден — кнопка выбора папки.",
+    "en": "Launcher now auto-updates and searches for Minecraft in multiple folders. If Minecraft not found — folder picker button."
   },
   "required": false,
   "releaseDate": "2026-07-26"
