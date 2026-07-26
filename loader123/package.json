@@ -12,7 +12,7 @@
     "appId": "com.rich.modern.launcher",
     "productName": "Rich Modern",
     "win": {
-      "target": "portable",
+      "target": "dir",
       "icon": null,
       "signAndEditExecutable": false
     },
