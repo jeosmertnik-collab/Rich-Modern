@@ -745,7 +745,13 @@
             btn.disabled = true;
             btn.textContent = 'Обработка...';
 
-            const key = generateLicenseKey(selectedPlan, selectedDays, email);
+            const cacheKey = selectedPlan + '_' + selectedDays + '_' + email;
+            let key = localStorage.getItem('rm_key_' + cacheKey);
+
+            if (!key) {
+                key = generateLicenseKey(selectedPlan, selectedDays, email);
+                localStorage.setItem('rm_key_' + cacheKey, key);
+            }
 
             await new Promise(r => setTimeout(r, 2000));
 
@@ -759,8 +765,9 @@
 
         function generateLicenseKey(plan, days, email) {
             const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+            const nonce = Date.now().toString(36) + Math.random().toString(36).substring(2, 8);
             let seed = 0;
-            const str = plan + days + email + 'rich-modern-secret-2026';
+            const str = plan + days + email + nonce + 'rich-modern-secret-2026';
             for (let i = 0; i < str.length; i++) {
                 seed = ((seed << 5) - seed + str.charCodeAt(i)) | 0;
             }
