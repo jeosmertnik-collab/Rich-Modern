@@ -53,7 +53,7 @@ public class TargetStrafe extends ModuleStructure {
     private int grimPointIndex = 0;
 
     public TargetStrafe() {
-        super("TargetStrafe", "Target Strafe", ModuleCategory.MOVEMENT);
+        super("TargetStrafe", "Боковое движение вокруг цели", ModuleCategory.MOVEMENT);
         settings(mode, type, typeMatrix, grimRadius, radius, speed, setting, directionMode);
     }
 

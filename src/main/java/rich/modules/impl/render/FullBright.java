@@ -5,6 +5,6 @@ import rich.modules.module.category.ModuleCategory;
 
 public class FullBright extends ModuleStructure {
     public FullBright() {
-        super("FullBright", ModuleCategory.RENDER);
+        super("FullBright", "Полная яркость мира", ModuleCategory.RENDER);
     }
 }

@@ -52,7 +52,7 @@ public class ClickPearl extends ModuleStructure {
     long lastThrowTime = 0;
 
     public ClickPearl() {
-        super("ClickPearl", "Click Pearl", ModuleCategory.MISC);
+        super("ClickPearl", "Бросок эндер-жемчуга ПКМ", ModuleCategory.MISC);
         settings(modeSetting, keySetting);
     }
 

@@ -76,7 +76,7 @@ public class MaceTarget extends ModuleStructure {
     LivingEntity target;
 
     public MaceTarget() {
-        super("MaceTarget", "Mace Target", ModuleCategory.COMBAT);
+        super("MaceTarget", "Боевая цель для боя булавой", ModuleCategory.COMBAT);
         settings(serverMode, modeSetting, height, targetType, autoEquipChest, predictMovement);
 
         flightController = new FlightController(predictor);

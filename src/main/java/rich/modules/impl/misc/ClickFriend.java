@@ -18,7 +18,7 @@ public class ClickFriend extends ModuleStructure {
     BindSetting friendBind = new BindSetting("Добавить друга", "Добавить/удалить друга");
 
     public ClickFriend() {
-        super("ClickFriend", "Click Friend", ModuleCategory.MISC);
+        super("ClickFriend", "ПКМ по другу для действий", ModuleCategory.MISC);
         settings(friendBind);
     }
 

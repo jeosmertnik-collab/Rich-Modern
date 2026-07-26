@@ -41,7 +41,7 @@ public class Jesus extends ModuleStructure {
     float melonBallSpeed = 0.44F;
 
     public Jesus() {
-        super("Jesus", ModuleCategory.MOVEMENT);
+        super("Jesus", "Хождение по воде", ModuleCategory.MOVEMENT);
         settings(mode, funtimeSpeed);
     }
 

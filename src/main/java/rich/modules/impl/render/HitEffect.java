@@ -32,7 +32,7 @@ public class HitEffect extends ModuleStructure {
             .setColor(new Color(137, 97, 72, 255).getRGB());
 
     public HitEffect() {
-        super("HitEffect", "Hit Effect", ModuleCategory.RENDER);
+        super("HitEffect", "Эффект при попадании", ModuleCategory.RENDER);
         settings(colorSetting);
     }
 

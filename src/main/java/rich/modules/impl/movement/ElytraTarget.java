@@ -27,7 +27,7 @@ public class ElytraTarget extends ModuleStructure {
     public static boolean shouldElytraTarget = false;
 
     public ElytraTarget() {
-        super("ElytraTarget", "Elytra Target", ModuleCategory.MOVEMENT);
+        super("ElytraTarget", "Направление элитры к цели", ModuleCategory.MOVEMENT);
         settings(elytraFindRange, elytraForward, forward);
     }
 

@@ -8,6 +8,7 @@ import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.util.Identifier;
 import rich.client.draggables.AbstractHudElement;
+import rich.util.lang.Lang;
 import rich.util.animations.Direction;
 import rich.util.render.Render2D;
 import rich.util.render.shader.Scissor;
@@ -268,7 +269,7 @@ public class Potions extends AbstractHudElement {
         int effectsCount = activeEffectIds.isEmpty() ? 1 : activeEffectIds.size();
         String countText = String.valueOf(effectsCount);
         float countTextWidth = Fonts.BOLD.getWidth(countText, 6);
-        float potionsTextWidth = Fonts.BOLD.getWidth("Potions", 6);
+        float potionsTextWidth = Fonts.BOLD.getWidth(Lang.get().get("hud_potions"), 6);
 
         Render2D.gradientRect(x + getWidth() - countTextWidth - potionsTextWidth + 3, y + 5, 14, 12,
                 new int[]{
@@ -281,7 +282,7 @@ public class Potions extends AbstractHudElement {
 
         Fonts.HUD_ICONS.draw("f", x + getWidth() - countTextWidth - potionsTextWidth + 5, y + 6, 10, new Color(165, 165, 165, bgAlpha).getRGB());
 
-        Fonts.BOLD.draw("Potions", x + 8, y + 6.5f, 6, new Color(255, 255, 255, bgAlpha).getRGB());
+        Fonts.BOLD.draw(Lang.get().get("hud_potions"), x + 8, y + 6.5f, 6, new Color(255, 255, 255, bgAlpha).getRGB());
 
         int moduleOffset = 23;
 

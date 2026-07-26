@@ -24,7 +24,7 @@ public class BowSpammer extends ModuleStructure {
             .range(2.2f, 5.0f).setValue(2.5f);
 
     public BowSpammer() {
-        super("BowSpammer", "Bow Spammer", ModuleCategory.COMBAT);
+        super("BowSpammer", "Быстрая стрельба из лука", ModuleCategory.COMBAT);
         settings(delay);
     }
 

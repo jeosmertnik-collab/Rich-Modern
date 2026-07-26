@@ -45,7 +45,7 @@ public class ProjectileHelper extends ModuleStructure {
     private LivingEntity currentTarget;
 
     public ProjectileHelper() {
-        super("ProjectileHelper", "Projectile Helper", ModuleCategory.COMBAT);
+        super("ProjectileHelper", "Помощь при стрельбе снарядами", ModuleCategory.COMBAT);
         settings(searchDistance, targetType);
     }
 

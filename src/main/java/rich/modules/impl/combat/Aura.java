@@ -83,7 +83,7 @@ public class Aura extends ModuleStructure {
             .visible(() -> checkCrit.isValue());
 
     public Aura() {
-        super("Aura", ModuleCategory.COMBAT);
+        super("Aura", "Автоматическая атака ближайших игроков", ModuleCategory.COMBAT);
         settings(mode, attackrange, lookrange, options, targetType, moveFix, resetSprintMode, checkCrit, smartCrits);
     }
 

@@ -30,7 +30,7 @@ public class LongJump extends ModuleStructure {
     private StopWatch timer = new StopWatch();
 
     public LongJump() {
-        super("LongJump", "Long Jump", ModuleCategory.MOVEMENT);
+        super("LongJump", "Длинный прыжок", ModuleCategory.MOVEMENT);
         settings(modeSetting);
     }
 

@@ -49,7 +49,7 @@ public class AutoDuel extends ModuleStructure {
     private final TimerUtil counterTo = TimerUtil.create();
 
     public AutoDuel() {
-        super("AutoDuel", "Auto Duel", ModuleCategory.MISC);
+        super("AutoDuel", "Автоматический дуэль", ModuleCategory.MISC);
         settings(mode, slowTime, babki, money);
     }
 

@@ -30,7 +30,7 @@ public class Speed extends ModuleStructure {
             .visible(() -> mode.isSelected("Vanilla"));
 
     public Speed() {
-        super("Speed", "Speed", ModuleCategory.MOVEMENT);
+        super("Speed", "Увеличение скорости бега", ModuleCategory.MOVEMENT);
         settings(mode, speed);
     }
 

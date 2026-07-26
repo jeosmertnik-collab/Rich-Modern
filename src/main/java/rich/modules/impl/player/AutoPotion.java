@@ -54,7 +54,7 @@ public class AutoPotion extends ModuleStructure {
     final int ROTATION_WAIT_TICKS = 2;
 
     public AutoPotion() {
-        super("AutoPotion", ModuleCategory.PLAYER);
+        super("AutoPotion", "Автоматическое выпивание зелий", ModuleCategory.PLAYER);
         settings(potions, autoOff);
     }
 

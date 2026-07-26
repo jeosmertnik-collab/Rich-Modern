@@ -13,7 +13,7 @@ public class NoDelay extends ModuleStructure {
             .value("Прыжок", "Правый клик", "Задержка ломания").selected("Прыжок");
 
     public NoDelay() {
-        super("NoDelay", "No Delay", ModuleCategory.PLAYER);
+        super("NoDelay", "Убирает задержку использования", ModuleCategory.PLAYER);
         settings(ignoreSetting);
     }
 

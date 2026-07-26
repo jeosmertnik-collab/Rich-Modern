@@ -39,7 +39,7 @@ public class AutoTool extends ModuleStructure {
     Slot swapBackSlot = null;
 
     public AutoTool() {
-        super("AutoTool", "Auto Tool", ModuleCategory.PLAYER);
+        super("AutoTool", "Автоматическая смена инструмента", ModuleCategory.PLAYER);
         settings(silentSwap);
     }
 

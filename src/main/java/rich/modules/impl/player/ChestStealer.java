@@ -36,7 +36,7 @@ public class ChestStealer extends ModuleStructure {
             .visible(() -> modeSetting.isSelected("WhiteList"));
 
     public ChestStealer() {
-        super("ChestStealer", "Chest Stealer", ModuleCategory.PLAYER);
+        super("ChestStealer", "Быстрый забор предметов из сундука", ModuleCategory.PLAYER);
         settings(modeSetting, delaySetting, itemSettings);
     }
 

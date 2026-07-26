@@ -25,7 +25,7 @@ public class ClientSounds extends ModuleStructure {
             .setValue(1.0f);
 
     public ClientSounds() {
-        super("ClientSounds", ModuleCategory.MISC);
+        super("ClientSounds", "Звуковые эффекты клиента", ModuleCategory.MISC);
         settings(soundType, volume);
     }
 

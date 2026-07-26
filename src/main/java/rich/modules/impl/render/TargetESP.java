@@ -79,7 +79,7 @@ public class TargetESP extends ModuleStructure implements IMinecraft {
     private static final float TARGET_FRAME_TIME = 1000f / TARGET_FPS;
 
     public TargetESP() {
-        super("TargetEsp", "Target Esp", ModuleCategory.RENDER);
+        super("TargetEsp", "Подсветка текущей цели", ModuleCategory.RENDER);
         instance = this;
 
         crystalRotationSpeed.setValue(0.5f);

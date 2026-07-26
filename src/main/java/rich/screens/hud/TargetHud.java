@@ -11,6 +11,8 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.util.Identifier;
 import rich.client.draggables.AbstractHudElement;
 import rich.modules.impl.combat.Aura;
+import rich.modules.impl.render.Hud;
+import rich.modules.module.setting.implement.ColorSetting;
 import rich.util.ColorUtil;
 import rich.util.network.Network;
 import rich.util.render.Render2D;
@@ -167,7 +169,20 @@ public class TargetHud extends AbstractHudElement {
                 BG_GRADIENT_COLORS,
                 6);
 
-        Render2D.outline(x + 2, y + 2, getWidth() - 4, getHeight() - 4, 0.35f, (alphaInt << 24) | 0x5A5A5A, 5);
+        int accentOutline = getAccentColor(alphaInt);
+        Render2D.outline(x + 2, y + 2, getWidth() - 4, getHeight() - 4, 0.35f, accentOutline, 5);
+    }
+
+    private int getAccentColor(int alphaInt) {
+        try {
+            Hud hud = Hud.getInstance();
+            if (hud != null) {
+                ColorSetting accent = hud.accentColor;
+                int rgb = accent.getColorNoAlpha() & 0x00FFFFFF;
+                return (alphaInt << 24) | rgb;
+            }
+        } catch (Exception ignored) {}
+        return (alphaInt << 24) | 0x6C5CE7;
     }
 
     private void drawFace(float x, float y, float alpha) {
@@ -238,6 +253,7 @@ public class TargetHud extends AbstractHudElement {
         float hpWidth = Fonts.BOLD.getWidth(hpStr, 5.5f);
 
         int alphaInt = (int) (255 * alpha);
+        int accentCol = getAccentColor((int) (120 * alpha));
         Fonts.BOLD.draw(name, contentX, nameY, 5.5f, (alphaInt << 24) | 0xFFFFFF);
         Fonts.BOLD.draw(hpStr, x + getWidth() - 10 - hpWidth, nameY, 5.5f,
                 (alphaInt << 24) | 0xD7D7D7);
@@ -248,6 +264,9 @@ public class TargetHud extends AbstractHudElement {
 
         Render2D.rect(barX, barY, HP_BAR_WIDTH, HP_BAR_HEIGHT,
                 ((int)(200 * alpha) << 24) | 0x1E1E1E, barRadius);
+
+        int accentGlow = getAccentColor((int) (40 * alpha));
+        Render2D.rect(barX - 1, barY + HP_BAR_HEIGHT, HP_BAR_WIDTH + 2, 2, accentGlow, 1f);
 
         float targetHealth;
         if (isInvisible) {

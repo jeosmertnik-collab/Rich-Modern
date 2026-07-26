@@ -40,7 +40,7 @@ public class Velocity extends ModuleStructure {
     @NonFinal Vec3d pendingVelocity;
 
     public Velocity() {
-        super("Velocity", ModuleCategory.COMBAT);
+        super("Velocity", "Уменьшает отбрасывание от попаданий", ModuleCategory.COMBAT);
         settings(mode);
     }
 

@@ -24,6 +24,13 @@ public class AvatarRenderer {
         String username = userProfile.profile("username");
         String uid = userProfile.profile("uid");
 
+        if (username == null || username.isEmpty() || username.equals("null")) {
+            username = mc.getSession().getUsername();
+        }
+        if (uid == null || uid.isEmpty() || uid.equals("null")) {
+            uid = username;
+        }
+
         Render2D.blur(bgX + 15f, bgY + 15f, 1, 1, 0f, 0, alphaText);
         context.getMatrices().pushMatrix();
         Render2D.blur(bgX + 15f, bgY + 15f, 1, 1, 0f, 0, alphaText);

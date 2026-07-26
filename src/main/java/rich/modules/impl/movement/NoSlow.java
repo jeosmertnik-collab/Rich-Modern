@@ -34,7 +34,7 @@ public class NoSlow extends ModuleStructure {
     public final SelectSetting itemMode = new SelectSetting("Режим предмета", "Выберите режим обхода").value("Grim Old", "ReallyWorld", "SpookyTime", "Funtime");
 
     public NoSlow() {
-        super("NoSlow", "No Slow", ModuleCategory.MOVEMENT);
+        super("NoSlow", "Убирает замедление от предметов", ModuleCategory.MOVEMENT);
         settings(itemMode);
     }
 

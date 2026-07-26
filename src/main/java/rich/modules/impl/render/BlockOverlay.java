@@ -21,7 +21,7 @@ public class BlockOverlay extends ModuleStructure {
     }
 
     public BlockOverlay() {
-        super("BlockOverlay", "Block Overlay", ModuleCategory.RENDER);
+        super("BlockOverlay", "Изменение отображения блоков", ModuleCategory.RENDER);
     }
 
     @EventHandler

@@ -8,6 +8,7 @@ import rich.screens.clickgui.impl.settingsrender.ColorComponent;
 import rich.screens.clickgui.impl.settingsrender.MultiSelectComponent;
 import rich.screens.clickgui.impl.settingsrender.SelectComponent;
 import rich.util.interfaces.AbstractSettingComponent;
+import rich.util.lang.Lang;
 import rich.util.render.Render2D;
 import rich.util.render.shader.Scissor;
 import rich.util.render.font.Fonts;
@@ -42,7 +43,7 @@ public class SettingsPanelRenderer {
         Render2D.outline(x, y, width, height, 0.5f, new Color(55, 55, 55, outlineAlpha).getRGB(), SETTINGS_PANEL_CORNER_RADIUS);
 
         if (selectedModule == null) {
-            String text = "Select a module";
+            String text = Lang.get().get("select_module_hint");
             float textSize = 6f;
             float textWidth = Fonts.BOLD.getWidth(text, textSize);
             float textHeight = Fonts.BOLD.getHeight(textSize);
@@ -142,7 +143,7 @@ public class SettingsPanelRenderer {
         }
 
         if (!hasVisibleSettings) {
-            String text = "This module doesn't have settings";
+            String text = Lang.get().get("no_settings_desc");
             float textSize = 6f;
             float textWidth = Fonts.BOLD.getWidth(text, textSize);
             float textHeight = Fonts.BOLD.getHeight(textSize);

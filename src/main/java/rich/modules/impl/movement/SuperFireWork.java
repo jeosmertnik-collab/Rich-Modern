@@ -27,7 +27,7 @@ public class SuperFireWork extends ModuleStructure {
     BooleanSetting nearBoostSetting = new BooleanSetting("", "");
 
     public SuperFireWork() {
-        super("SuperFireWork", "Super FireWork", ModuleCategory.MOVEMENT);
+        super("SuperFireWork", "Ускорение ракетами", ModuleCategory.MOVEMENT);
         settings(modeSetting, customSpeedSetting);
     }
 

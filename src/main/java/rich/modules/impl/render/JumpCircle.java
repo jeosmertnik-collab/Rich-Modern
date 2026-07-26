@@ -53,7 +53,7 @@ public class JumpCircle extends ModuleStructure implements IMinecraft {
     private static final int SEGMENTS = 64;
 
     public JumpCircle() {
-        super("JumpCircle", "Jump Circle", ModuleCategory.RENDER);
+        super("JumpCircle", "Круги при прыжке", ModuleCategory.RENDER);
         settings(maxSize, speed, glow, color1, color2);
     }
 

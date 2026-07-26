@@ -12,7 +12,7 @@ import rich.util.repository.friend.FriendUtils;
 public class NoFriendDamage extends ModuleStructure {
 
     public NoFriendDamage() {
-        super("NoFriendDamage", "No Friend Damage", ModuleCategory.COMBAT);
+        super("NoFriendDamage", "Защита от попаданий по друзьям", ModuleCategory.COMBAT);
     }
 
     @EventHandler

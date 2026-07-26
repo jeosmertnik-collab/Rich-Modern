@@ -13,6 +13,6 @@ public class NoInteract extends ModuleStructure {
     }
 
     public NoInteract() {
-        super("NoInteract", "No Interact", ModuleCategory.COMBAT);
+        super("NoInteract", "Запрещает взаимодействие с сущностями", ModuleCategory.COMBAT);
     }
 }

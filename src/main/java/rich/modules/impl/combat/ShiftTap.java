@@ -24,7 +24,7 @@ public class ShiftTap extends ModuleStructure {
     MinecraftClient mc = MinecraftClient.getInstance();
 
     public ShiftTap() {
-        super("ShiftTap", "Shift Tap", ModuleCategory.COMBAT);
+        super("ShiftTap", "Автоматический крит при приседании", ModuleCategory.COMBAT);
     }
 
     @Native(type = Native.Type.VMProtectBeginMutation)

@@ -11,7 +11,7 @@ public class NoEntityTrace extends ModuleStructure {
     private final BooleanSetting noSword = new BooleanSetting("Выключать с мечом", "d").setValue(true);
 
     public NoEntityTrace() {
-        super("NoEntityTrace", "No Entity Trace", ModuleCategory.PLAYER);
+        super("NoEntityTrace", "Убирает коллизию с сущностями", ModuleCategory.PLAYER);
         settings(noSword);
     }
 

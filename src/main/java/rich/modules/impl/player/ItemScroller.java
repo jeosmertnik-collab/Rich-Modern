@@ -26,7 +26,7 @@ public class ItemScroller extends ModuleStructure {
             .setValue(50).range(0, 200);
 
     public ItemScroller() {
-        super("ItemScroller", "Item Scroller", ModuleCategory.PLAYER);
+        super("ItemScroller", "Быстрый перенос предметов", ModuleCategory.PLAYER);
         settings(scrollerSetting);
     }
 

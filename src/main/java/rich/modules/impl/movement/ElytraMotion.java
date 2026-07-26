@@ -34,7 +34,7 @@ public class ElytraMotion extends ModuleStructure {
     @NonFinal double rotationAngle = 0.0;
 
     public ElytraMotion() {
-        super("ElytraMotion", "Elytra Motion", ModuleCategory.MOVEMENT);
+        super("ElytraMotion", "Управление полётом элитры", ModuleCategory.MOVEMENT);
         this.settings();
     }
 

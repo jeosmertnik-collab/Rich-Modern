@@ -20,7 +20,7 @@ public class NoFallDamage extends ModuleStructure {
             .selected("SpookyTime");
 
     public NoFallDamage() {
-        super("NoFallDamage", "No Fall Damage", ModuleCategory.PLAYER);
+        super("NoFallDamage", "Убирает урон от падения", ModuleCategory.PLAYER);
         settings(mode);
     }
 

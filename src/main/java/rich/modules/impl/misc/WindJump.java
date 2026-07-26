@@ -63,7 +63,7 @@ public class WindJump extends ModuleStructure {
     boolean pendingThrow = false;
 
     public WindJump() {
-        super("WindJump", "Wind Jump", ModuleCategory.MISC);
+        super("WindJump", "Прыжки на ветровом острове", ModuleCategory.MISC);
         settings(modeSetting, keySetting);
     }
 

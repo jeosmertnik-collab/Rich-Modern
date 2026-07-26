@@ -72,7 +72,7 @@ public class InventoryMove extends ModuleStructure {
     int closeScreenSyncId = -1;
 
     public InventoryMove() {
-        super("InventoryMove", "Inventory Move", ModuleCategory.MOVEMENT);
+        super("InventoryMove", "Движение в инвентаре", ModuleCategory.MOVEMENT);
         settings(mode, grimBypass);
     }
 

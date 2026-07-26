@@ -59,7 +59,7 @@ public class TriggerBot extends ModuleStructure {
             .visible(() -> attackSetting.isSelected("Только криты"));
 
     public TriggerBot() {
-        super("TriggerBot", "Trigger Bot", ModuleCategory.COMBAT);
+        super("TriggerBot", "Автоматическая атака при наведении", ModuleCategory.COMBAT);
         settings(attackRange, targetType, attackSetting, sprintReset, smartCrits);
     }
 

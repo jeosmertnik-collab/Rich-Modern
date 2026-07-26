@@ -27,7 +27,7 @@ public class TapeMouse extends ModuleStructure {
     final StopWatch delay = new StopWatch();
 
     public TapeMouse() {
-        super("TapeMouse", "Tape Mouse", ModuleCategory.COMBAT);
+        super("TapeMouse", "Стрельба снарядами по цели", ModuleCategory.COMBAT);
         settings(modeClick, delayForClick);
     }
 

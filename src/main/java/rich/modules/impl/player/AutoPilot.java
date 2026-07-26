@@ -33,7 +33,7 @@ public class AutoPilot extends ModuleStructure {
     Angle rot = new Angle(0, 0);
 
     public AutoPilot() {
-        super("AutoPilot", "Auto Pilot", ModuleCategory.MISC);
+        super("AutoPilot", "Автоматическое перемещение по waypoints", ModuleCategory.MISC);
     }
 
     public static AutoPilot getInstance() {

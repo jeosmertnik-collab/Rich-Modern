@@ -23,7 +23,7 @@ public class ChinaHat extends ModuleStructure {
             .value(ColorUtil.getColor(100, 50, 255, 255));
 
     public ChinaHat() {
-        super("ChinaHat", "China Hat", ModuleCategory.RENDER);
+        super("ChinaHat", "Шляпа на голове", ModuleCategory.RENDER);
         instance = this;
         settings(color1, color2);
     }

@@ -23,7 +23,9 @@ import rich.screens.clickgui.impl.module.ModuleComponent;
 import rich.screens.clickgui.impl.settingsrender.BindComponent;
 import rich.screens.clickgui.impl.settingsrender.TextComponent;
 import rich.screens.clickgui.impl.theme.ClickGuiTheme;
+import rich.screens.changelog.ChangelogScreen;
 import rich.util.animations.Direction;
+import rich.util.lang.Lang;
 import rich.util.animations.GuiAnimation;
 import rich.util.interfaces.AbstractSettingComponent;
 import rich.util.math.FrameRateCounter;
@@ -78,14 +80,6 @@ public class ClickGui extends Screen implements IMinecraft {
         hintAlphaAnimation = 0f;
         lastHintUpdateTime = System.currentTimeMillis();
 
-        try {
-            Hud hud = Hud.getInstance();
-            if (hud != null) {
-                hud.applyLanguage();
-                ClickGuiTheme.applyStyle(hud.getStyle());
-            }
-        } catch (Exception ignored) {}
-
         long handle = mc.getWindow().getHandle();
         double centerX = mc.getWindow().getWidth() / 2.0;
         double centerY = mc.getWindow().getHeight() / 2.0;
@@ -115,6 +109,21 @@ public class ClickGui extends Screen implements IMinecraft {
             waitingForSlide = false;
             slideTriggered = false;
             openAnimation.setMs(250).setValue(1.0).setDirection(Direction.FORWARDS).reset();
+
+            try {
+                Hud hud = Hud.getInstance();
+                if (hud != null) {
+                    hud.applyLanguage();
+                    ClickGuiTheme.applyStyle(hud.getStyle());
+                    ClickGuiTheme.applyAccent(hud.accentColor);
+                }
+            } catch (Exception ignored) {}
+
+            if (ChangelogScreen.shouldShow()) {
+                mc.setScreen(new ChangelogScreen());
+                return;
+            }
+
             mc.setScreen(this);
         }
     }
@@ -123,6 +132,10 @@ public class ClickGui extends Screen implements IMinecraft {
     public void tick() {
         GifRender.tick();
         moduleComponent.tick();
+        try {
+            Hud hud = Hud.getInstance();
+            if (hud != null) hud.applyLanguage();
+        } catch (Exception ignored) {}
         super.tick();
     }
 
@@ -307,8 +320,8 @@ public class ClickGui extends Screen implements IMinecraft {
 
         String uid = antidaunleak.api.UserProfile.getInstance().profile("uid");
         String displayName = (uid != null && !uid.isEmpty() && !uid.equals("null"))
-                ? "UID: " + uid
-                : "UID: " + antidaunleak.api.UserProfile.getInstance().profile("username");
+                ? Lang.get().get("uid") + ": " + uid
+                : Lang.get().get("uid") + ": " + mc.getSession().getUsername();
         if (displayName.length() > 6) {
             float uidW = Fonts.BOLD.getWidth(displayName, 5f);
             float uidX = bgX + ClickGuiTheme.BG_WIDTH / 2f - uidW / 2f;
@@ -647,19 +660,43 @@ public class ClickGui extends Screen implements IMinecraft {
         if (hovered == null) return;
         if (hovered.getDescription() == null || hovered.getDescription().isEmpty()) return;
 
+        String name = hovered.getName();
         String desc = hovered.getDescription();
-        float tipW = Fonts.BOLD.getWidth(desc, 6f) + 10;
-        float tipH = 14f;
-        float tipX = (float) Math.min(mx + 8, bgX + ClickGuiTheme.BG_WIDTH - tipW - 4);
-        float tipY = (float) Math.min(my + 8, bgY + ClickGuiTheme.BG_HEIGHT - tipH - 4);
 
-        int bgAlpha = (int) (220 * alphaMultiplier);
-        Render2D.rect(tipX, tipY, tipW, tipH, (bgAlpha << 24) | 0x0F0F19, 4);
-        int tipOutlineAlpha = (int) (80 * alphaMultiplier);
+        float nameW = Fonts.BOLD.getWidth(name, 6f);
+        float descW = Fonts.BOLD.getWidth(desc, 5f);
+        float maxTextW = Math.max(nameW, descW);
+        float tipW = maxTextW + 16;
+        float tipH = 26f;
+
+        float tipX = mx + 10;
+        float tipY = my - tipH - 6;
+
+        if (tipX + tipW > bgX + ClickGuiTheme.BG_WIDTH) {
+            tipX = bgX + ClickGuiTheme.BG_WIDTH - tipW - 4;
+        }
+        if (tipY < bgY - 4) {
+            tipY = my + 18;
+        }
+        if (tipX < bgX) {
+            tipX = bgX + 4;
+        }
+
+        int bgAlpha = (int) (240 * alphaMultiplier);
+        Render2D.rect(tipX, tipY, tipW, tipH, (bgAlpha << 24) | 0x0D0D18, 5);
+
+        int borderAlpha = (int) (100 * alphaMultiplier);
         int accentRGB = ClickGuiTheme.ACCENT_ARGB & 0xFFFFFF;
-        Render2D.outline(tipX, tipY, tipW, tipH, 0.3f, (tipOutlineAlpha << 24) | accentRGB, 4);
-        int tipTextAlpha = (int) (220 * alphaMultiplier);
-        Fonts.BOLD.draw(desc, tipX + 5, tipY + 3, 6f, (tipTextAlpha << 24) | 0xC8C8D2);
+        Render2D.outline(tipX, tipY, tipW, tipH, 0.4f, (borderAlpha << 24) | accentRGB, 5);
+
+        int lineAlpha = (int) (60 * alphaMultiplier);
+        Render2D.rect(tipX + 6, tipY + 13, tipW - 12, 0.5f, (lineAlpha << 24) | 0x444460, 0);
+
+        int nameAlpha = (int) (255 * alphaMultiplier);
+        Fonts.BOLD.draw(name, tipX + 6, tipY + 3, 6f, (nameAlpha << 24) | 0xFFFFFF);
+
+        int descAlpha = (int) (180 * alphaMultiplier);
+        Fonts.BOLD.draw(desc, tipX + 6, tipY + 15, 5f, (descAlpha << 24) | 0x9898B0);
     }
 
     private void renderStatsBar(float bgX, float bgY, float alphaMultiplier) {
@@ -694,7 +731,7 @@ public class ClickGui extends Screen implements IMinecraft {
         int textAlpha = (int) (200 * alphaMultiplier);
         int textCol = (textAlpha << 24) | 0xB4B4C8;
 
-        Fonts.BOLD.draw("Modules: " + enabledCount + "/" + totalCount, bx + 6, barY + 2, 5f, textCol);
+        Fonts.BOLD.draw(Lang.get().get("modules_count") + ": " + enabledCount + "/" + totalCount, bx + 6, barY + 2, 5f, textCol);
 
         if (!fps.isEmpty()) {
             Fonts.BOLD.draw(fps, bx + barW / 2 - Fonts.BOLD.getWidth(fps, 5f) / 2, barY + 2, 5f, textCol);

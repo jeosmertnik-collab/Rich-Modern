@@ -28,7 +28,7 @@ public class AutoTpAccept extends ModuleStructure {
     private final BooleanSetting friendSetting = new BooleanSetting("Только друзья", "Будет принимать запросы только от друзей").setValue(true);
 
     public AutoTpAccept() {
-        super("AutoTpAccept", "Auto Tp Accept", ModuleCategory.MISC);
+        super("AutoTpAccept", "Автоматический приём телепортации", ModuleCategory.MISC);
         settings(friendSetting);
     }
 

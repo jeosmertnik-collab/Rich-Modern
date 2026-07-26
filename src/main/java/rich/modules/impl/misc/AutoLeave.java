@@ -26,7 +26,7 @@ public class AutoLeave extends ModuleStructure {
             .setValue(10).range(5, 40).visible(() -> triggerSetting.isSelected("Players"));
 
     public AutoLeave() {
-        super("AutoLeave", "Auto Leave", ModuleCategory.MISC);
+        super("AutoLeave", "Автоматический выход с сервера", ModuleCategory.MISC);
         settings(leaveType, triggerSetting, distanceSetting);
     }
 

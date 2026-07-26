@@ -18,7 +18,7 @@ public class ItemPhysic extends ModuleStructure {
     public SelectSetting mode = new SelectSetting("Физика", "").value("Обычная").selected("Обычная");
 
     public ItemPhysic() {
-        super("ItemPhysic", "Item Physic", ModuleCategory.RENDER);
+        super("ItemPhysic", "Реалистичная физика предметов", ModuleCategory.RENDER);
 //        setup(mode);
     }
 

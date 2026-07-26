@@ -5,6 +5,7 @@ import org.lwjgl.glfw.GLFW;
 import rich.Initialization;
 import rich.client.draggables.AbstractHudElement;
 import rich.modules.module.ModuleStructure;
+import rich.util.lang.Lang;
 import rich.util.animations.Direction;
 import rich.util.render.Render2D;
 import rich.util.render.shader.Scissor;
@@ -149,7 +150,7 @@ public class HotKeys extends AbstractHudElement {
         long activeModules = keysList.size();
         String moduleCountText = String.valueOf(activeModules);
         float countTextWidth = Fonts.BOLD.getWidth(moduleCountText, 6);
-        float activeTextWidth = Fonts.BOLD.getWidth("Active:", 6);
+        float activeTextWidth = Fonts.BOLD.getWidth(Lang.get().get("hud_active"), 6);
 
         Render2D.gradientRect(x + getWidth() - countTextWidth - activeTextWidth + 2, y + 5, 14, 12,
                 new int[]{
@@ -162,7 +163,7 @@ public class HotKeys extends AbstractHudElement {
 
         Fonts.HUD_ICONS.draw("g", x + getWidth() - countTextWidth - activeTextWidth + 4, y + 6, 10, new Color(165, 165, 165, bgAlpha).getRGB());
 
-        Fonts.BOLD.draw("Binds", x + 8, y + 6.5f, 6, new Color(255, 255, 255, bgAlpha).getRGB());
+        Fonts.BOLD.draw(Lang.get().get("hud_hotkeys"), x + 8, y + 6.5f, 6, new Color(255, 255, 255, bgAlpha).getRGB());
 
         int moduleOffset = 23;
 

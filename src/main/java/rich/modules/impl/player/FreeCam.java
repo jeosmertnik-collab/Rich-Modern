@@ -37,7 +37,7 @@ public class FreeCam extends ModuleStructure {
     public Vec3d pos, prevPos;
 
     public FreeCam() {
-        super("FreeCam", "Free Cam", ModuleCategory.PLAYER);
+        super("FreeCam", "Свободная камера", ModuleCategory.PLAYER);
         settings(speedSetting, freezeSetting, reloadChunksSetting, toggleOnLogSetting);
     }
 

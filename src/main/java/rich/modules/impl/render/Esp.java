@@ -89,7 +89,7 @@ public class Esp extends ModuleStructure {
     private static final int WHITE_COLOR = 0xFFFFFFFF;
 
     public Esp() {
-        super("Esp", "Esp", ModuleCategory.RENDER);
+        super("Esp", "Подсветка игроков", ModuleCategory.RENDER);
         settings(entityType, playerSetting, boxType, boxColor, friendColor, flatBoxOutline, boxAlpha);
     }
 

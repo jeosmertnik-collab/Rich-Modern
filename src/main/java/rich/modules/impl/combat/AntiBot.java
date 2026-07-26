@@ -45,7 +45,7 @@ public class AntiBot extends ModuleStructure {
     };
 
     public AntiBot() {
-        super("AntiBot", "Anti Bot", ModuleCategory.COMBAT);
+        super("AntiBot", "Фильтрация ботов на сервере", ModuleCategory.COMBAT);
         settings(mode);
     }
 

@@ -32,7 +32,7 @@ public class WaterSpeed extends ModuleStructure {
             .visible(() -> iceBoost.isValue());
 
     public WaterSpeed() {
-        super("WaterSpeed", "Water Speed", ModuleCategory.MOVEMENT);
+        super("WaterSpeed", "Увеличение скорости в воде", ModuleCategory.MOVEMENT);
         settings(modeSetting, iceBoost, iceBoostSpeed);
     }
 

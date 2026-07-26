@@ -21,7 +21,7 @@ public class HitBoxModule extends ModuleStructure {
             .range(0.0F, 3.0F);
 
     public HitBoxModule() {
-        super("HitBox", "Hit Box", ModuleCategory.COMBAT);
+        super("HitBox", "Увеличивает хитбоксы игроков", ModuleCategory.COMBAT);
         settings(xzExpandSetting, yExpandSetting);
     }
 

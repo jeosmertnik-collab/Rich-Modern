@@ -36,7 +36,7 @@ public class BlockESP extends ModuleStructure {
     int checkCounter = 0;
 
     public BlockESP() {
-        super("BlockESP", "Block ESP", ModuleCategory.RENDER);
+        super("BlockESP", "Подсветка определённых блоков", ModuleCategory.RENDER);
         settings(color, range, notifyInChat);
     }
 

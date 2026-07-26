@@ -82,7 +82,7 @@ public class ElytraHelper extends ModuleStructure {
     boolean shouldJumpForTakeoff = false;
 
     public ElytraHelper() {
-        super("ElytraHelper", "Elytra Helper", ModuleCategory.MISC);
+        super("ElytraHelper", "Помощь по полёту на элитре", ModuleCategory.MISC);
         settings(modeSetting, swapBind, fireworkBind);
     }
 

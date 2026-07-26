@@ -23,7 +23,7 @@ public class AutoSprint extends ModuleStructure {
             .setValue(false);
 
     public AutoSprint() {
-        super("AutoSprint", ModuleCategory.MOVEMENT);
+        super("AutoSprint", "Автоматический спринт", ModuleCategory.MOVEMENT);
         settings(noReset);
     }
 

@@ -19,7 +19,7 @@ public class ServerRPSpoofer extends ModuleStructure {
     private final TimerUtil counter = TimerUtil.create();
 
     public ServerRPSpoofer() {
-        super("ServerRPSpoof", "Server RP Spoof", ModuleCategory.MISC);
+        super("ServerRPSpoof", "Подмена.resource-pack на сервере", ModuleCategory.MISC);
     }
 
     @EventHandler

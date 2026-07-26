@@ -16,6 +16,7 @@ public class ColorSetting extends Setting {
             alpha = 1;
 
     private int[] presets = new int[0];
+    private Runnable onChange;
 
     public ColorSetting(String name, String description) {
         super(name, description);
@@ -34,6 +35,15 @@ public class ColorSetting extends Setting {
     public ColorSetting visible(Supplier<Boolean> visible) {
         setVisible(visible);
         return this;
+    }
+
+    public ColorSetting onChange(Runnable onChange) {
+        this.onChange = onChange;
+        return this;
+    }
+
+    private void fireChange() {
+        if (onChange != null) onChange.run();
     }
 
     public int getColor() {
@@ -63,6 +73,7 @@ public class ColorSetting extends Setting {
         brightness = hsb[2];
         alpha = a / 255f;
 
+        fireChange();
         return this;
     }
 
@@ -73,21 +84,25 @@ public class ColorSetting extends Setting {
 
     public ColorSetting setHue(float hue) {
         this.hue = Math.max(0f, Math.min(1f, hue));
+        fireChange();
         return this;
     }
 
     public ColorSetting setSaturation(float saturation) {
         this.saturation = Math.max(0f, Math.min(1f, saturation));
+        fireChange();
         return this;
     }
 
     public ColorSetting setBrightness(float brightness) {
         this.brightness = Math.max(0f, Math.min(1f, brightness));
+        fireChange();
         return this;
     }
 
     public ColorSetting setAlpha(float alpha) {
         this.alpha = Math.max(0f, Math.min(1f, alpha));
+        fireChange();
         return this;
     }
 }

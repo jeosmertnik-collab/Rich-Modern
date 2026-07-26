@@ -33,7 +33,7 @@ public class AutoGApple extends ModuleStructure {
     int previousSlot = -1;
 
     public AutoGApple() {
-        super("AutoGApple", "Auto GApple", ModuleCategory.COMBAT);
+        super("AutoGApple", "Автоматическое поедание золотых яблок", ModuleCategory.COMBAT);
         settings(healthThreshold, smartMode, goldenHearts, returnSlot);
     }
 

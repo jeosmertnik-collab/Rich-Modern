@@ -7,18 +7,18 @@ import rich.screens.clickgui.impl.module.handler.ModuleAnimationHandler;
 import rich.screens.clickgui.impl.module.handler.ModuleBindHandler;
 import rich.screens.clickgui.impl.module.handler.ModuleScrollHandler;
 import rich.screens.clickgui.impl.module.util.ModuleDisplayHelper;
+import rich.screens.clickgui.impl.theme.ClickGuiTheme;
 import rich.util.render.Render2D;
 import rich.util.render.shader.Scissor;
 import rich.util.render.font.Fonts;
 
-import java.awt.*;
 import java.util.List;
 import java.util.Map;
 
 public class ModuleListRenderer {
 
-    private static final float MODULE_ITEM_HEIGHT = 22f;
-    private static final float MODULE_LIST_CORNER_RADIUS = 6f;
+    private static final float MODULE_ITEM_HEIGHT = 26f;
+    private static final float MODULE_LIST_CORNER_RADIUS = ClickGuiTheme.PANEL_CORNER_RADIUS;
     private static final float CORNER_INSET = 3f;
     private static final float STATE_BALL_SIZE = 3f;
     private static final float STATE_TEXT_OFFSET = 6f;
@@ -42,10 +42,10 @@ public class ModuleListRenderer {
                        float mouseX, float mouseY, int guiScale, float alphaMultiplier,
                        ModuleAnimationHandler animHandler, ModuleScrollHandler scrollHandler) {
 
-        int panelAlpha = (int) (15 * alphaMultiplier);
-        int outlineAlpha = (int) (215 * alphaMultiplier);
-        Render2D.rect(x, y, width, height, new Color(64, 64, 64, panelAlpha).getRGB(), MODULE_LIST_CORNER_RADIUS);
-        Render2D.outline(x, y, width, height, 0.5f, new Color(55, 55, 55, outlineAlpha).getRGB(), MODULE_LIST_CORNER_RADIUS);
+        int panelBg = ClickGuiTheme.panelAlpha(0.4f * alphaMultiplier);
+        int panelBorder = ClickGuiTheme.borderAlpha(0.6f * alphaMultiplier);
+        Render2D.rect(x, y, width, height, panelBg, MODULE_LIST_CORNER_RADIUS);
+        Render2D.outline(x, y, width, height, 0.5f, panelBorder, MODULE_LIST_CORNER_RADIUS);
 
         float topInset = CORNER_INSET;
         float bottomInset = CORNER_INSET;
@@ -131,46 +131,33 @@ public class ModuleListRenderer {
             float favoriteAnim = interactive ? animHandler.getFavoriteAnimations().getOrDefault(module, 0f) : 0f;
             boolean hasSettings = displayHelper.hasSettings(module);
 
-            int baseBgAlpha = 25;
-            int hoverBgAlpha = 45;
-            int selectedBgAlpha = 55;
-
-            int bgAlpha;
-            int bgColor;
-
-            if (selected) {
-                bgAlpha = (int) ((selectedBgAlpha + hoverAnim * 10) * combinedAlpha);
-                bgColor = new Color(71, 71, 71, bgAlpha).getRGB();
-            } else {
-                bgAlpha = (int) ((baseBgAlpha + (hoverBgAlpha - baseBgAlpha) * hoverAnim) * combinedAlpha);
-                int gray = (int) (64 + 36 * hoverAnim);
-                bgColor = new Color(gray, gray, gray, bgAlpha).getRGB();
-            }
-
             float scaledWidth = (width - 6) * scale;
+
+            int bgColor;
+            if (selected) {
+                bgColor = ClickGuiTheme.moduleSelectedBg(alphaMultiplier * combinedAlpha);
+            } else {
+                int hoverBoost = (int) (hoverAnim * 20);
+                bgColor = ClickGuiTheme.moduleBg(alphaMultiplier * combinedAlpha * (0.6f + hoverAnim * 0.4f));
+            }
 
             Render2D.rect(animX, scaledModY, scaledWidth, scaledHeight, bgColor, 5);
 
             if (selected) {
                 float pulseValue = (float) (Math.sin(animHandler.getSelectedPulseAnimation()) * 0.5 + 0.5);
-
                 float highlightBoost = isHighlighted ? animHandler.getHighlightAnimation() * 0.5f : 0f;
 
-                int baseOutlineAlpha = (int) (80 + 80 * highlightBoost);
-                int pulseOutlineAlpha = (int) (40 + 40 * highlightBoost);
-                int outlineAlpha = (int) ((baseOutlineAlpha + pulseOutlineAlpha * pulseValue) * combinedAlpha);
+                int outlineAlpha = (int) ((60 + 40 * pulseValue + 40 * highlightBoost) * combinedAlpha);
+                int outlineColor = ((outlineAlpha & 0xFF) << 24) | (ClickGuiTheme.ACCENT_ARGB & 0xFFFFFF);
+                Render2D.outline(animX, scaledModY, scaledWidth, scaledHeight, 0.5f, outlineColor, 5);
 
-                int baseColorValue = (int) (80 + 50 * highlightBoost);
-                int outlineColorValue = (int) (baseColorValue + 30 * pulseValue);
-                int outlineG = (int) (80 + 20 * pulseValue + 40 * highlightBoost);
-                int outlineB = (int) (80 + 20 * pulseValue + 40 * highlightBoost);
-
-                Render2D.outline(animX, scaledModY, scaledWidth, scaledHeight, 0.5f,
-                        new Color(Math.min(255, outlineColorValue), Math.min(255, outlineG), Math.min(255, outlineB), outlineAlpha).getRGB(), 5);
+                float glowAlpha = (20 + 20 * highlightBoost) * combinedAlpha;
+                int glowColor = ClickGuiTheme.glowColor(glowAlpha);
+                Render2D.rect(animX, scaledModY, scaledWidth, scaledHeight, glowColor, 5);
             } else if (hoverAnim > 0.01f) {
-                int outlineAlpha = (int) (60 * hoverAnim * combinedAlpha);
-                Render2D.outline(animX, scaledModY, scaledWidth, scaledHeight, 0.5f,
-                        new Color(120, 120, 120, outlineAlpha).getRGB(), 5);
+                int outlineAlpha = (int) (40 * hoverAnim * combinedAlpha);
+                int outlineColor = ((outlineAlpha & 0xFF) << 24) | (ClickGuiTheme.PANEL_BORDER_LIGHT_ARGB & 0xFFFFFF);
+                Render2D.outline(animX, scaledModY, scaledWidth, scaledHeight, 0.5f, outlineColor, 5);
             }
 
             float stateTextOffset = stateAnim * STATE_TEXT_OFFSET;
@@ -179,32 +166,35 @@ public class ModuleListRenderer {
                 float ballAlpha = stateAnim * 200 * combinedAlpha;
                 float ballX = animX + 4;
                 float ballY = scaledModY + (scaledHeight - STATE_BALL_SIZE * scale) / 2f + 1F;
+                int ballColor = ((int) ballAlpha << 24) | (ClickGuiTheme.ACCENT_ARGB & 0xFFFFFF);
                 Render2D.rect(ballX, ballY, STATE_BALL_SIZE * scale, STATE_BALL_SIZE * scale,
-                        new Color(255, 255, 255, (int) ballAlpha).getRGB(),
-                        STATE_BALL_SIZE * scale / 2f);
+                        ballColor, STATE_BALL_SIZE * scale / 2f);
             }
 
             String name = module.getName();
 
-            int baseGray = 128;
-            int targetWhite = 255;
-            int textBrightness = (int) (baseGray + (targetWhite - baseGray) * stateAnim);
-            int textAlphaValue = (int) ((180 + 75 * stateAnim) * combinedAlpha);
-
-            if (hoverAnim > 0.01f && stateAnim < 0.99f) {
-                textBrightness = (int) (textBrightness + (40 * hoverAnim * (1 - stateAnim)));
-                textAlphaValue = (int) (textAlphaValue + (40 * hoverAnim * (1 - stateAnim)));
+            int textBrightness;
+            int textAlphaValue;
+            if (stateAnim > 0.5f) {
+                textBrightness = 240;
+                textAlphaValue = (int) (255 * combinedAlpha);
+            } else if (hoverAnim > 0.01f) {
+                textBrightness = 200;
+                textAlphaValue = (int) (200 * combinedAlpha);
+            } else {
+                textBrightness = 160;
+                textAlphaValue = (int) (180 * combinedAlpha);
             }
 
             if (isHighlighted) {
                 textBrightness = (int) Math.min(255, textBrightness + 30 * animHandler.getHighlightAnimation());
             }
 
-            Color textColor = new Color(textBrightness, textBrightness, textBrightness, Math.min(255, textAlphaValue));
+            int textColor = ((Math.min(255, textAlphaValue) & 0xFF) << 24) | ((textBrightness & 0xFF) << 16) | ((textBrightness & 0xFF) << 8) | (textBrightness & 0xFF);
 
             float textX = animX + 5 + stateTextOffset;
             float textY = scaledModY + (scaledHeight - 6f * scale) / 2f;
-            Fonts.BOLD.draw(name, textX, textY, 6 * scale, textColor.getRGB());
+            Fonts.BOLD.draw(name, textX, textY, 6 * scale, textColor);
 
             if (interactive) {
                 renderBindBox(module, bindingModule, animX, scaledModY, scaledWidth, scaledHeight, scale, combinedAlpha, stateTextOffset, animHandler);
@@ -219,23 +209,22 @@ public class ModuleListRenderer {
                     starX = iconBaseX;
                 }
 
-                int starGray = 50;
-                int starR = (int) (starGray + (255 - starGray) * favoriteAnim);
-                int starG = (int) (starGray + (215 - starGray) * favoriteAnim);
-                int starB = (int) (starGray + (0 - starGray) * favoriteAnim);
+                int starR = (int) (80 + (255 - 80) * favoriteAnim);
+                int starG = (int) (80 + (215 - 80) * favoriteAnim);
+                int starB = (int) (80 + (0 - 80) * favoriteAnim);
                 float starAlpha = (80 + 120 * favoriteAnim + 55 * hoverAnim) * combinedAlpha;
 
-                Fonts.GUI_ICONS.draw("D", starX, iconY + 1, 8 * scale, new Color(starR, starG, starB, (int) starAlpha).getRGB());
+                Fonts.GUI_ICONS.draw("D", starX, iconY + 1, 8 * scale, new java.awt.Color(starR, starG, starB, (int) starAlpha).getRGB());
 
                 if (hasSettings) {
                     if (selectedIconAnim > 0.01f) {
                         float gearAlpha = (150 + 50 * (isHighlighted ? animHandler.getHighlightAnimation() : 0f)) * selectedIconAnim * combinedAlpha;
-                        Fonts.GUI_ICONS.draw("B", iconBaseX, iconY + 1, 8 * scale, new Color(200, 200, 200, (int) gearAlpha).getRGB());
+                        Fonts.GUI_ICONS.draw("B", iconBaseX, iconY + 1, 8 * scale, new java.awt.Color(200, 200, 200, (int) gearAlpha).getRGB());
                     }
 
                     if (selectedIconAnim < 0.99f) {
                         float dotsAlpha = 120 * (1f - selectedIconAnim) * combinedAlpha;
-                        Fonts.BOLD.draw("...", iconBaseX + 1f, iconY - 1f, 7 * scale, new Color(150, 150, 150, (int) dotsAlpha).getRGB());
+                        Fonts.BOLD.draw("...", iconBaseX + 1f, iconY - 1f, 7 * scale, new java.awt.Color(150, 150, 150, (int) dotsAlpha).getRGB());
                     }
                 }
             }
@@ -285,22 +274,20 @@ public class ModuleListRenderer {
         float finalAlpha = combinedAlpha * bindAlpha;
 
         int bgAlpha = (int) (30 * finalAlpha);
-        Color bgColor = new Color(50, 50, 55, bgAlpha);
-
-        Render2D.rect(boxX + 3, boxY + 0.5f, boxWidth - 6, boxHeight, bgColor.getRGB(), 3f * scale);
+        int bgColor = ((bgAlpha & 0xFF) << 24) | (ClickGuiTheme.PANEL_BG_ARGB & 0xFFFFFF);
+        Render2D.rect(boxX + 3, boxY + 0.5f, boxWidth - 6, boxHeight, bgColor, 3f * scale);
 
         int outlineAlpha = (int) (60 * finalAlpha);
-        Color outlineColor = new Color(80, 80, 85, outlineAlpha);
-
-        Render2D.outline(boxX + 3, boxY + 0.5f, boxWidth - 6, boxHeight, 0.5f, outlineColor.getRGB(), 3f * scale);
+        int outlineColor = ((outlineAlpha & 0xFF) << 24) | (ClickGuiTheme.PANEL_BORDER_ARGB & 0xFFFFFF);
+        Render2D.outline(boxX + 3, boxY + 0.5f, boxWidth - 6, boxHeight, 0.5f, outlineColor, 3f * scale);
 
         if (bindAlpha > 0.5f) {
             int textAlpha = (int) (160 * finalAlpha);
-            Color textColor = new Color(140, 140, 145, textAlpha);
+            int textColor = ((textAlpha & 0xFF) << 24) | (ClickGuiTheme.MODULE_TEXT_ARGB & 0xFFFFFF);
 
             float textX = boxX + (boxWidth - textWidth) / 2f;
             float textY = boxY + (boxHeight - 5f * scale) / 2f;
-            Fonts.BOLD.draw(bindText, textX, textY, 5 * scale, textColor.getRGB());
+            Fonts.BOLD.draw(bindText, textX, textY, 5 * scale, textColor);
         }
     }
 
@@ -308,13 +295,15 @@ public class ModuleListRenderer {
         if (topFade > 0.01f) {
             for (int i = 0; i < size; i++) {
                 float fadeAlpha = alpha * topFade * (1f - i / (float) size);
-                Render2D.rect(x, y + i, w, 1, new Color(20, 20, 20, (int) fadeAlpha).getRGB(), 0);
+                int fadeColor = ((int) fadeAlpha << 24) | (ClickGuiTheme.BG_TOP_ARGB & 0xFFFFFF);
+                Render2D.rect(x, y + i, w, 1, fadeColor, 0);
             }
         }
         if (bottomFade > 0.01f) {
             for (int i = 0; i < size; i++) {
                 float fadeAlpha = alpha * bottomFade * (i / (float) size);
-                Render2D.rect(x, y + h - size + i, w, 1, new Color(20, 20, 20, (int) fadeAlpha).getRGB(), 0);
+                int fadeColor = ((int) fadeAlpha << 24) | (ClickGuiTheme.BG_TOP_ARGB & 0xFFFFFF);
+                Render2D.rect(x, y + h - size + i, w, 1, fadeColor, 0);
             }
         }
     }

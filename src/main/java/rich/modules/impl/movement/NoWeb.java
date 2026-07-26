@@ -22,7 +22,7 @@ public class NoWeb extends ModuleStructure {
     public final SelectSetting webMode = new SelectSetting("Режим", "Выберите режим обхода").value("Grim");
 
     public NoWeb() {
-        super("NoWeb", "No Web", ModuleCategory.MOVEMENT);
+        super("NoWeb", "Убирает замедление от паутины", ModuleCategory.MOVEMENT);
         settings(webMode);
     }
 

@@ -100,7 +100,7 @@ public class AutoSwap extends ModuleStructure {
     final SwapExecutor executor = new SwapExecutor();
 
     public AutoSwap() {
-        super("AutoSwap", "Auto Swap", ModuleCategory.COMBAT);
+        super("AutoSwap", "Автоматическая смена предметов в руке", ModuleCategory.COMBAT);
         settings(
                 modeSetting, swapBind, firstItem, secondItem,
                 stopMovement, stopSprint, closeInventory,

@@ -15,7 +15,7 @@ public class SeeInvisible extends ModuleStructure {
     SliderSettings alphaSetting = new SliderSettings("Прозрачность", "Прозрачность игрока").setValue(0.5f).range(0.1F, 1);
 
     public SeeInvisible() {
-        super("SeeInvisible", "See Invisible", ModuleCategory.RENDER);
+        super("SeeInvisible", "Показывает невидимых игроков", ModuleCategory.RENDER);
         settings(alphaSetting);
     }
 

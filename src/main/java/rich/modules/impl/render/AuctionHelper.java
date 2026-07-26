@@ -43,7 +43,7 @@ public class AuctionHelper extends ModuleStructure {
     static final int RED_COLOR = 0xFFFF3333;
 
     public AuctionHelper() {
-        super("AuctionHelper", "Auction Helper", ModuleCategory.RENDER);
+        super("AuctionHelper", "Помощник по аукциону", ModuleCategory.RENDER);
         settings(filterThorns, showPricePerItem);
     }
 

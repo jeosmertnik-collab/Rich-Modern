@@ -23,13 +23,17 @@ public class HudManager {
         register(new Watermark());
         register(new HotKeys());
         register(new Notifications());
-        register(new test());
         register(new Potions());
         register(new CoolDowns());
         register(new TargetHud());
         register(new Info());
         register(new Staff());
         register(new Inventory());
+        register(new Radar());
+        register(new Durability());
+        register(new Keystrokes());
+        register(new FriendsListHud());
+        register(new ThirdPersonHud());
 
         initialized = true;
 

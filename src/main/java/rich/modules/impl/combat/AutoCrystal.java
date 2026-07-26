@@ -60,7 +60,7 @@ public class AutoCrystal extends ModuleStructure {
     private boolean waitingForCrystal;
 
     public AutoCrystal() {
-        super("AutoCrystal", "Auto Crystal", ModuleCategory.COMBAT);
+        super("AutoCrystal", "Автоматическое взрывание кристаллов", ModuleCategory.COMBAT);
         settings(protections, itemRange, legitMode, swapDelay);
     }
 

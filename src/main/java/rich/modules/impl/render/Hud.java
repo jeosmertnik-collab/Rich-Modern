@@ -6,6 +6,7 @@ import rich.modules.module.category.ModuleCategory;
 import rich.modules.module.ModuleStructure;
 import rich.modules.module.setting.implement.*;
 import rich.screens.clickgui.impl.theme.ClickGuiStyle;
+import rich.screens.clickgui.impl.theme.ClickGuiTheme;
 import rich.util.Instance;
 import rich.util.lang.Lang;
 
@@ -28,34 +29,27 @@ public class Hud extends ModuleStructure {
                     "HotKeys",
                     "Potions",
                     "Staff",
-                    "test",
                     "TargetHud",
-//                    "CoolDowns",
-//                    "Inventory",
                     "Info",
                     "Notifications",
                     "Keystrokes",
                     "Durability",
                     "Radar",
-                    "TabGui",
-                    "CoordsHud",
-                    "FriendsListHud")
+                    "FriendsListHud",
+                    "ThirdPersonHud")
 
             .selected("Watermark",
                     "HotKeys",
                     "Potions",
                     "Staff",
                     "TargetHud",
-//                    "CoolDowns",
-//                    "Inventory",
                     "Info",
                     "Notifications",
                     "Keystrokes",
                     "Durability",
                     "Radar",
-                    "TabGui",
-                    "CoordsHud",
-                    "FriendsListHud");
+                    "FriendsListHud",
+                    "ThirdPersonHud");
 
     public BooleanSetting showBps = new BooleanSetting("Show BPS", "Показывать блоки в секунду")
             .setValue(true)
@@ -65,9 +59,14 @@ public class Hud extends ModuleStructure {
             .setValue(true)
             .visible(() -> interfaceSettings.isSelected("Watermark"));
 
+    public ColorSetting accentColor = new ColorSetting("Цвет акцента", "Основной цвет интерфейса")
+            .value(0xFF6C5CE7)
+            .presets(0xFF6C5CE7, 0xFF7C3AED, 0xFF22C55E, 0xFFE74C3C, 0xFF3498DB, 0xFFF39C12, 0xFFE91E63, 0xFF00BCD4);
+
     public Hud() {
-        super("Hud", ModuleCategory.RENDER);
-        settings(language, menuStyle, interfaceSettings, showBps, showTps);
+        super("Hud", "Настройка интерфейса", ModuleCategory.RENDER);
+        settings(language, menuStyle, interfaceSettings, showBps, showTps, accentColor);
+        accentColor.onChange(() -> ClickGuiTheme.applyAccent(accentColor));
         applyLanguage();
     }
 

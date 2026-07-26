@@ -17,7 +17,7 @@ public class AutoRespawn extends ModuleStructure {
     SelectSetting modeSetting = new SelectSetting("Режим", "Выберите, что будет использоваться").value("Default");
 
     public AutoRespawn() {
-        super("AutoRespawn", "Auto Respawn", ModuleCategory.PLAYER);
+        super("AutoRespawn", "Автоматическое возрождение", ModuleCategory.PLAYER);
         settings(modeSetting);
     }
 

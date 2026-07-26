@@ -19,7 +19,7 @@ public class NoRender extends ModuleStructure {
             .selected("Fire", "Bad Effects", "Block Overlay", "Darkness", "Damage", "Nausea");
 
     public NoRender() {
-        super("NoRender", "No Render", ModuleCategory.RENDER);
+        super("NoRender", "Отключает лишние эффекты рендера", ModuleCategory.RENDER);
         settings(modeSetting);
     }
 }

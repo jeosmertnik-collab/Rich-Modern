@@ -38,7 +38,7 @@ public class Fly extends ModuleStructure {
     StopWatch timer = new StopWatch();
 
     public Fly() {
-        super("Fly", ModuleCategory.MOVEMENT);
+        super("Fly", "Полёт в воздухе", ModuleCategory.MOVEMENT);
         settings(mode, speedXZ, speedY);
     }
 

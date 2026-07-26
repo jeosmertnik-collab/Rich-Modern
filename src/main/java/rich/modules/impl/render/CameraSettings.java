@@ -32,7 +32,7 @@ public class CameraSettings extends ModuleStructure {
     BindSetting zoomSetting = new BindSetting("Зум", "Клавиша для увеличения камеры");
 
     public CameraSettings() {
-        super("CameraSettings", "Camera Settings", ModuleCategory.RENDER);
+        super("CameraSettings", "Настройки камеры", ModuleCategory.RENDER);
         settings(clipSetting, distanceSetting, zoomSetting);
     }
 

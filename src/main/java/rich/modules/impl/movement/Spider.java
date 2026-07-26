@@ -59,7 +59,7 @@ public class Spider extends ModuleStructure {
     boolean startSetPitch = false;
 
     public Spider() {
-        super("Spider", ModuleCategory.MOVEMENT);
+        super("Spider", "Лазание по стенам", ModuleCategory.MOVEMENT);
         settings(mode);
     }
 

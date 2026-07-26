@@ -8,6 +8,7 @@ import net.minecraft.scoreboard.Scoreboard;
 import net.minecraft.scoreboard.Team;
 import net.minecraft.util.Identifier;
 import rich.client.draggables.AbstractHudElement;
+import rich.util.lang.Lang;
 import rich.util.ColorUtil;
 import rich.util.animations.Direction;
 import rich.util.render.Render2D;
@@ -281,7 +282,7 @@ public class Staff extends AbstractHudElement {
                 3);
 
         Fonts.ICONS.draw("E", x + getWidth() - 15.5f, y + 7.5f, 8, new Color(165, 165, 165, bgAlpha).getRGB());
-        Fonts.BOLD.draw("Staff", x + 8, y + 6.5f, 6, new Color(255, 255, 255, bgAlpha).getRGB());
+        Fonts.BOLD.draw(Lang.get().get("hud_staff"), x + 8, y + 6.5f, 6, new Color(255, 255, 255, bgAlpha).getRGB());
 
         int moduleOffset = 23;
 

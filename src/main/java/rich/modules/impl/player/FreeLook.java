@@ -25,7 +25,7 @@ public class FreeLook extends ModuleStructure {
     public static BindSetting freeLookSetting = new BindSetting("Свободный обзор", "Клавиша для свободного обзора");
 
     public FreeLook() {
-        super("FreeLook", "Free Look", ModuleCategory.RENDER);
+        super("FreeLook", "Свободный обзор без поворота тела", ModuleCategory.RENDER);
         settings(freeLookSetting);
         angle = null;
     }

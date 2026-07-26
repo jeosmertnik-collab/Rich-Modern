@@ -29,7 +29,7 @@ public class Strafe extends ModuleStructure {
     private final Angle rot = new Angle(0, 0);
 
     public Strafe() {
-        super("Strafe", "Strafe", ModuleCategory.MOVEMENT);
+        super("Strafe", "Боковое движение в воздухе", ModuleCategory.MOVEMENT);
         settings(mode, speed);
     }
 

@@ -1,6 +1,7 @@
 package rich.screens.clickgui.impl.background.render;
 
 import rich.modules.module.category.ModuleCategory;
+import rich.screens.clickgui.impl.theme.ClickGuiTheme;
 import rich.util.render.Render2D;
 import rich.util.render.font.Fonts;
 
@@ -66,92 +67,85 @@ public class CategoryRenderer {
     }
 
     public void render(float bgX, float bgY, ModuleCategory selectedCategory, float alphaMultiplier) {
-        renderSectionHeader(bgX, bgY + 52f, "Основные", alphaMultiplier);
-        renderMainCategories(bgX, bgY, alphaMultiplier);
-        renderSectionHeader(bgX, bgY + 62f + MAIN_CATEGORY_NAMES.length * 15f + 10f - EXTRA_CATEGORY_OFFSET, "Другие", alphaMultiplier);
-        renderExtraCategories(bgX, bgY, alphaMultiplier);
+        float inset = ClickGuiTheme.PANEL_INSET;
+        float catW = ClickGuiTheme.CATEGORY_PANEL_WIDTH;
+        float centerX = bgX + inset + catW / 2f;
+
+        renderMainCategories(centerX, bgY, alphaMultiplier);
+        renderExtraCategories(centerX, bgY, alphaMultiplier);
     }
 
-    private void renderSectionHeader(float bgX, float sectionY, String title, float alphaMultiplier) {
-        float lineWidth = 18f;
-        float textWidth = Fonts.BOLD.getWidth(title, SECTION_TEXT_SIZE);
-        float totalWidth = 65f;
-        float textX = bgX + 15f + (totalWidth - textWidth) / 2f;
-        float lineY = sectionY + 3f;
-        int lineAlpha = (int) (40 * alphaMultiplier);
-        int textAlpha = (int) (100 * alphaMultiplier);
-        Render2D.rect(bgX + 15f, lineY, lineWidth, 0.5f, new Color(255, 255, 255, lineAlpha).getRGB(), 0);
-        Render2D.rect(bgX + 15f + totalWidth - lineWidth, lineY, lineWidth, 0.5f, new Color(255, 255, 255, lineAlpha).getRGB(), 0);
-        Fonts.BOLD.draw(title, textX, sectionY, SECTION_TEXT_SIZE, new Color(150, 150, 150, textAlpha).getRGB());
-    }
-
-    private void renderMainCategories(float bgX, float bgY, float alphaMultiplier) {
+    private void renderMainCategories(float centerX, float bgY, float alphaMultiplier) {
+        float startY = bgY + 70f;
         for (int i = 0; i < MAIN_CATEGORY_NAMES.length; i++) {
             ModuleCategory cat = MAIN_CATEGORIES[i];
             float animation = categoryAnimations.getOrDefault(cat, 0f);
-            float textY = bgY + 65f + i * 15f;
-            renderCategoryItem(bgX, textY, MAIN_CATEGORY_NAMES[i], MAIN_CATEGORY_ICONS[i], animation, alphaMultiplier);
+            float textY = startY + i * 38f;
+            renderCategoryItem(centerX, textY, MAIN_CATEGORY_NAMES[i], MAIN_CATEGORY_ICONS[i], animation, alphaMultiplier);
         }
     }
 
-    private void renderExtraCategories(float bgX, float bgY, float alphaMultiplier) {
-        float separatorY = bgY + 65f + MAIN_CATEGORY_NAMES.length * 15f + 1f;
-        float extraStartY = separatorY + 18f - EXTRA_CATEGORY_OFFSET;
-
+    private void renderExtraCategories(float centerX, float bgY, float alphaMultiplier) {
+        float startY = bgY + 70f + MAIN_CATEGORY_NAMES.length * 38f + 10f;
         for (int i = 0; i < EXTRA_CATEGORY_NAMES.length; i++) {
             ModuleCategory cat = EXTRA_CATEGORIES[i];
             float animation = categoryAnimations.getOrDefault(cat, 0f);
-            float textY = extraStartY + i * 15f;
-            renderCategoryItem(bgX, textY, EXTRA_CATEGORY_NAMES[i], EXTRA_CATEGORY_ICONS[i], animation, alphaMultiplier);
+            float textY = startY + i * 38f;
+            renderCategoryItem(centerX, textY, EXTRA_CATEGORY_NAMES[i], EXTRA_CATEGORY_ICONS[i], animation, alphaMultiplier);
         }
     }
 
-    private void renderCategoryItem(float bgX, float textY, String name, String icon, float animation, float alphaMultiplier) {
+    private void renderCategoryItem(float centerX, float textY, String name, String icon, float animation, float alphaMultiplier) {
         float offsetX = animation * MAX_OFFSET;
 
-        int baseGray = 128;
+        int baseGray = 120;
         int targetWhite = 255;
         int colorValue = (int) (baseGray + (targetWhite - baseGray) * animation);
         int alpha = (int) ((128 + 127 * animation) * alphaMultiplier);
         Color textColor = new Color(colorValue, colorValue, colorValue, alpha);
 
-        float iconX = bgX + 17f + offsetX;
         float iconWidth = Fonts.CATEGORY_ICONS.getWidth(icon, ICON_SIZE);
-        float textX = iconX + iconWidth + ICON_SPACING;
         float textWidth = Fonts.BOLD.getWidth(name, TEXT_SIZE);
+        float totalWidth = iconWidth + ICON_SPACING + textWidth;
+        float startX = centerX - totalWidth / 2f + offsetX;
 
-        Fonts.CATEGORY_ICONS.draw(icon, iconX, textY + 0.5f, ICON_SIZE, textColor.getRGB());
+        Fonts.CATEGORY_ICONS.draw(icon, startX, textY + 0.5f, ICON_SIZE, textColor.getRGB());
 
         if (animation > 0.01f) {
-            float lineWidth = (iconWidth + ICON_SPACING + textWidth) * animation;
-            float lineAlpha = animation * 60 * alphaMultiplier;
-            Render2D.rect(iconX, textY + 9f, lineWidth, 0.5f, new Color(255, 255, 255, (int) lineAlpha).getRGB(), 0);
+            float lineWidth = totalWidth * animation;
+            float lineAlpha = animation * 50 * alphaMultiplier;
+            float lineX = centerX - lineWidth / 2f + offsetX;
+            Render2D.rect(lineX, textY + 11f, lineWidth, 0.5f, new Color(255, 255, 255, (int) lineAlpha).getRGB(), 0);
 
             float ballAlpha = animation * 200 * alphaMultiplier;
-            float ballX = bgX + 12f;
+            float ballX = centerX - totalWidth / 2f - 10f + offsetX;
             float ballY = textY + 2.5f;
             Render2D.rect(ballX, ballY, BALL_SIZE, BALL_SIZE, new Color(255, 255, 255, (int) ballAlpha).getRGB(), BALL_SIZE / 2f);
         }
 
-        Fonts.BOLD.draw(name, textX, textY, TEXT_SIZE, textColor.getRGB());
+        Fonts.BOLD.draw(name, startX + iconWidth + ICON_SPACING, textY, TEXT_SIZE, textColor.getRGB());
     }
 
     public ModuleCategory getCategoryAtPosition(double mouseX, double mouseY, float bgX, float bgY) {
-        if (mouseX < bgX + 10f || mouseX > bgX + 95f) return null;
+        float inset = ClickGuiTheme.PANEL_INSET;
+        float catW = ClickGuiTheme.CATEGORY_PANEL_WIDTH;
+        float catLeft = bgX + inset;
+        float catRight = bgX + inset + catW;
 
+        if (mouseX < catLeft || mouseX > catRight) return null;
+
+        float startY = bgY + 70f;
         for (int i = 0; i < MAIN_CATEGORY_NAMES.length; i++) {
-            float catY = 65f + i * 15f;
-            if (mouseY >= bgY + catY && mouseY <= bgY + catY + 13f) {
+            float catY = startY + i * 38f;
+            if (mouseY >= catY - 5 && mouseY <= catY + 15) {
                 return MAIN_CATEGORIES[i];
             }
         }
 
-        float separatorY = 65f + MAIN_CATEGORY_NAMES.length * 15f + 1f;
-        float extraStartY = separatorY + 18f - EXTRA_CATEGORY_OFFSET;
-
+        float extraStartY = startY + MAIN_CATEGORY_NAMES.length * 38f + 10f;
         for (int i = 0; i < EXTRA_CATEGORIES.length; i++) {
-            float catY = extraStartY + i * 15f;
-            if (mouseY >= bgY + catY && mouseY <= bgY + catY + 13f) {
+            float catY = extraStartY + i * 38f;
+            if (mouseY >= catY - 5 && mouseY <= catY + 15) {
                 return EXTRA_CATEGORIES[i];
             }
         }

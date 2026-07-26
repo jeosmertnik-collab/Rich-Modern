@@ -40,6 +40,13 @@ public class Info extends AbstractHudElement {
 
         boolean showBps = Hud.getInstance() != null && Hud.getInstance().showBps.isValue();
 
+        String serverAddress = "";
+        if (mc.getNetworkHandler() != null && mc.getNetworkHandler().getServerInfo() != null) {
+            serverAddress = mc.getNetworkHandler().getServerInfo().address;
+            if (serverAddress.length() > 24) serverAddress = serverAddress.substring(0, 24) + "...";
+        }
+        boolean showServer = !serverAddress.isEmpty();
+
         long currentTime = System.currentTimeMillis();
         double deltaTime = (currentTime - lastUpdateTime) / 1000.0;
 
@@ -95,14 +102,19 @@ public class Info extends AbstractHudElement {
 
         float bpsWidth = 10 + 12 + 12 + bpsValueWidth + 2 + bpsTextWidth + 5;
 
+        float serverWidth = 0;
+        if (showServer) {
+            float serverTextWidth = Fonts.BOLD.getWidth(serverAddress, 6);
+            serverWidth = 10 + 12 + 12 + serverTextWidth + 5;
+        }
+
         setX((int) x);
         setY((int) y);
 
-        if (showBps) {
-            setWidth((int) (coordsWidth + bpsWidth + 30));
-        } else {
-            setWidth((int) (coordsWidth + 24));
-        }
+        float totalContentWidth = coordsWidth;
+        if (showBps) totalContentWidth += bpsWidth + 4;
+        if (showServer) totalContentWidth += serverWidth + 4;
+        setWidth((int) (totalContentWidth + 24));
         setHeight(22);
 
         Render2D.gradientRect(x + 12, y + 3, coordsWidth, 20,
@@ -171,6 +183,33 @@ public class Info extends AbstractHudElement {
             bpsOffsetX += bpsValueWidth + 2;
 
             Fonts.BOLD.draw(bpsText, bpsOffsetX, textY + 3, 6, new Color(155, 155, 155, 255).getRGB());
+        }
+
+        if (showServer) {
+            float serverBoxX = x + 12 + coordsWidth + 4;
+            if (showBps) serverBoxX += bpsWidth + 4;
+
+            float serverTextWidth = Fonts.BOLD.getWidth(serverAddress, 6);
+
+            Render2D.gradientRect(serverBoxX, y + 3, serverWidth, 20,
+                    new int[]{
+                            new Color(52, 52, 52, 255).getRGB(),
+                            new Color(22, 22, 22, 255).getRGB(),
+                            new Color(52, 52, 52, 255).getRGB(),
+                            new Color(22, 22, 22, 255).getRGB()
+                    },
+                    5);
+
+            Render2D.outline(serverBoxX, y + 3, serverWidth, 20, 0.35f, new Color(90, 90, 90, 255).getRGB(), 5);
+
+            Fonts.ICONSTYPETHO.draw("r", serverBoxX + 5, textY + 0.5f, 11, new Color(255, 255, 255, 255).getRGB());
+
+            float serverOffsetX = serverBoxX + 20;
+
+            Fonts.TEST.draw("»", serverOffsetX, textY + 1.5f, 8, new Color(155, 155, 155, 255).getRGB());
+            serverOffsetX += 10;
+
+            Fonts.BOLD.draw(serverAddress, serverOffsetX, textY + 3, 6, new Color(255, 255, 255, 255).getRGB());
         }
     }
 }

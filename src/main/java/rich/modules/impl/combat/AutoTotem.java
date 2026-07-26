@@ -81,7 +81,7 @@ public class AutoTotem extends ModuleStructure {
     PlayerEntity dangerousElytraPlayer = null;
 
     public AutoTotem() {
-        super("AutoTotem", "Auto Totem", ModuleCategory.COMBAT);
+        super("AutoTotem", "Автоматическая смена тотемов бессмертия", ModuleCategory.COMBAT);
         settings(swapMode, healthThreshold, triggers, options, crystalDistance, fallHeight, tntDistance, tntMinecartDistance, elytraHealth);
     }
 

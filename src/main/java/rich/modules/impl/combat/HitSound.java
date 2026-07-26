@@ -28,7 +28,7 @@ public class HitSound extends ModuleStructure {
             .setValue(1.0f);
 
     public HitSound() {
-        super("HitSound", ModuleCategory.COMBAT);
+        super("HitSound", "Звуковой эффект при попадании", ModuleCategory.COMBAT);
         settings(soundType, volume);
     }
 

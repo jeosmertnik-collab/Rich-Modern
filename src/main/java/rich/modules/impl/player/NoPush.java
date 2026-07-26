@@ -16,7 +16,7 @@ public class NoPush extends ModuleStructure {
             .value("Вода", "Блоки", "Коллизию сущностей", "Рыхлый снег", "Ягоды");
 
     public NoPush() {
-        super("AntiPush", "Anti Push", ModuleCategory.PLAYER);
+        super("AntiPush", "Защита оттолкания от сущностей", ModuleCategory.PLAYER);
         settings(ignoreSetting);
     }
 

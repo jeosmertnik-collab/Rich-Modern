@@ -560,10 +560,10 @@ public class ColorComponent extends AbstractSettingComponent {
     }
 
     private boolean isPreviewHover(double mouseX, double mouseY) {
-        float previewX = x + width - PREVIEW_SIZE - 4;
-        float previewY = y + height / 2 - PREVIEW_SIZE / 2;
-        return mouseX >= previewX && mouseX <= previewX + PREVIEW_SIZE &&
-                mouseY >= previewY && mouseY <= previewY + PREVIEW_SIZE;
+        float previewX = x + width - 14;
+        float previewY = y + height / 2 / 2;
+        return mouseX >= previewX && mouseX <= previewX + 10 &&
+                mouseY >= previewY && mouseY <= previewY + 10;
     }
 
     private boolean isPaletteHover(double mouseX, double mouseY) {
