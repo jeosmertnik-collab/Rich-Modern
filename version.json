@@ -1,12 +1,12 @@
 {
-  "version": "1.0.13",
+  "version": "1.0.14",
   "launcherVersion": "1.0.12",
   "clientVersion": "1.0.01",
-  "downloadUrl": "https://github.com/jeosmertnik-collab/Rich-Modern/releases/download/v1.0.13/rich-1.0.01.jar",
+  "downloadUrl": "https://github.com/jeosmertnik-collab/Rich-Modern/releases/download/v1.0.14/rich-1.0.01.jar",
   "launcherUrl": "https://github.com/jeosmertnik-collab/Rich-Modern/releases/download/v1.0.10/RichModern.exe",
   "changelog": {
-    "ru": "ClickGUI заменён из Rich-Modern1. Новая тема HUD (SFPRO + синий акцент). TargetHud показывает экипировку. Цвет акцента настраивается. ThirdPersonHud показывает ник. Changelog в конфигах.",
-    "en": "ClickGUI replaced from Rich-Modern1. New HUD theme (SFPRO + blue accent). TargetHud shows equipment. Accent color configurable. ThirdPersonHud shows account name. Config panel changelog."
+    "ru": "Changelog теперь popup меню. TargetHud компактный с предметами. LeafFarmer — автофарм листвы мотыгой. Лоанчер запоминает логин+пароль.",
+    "en": "Changelog is now a popup menu. Compact TargetHud with items. LeafFarmer auto-farms leaves with hoe. Launcher remembers login+password."
   },
   "required": false,
   "releaseDate": "2026-07-26"
