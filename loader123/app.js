@@ -850,9 +850,7 @@ function selfUpdate() {
     });
 }
 
-app.whenReady().then(async () => {
-    const updated = await selfUpdate();
-    if (updated) return;
+app.whenReady().then(() => {
     startLicenseServer();
     createWindow();
     app.on('activate', () => {
