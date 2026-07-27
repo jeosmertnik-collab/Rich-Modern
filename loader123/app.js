@@ -441,15 +441,20 @@ ipcMain.handle('license:remove', () => {
     return true;
 });
 
-ipcMain.on('game:launch', (event, { nickname, ram }) => {
+ipcMain.on('game:launch', async (event, { nickname, ram }) => {
     log('=== LAUNCH START ===');
 
-    const root = findGameRoot();
+    let root = findGameRoot();
     log('findGameRoot: ' + root);
 
     if (!root) {
-        event.reply('game:launch-status', { status: 'error', message: 'Project folder not found. Place RichModern.exe next to gradlew.bat and run again.' });
-        return;
+        log('gradlew.bat not found, attempting auto-setup from GitHub...');
+        root = await autoSetupProject(event);
+        if (!root) {
+            event.reply('game:launch-status', { status: 'error', message: 'Auto-setup failed. Check internet connection or place RichModern.exe next to gradlew.bat.' });
+            return;
+        }
+        log('auto-setup complete, game root: ' + root);
     }
 
     const nickFile = path.join(root, 'Rich', 'configs', 'lastnick.txt');
@@ -482,6 +487,8 @@ function killExistingGameProcesses(log) {
     }
 }
 
+const REPO_URL = 'https://github.com/jeosmertnik-collab/Rich-Modern/archive/refs/heads/main.zip';
+
 function findGameRoot() {
     const saved = loadSavedGameRoot();
     if (saved) {
@@ -506,6 +513,69 @@ function findGameRoot() {
     }
 
     return null;
+}
+
+async function autoSetupProject(event) {
+    const setupDir = path.join(app.getPath('userData'), 'game');
+    event.reply('game:launch-status', { status: 'building', message: 'Auto-setup: downloading project files...' });
+
+    if (fs.existsSync(path.join(setupDir, 'Rich-Modern-main', 'gradlew.bat'))) {
+        log('auto-setup: project already exists at ' + setupDir);
+        saveGameRoot(path.join(setupDir, 'Rich-Modern-main'));
+        return path.join(setupDir, 'Rich-Modern-main');
+    }
+
+    const zipPath = path.join(app.getPath('temp'), 'rich-modern-setup.zip');
+    log('auto-setup: downloading from ' + REPO_URL);
+
+    try {
+        await downloadFile(REPO_URL, zipPath);
+        log('auto-setup: download complete, extracting...');
+
+        event.reply('game:launch-status', { status: 'building', message: 'Auto-setup: extracting project...' });
+
+        if (fs.existsSync(setupDir)) {
+            fs.rmSync(setupDir, { recursive: true, force: true });
+        }
+        fs.mkdirSync(setupDir, { recursive: true });
+
+        try {
+            execSync(`powershell -Command "Expand-Archive -Path '${zipPath}' -DestinationPath '${setupDir}' -Force"`, {
+                encoding: 'utf8', timeout: 120000
+            });
+        } catch (e) {
+            log('auto-setup: PowerShell extract failed, trying tar...');
+            execSync(`tar -xf "${zipPath}" -C "${setupDir}"`, {
+                encoding: 'utf8', timeout: 120000
+            });
+        }
+
+        try { fs.unlinkSync(zipPath); } catch (e) {}
+
+        const extractedDir = path.join(setupDir, 'Rich-Modern-main');
+        if (fs.existsSync(path.join(extractedDir, 'gradlew.bat'))) {
+            log('auto-setup: project ready at ' + extractedDir);
+            saveGameRoot(extractedDir);
+            return extractedDir;
+        }
+
+        const entries = fs.readdirSync(setupDir);
+        if (entries.length === 1) {
+            const possibleRoot = path.join(setupDir, entries[0]);
+            if (fs.existsSync(path.join(possibleRoot, 'gradlew.bat'))) {
+                log('auto-setup: project ready at ' + possibleRoot);
+                saveGameRoot(possibleRoot);
+                return possibleRoot;
+            }
+        }
+
+        log('auto-setup: ERROR - gradlew.bat not found after extraction');
+        return null;
+    } catch (e) {
+        log('auto-setup: ERROR - ' + e.message);
+        try { fs.unlinkSync(zipPath); } catch (err) {}
+        return null;
+    }
 }
 
 const GAME_ROOT_FILE = path.join(app.getPath('userData'), 'gameroot.json');

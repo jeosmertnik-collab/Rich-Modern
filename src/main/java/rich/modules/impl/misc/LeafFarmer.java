@@ -35,19 +35,29 @@ public class LeafFarmer extends ModuleStructure {
     private BlockPos currentTarget = null;
     private final TimerUtil breakTimer = TimerUtil.create();
 
-    private static final Set<Block> LEAF_BLOCKS = Set.of(
-            Blocks.OAK_LEAVES,
-            Blocks.BIRCH_LEAVES,
-            Blocks.SPRUCE_LEAVES,
-            Blocks.JUNGLE_LEAVES,
-            Blocks.ACACIA_LEAVES,
-            Blocks.DARK_OAK_LEAVES,
-            Blocks.MANGROVE_LEAVES,
-            Blocks.AZALEA_LEAVES,
-            Blocks.FLOWERING_AZALEA_LEAVES,
-            Blocks.CHERRY_LEAVES,
-            Blocks.PALE_OAK_LEAVES
-    );
+    private static final Set<Block> LEAF_BLOCKS;
+
+    static {
+        java.util.Set<Block> temp = new java.util.HashSet<>();
+        temp.add(Blocks.OAK_LEAVES);
+        temp.add(Blocks.BIRCH_LEAVES);
+        temp.add(Blocks.SPRUCE_LEAVES);
+        temp.add(Blocks.JUNGLE_LEAVES);
+        temp.add(Blocks.ACACIA_LEAVES);
+        temp.add(Blocks.DARK_OAK_LEAVES);
+        temp.add(Blocks.MANGROVE_LEAVES);
+        temp.add(Blocks.AZALEA_LEAVES);
+        temp.add(Blocks.FLOWERING_AZALEA_LEAVES);
+        try {
+            Object block = Blocks.class.getField("PALE_OAK_LEAVES").get(null);
+            if (block instanceof Block b) temp.add(b);
+        } catch (Exception ignored) {}
+        try {
+            Object block = Blocks.class.getField("CHERRY_LEAVES").get(null);
+            if (block instanceof Block b) temp.add(b);
+        } catch (Exception ignored) {}
+        LEAF_BLOCKS = java.util.Collections.unmodifiableSet(temp);
+    }
 
     public LeafFarmer() {
         super("LeafFarmer", "Автоматическое фарм листьев", ModuleCategory.MISC);

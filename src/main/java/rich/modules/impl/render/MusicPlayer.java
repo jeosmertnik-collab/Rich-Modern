@@ -13,8 +13,12 @@ import rich.modules.module.category.ModuleCategory;
 import rich.modules.module.setting.implement.BooleanSetting;
 import rich.modules.module.setting.implement.SliderSettings;
 
+import javazoom.jl.decoder.*;
+import javazoom.jl.player.AudioDevice;
+import javazoom.jl.player.FactoryRegistry;
+
 import javax.sound.sampled.*;
-import java.io.File;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -102,52 +106,122 @@ public class MusicPlayer extends ModuleStructure {
 
         playbackThread = new Thread(() -> {
             try {
-                AudioInputStream stream = AudioSystem.getAudioInputStream(file);
-                AudioFormat baseFormat = stream.getFormat();
-
-                if (baseFormat.getEncoding() != AudioFormat.Encoding.PCM_SIGNED) {
-                    AudioFormat targetFormat = new AudioFormat(
-                            AudioFormat.Encoding.PCM_SIGNED,
-                            baseFormat.getSampleRate(),
-                            16,
-                            baseFormat.getChannels(),
-                            baseFormat.getChannels() * 2,
-                            baseFormat.getSampleRate(),
-                            false
-                    );
-                    stream = AudioSystem.getAudioInputStream(targetFormat, stream);
+                if (file.getName().toLowerCase().endsWith(".mp3")) {
+                    playMp3(file);
+                } else {
+                    playWav(file);
                 }
-
-                Clip clip = AudioSystem.getClip();
-                clip.open(stream);
-                this.currentClip = clip;
-
-                durationMs = clip.getMicrosecondLength() / 1000;
-                positionMs = 0;
-                playing = true;
-
-                updateVolume();
-
-                clip.addLineListener(event -> {
-                    if (event.getType() == LineEvent.Type.STOP && !stopRequested) {
-                        Util.getMainWorkerExecutor().execute(() -> {
-                            if (!isState()) return;
-                            if (repeat.isValue()) {
-                                playCurrentTrack();
-                            } else {
-                                nextTrack();
-                            }
-                        });
-                    }
-                });
-
-                clip.start();
             } catch (Exception ex) {
                 playing = false;
             }
         }, "MusicPlayer-Thread");
         playbackThread.setDaemon(true);
         playbackThread.start();
+    }
+
+    private void playMp3(File file) throws Exception {
+        try (FileInputStream fis = new FileInputStream(file);
+             BufferedInputStream bis = new BufferedInputStream(fis)) {
+            Bitstream bitstream = new Bitstream(bis);
+            Decoder decoder = new Decoder();
+            AudioDevice audioDevice = FactoryRegistry.systemRegistry().createAudioDevice();
+
+            this.currentClip = null;
+            playing = true;
+            positionMs = 0;
+
+            Header header = bitstream.readFrame();
+            if (header == null) {
+                playing = false;
+                return;
+            }
+
+            int channels = (header.mode() == Header.SINGLE_CHANNEL) ? 1 : 2;
+            SampleBuffer sampleBuffer = new SampleBuffer(header.frequency(), channels);
+            decoder.setOutputBuffer(sampleBuffer);
+
+            decoder.decodeFrame(header, bitstream);
+            short[] samples = sampleBuffer.getBuffer();
+            int length = sampleBuffer.getBufferLength();
+            audioDevice.write(samples, 0, length);
+
+            long startTime = System.currentTimeMillis();
+            int frameIndex = 1;
+
+            while (!stopRequested) {
+                header = bitstream.readFrame();
+                if (header == null) break;
+
+                decoder.decodeFrame(header, bitstream);
+                samples = sampleBuffer.getBuffer();
+                length = sampleBuffer.getBufferLength();
+                audioDevice.write(samples, 0, length);
+
+                frameIndex++;
+                if (frameIndex % 10 == 0) {
+                    positionMs = System.currentTimeMillis() - startTime;
+                }
+            }
+
+            durationMs = System.currentTimeMillis() - startTime;
+            audioDevice.flush();
+            playing = false;
+            if (!stopRequested) {
+                Util.getMainWorkerExecutor().execute(() -> {
+                    if (!isState()) return;
+                    if (repeat.isValue()) {
+                        playCurrentTrack();
+                    } else {
+                        nextTrack();
+                    }
+                });
+            }
+        } catch (Exception e) {
+            playing = false;
+        }
+    }
+
+    private void playWav(File file) throws Exception {
+        AudioInputStream stream = AudioSystem.getAudioInputStream(file);
+        AudioFormat baseFormat = stream.getFormat();
+
+        if (baseFormat.getEncoding() != AudioFormat.Encoding.PCM_SIGNED) {
+            AudioFormat targetFormat = new AudioFormat(
+                    AudioFormat.Encoding.PCM_SIGNED,
+                    baseFormat.getSampleRate(),
+                    16,
+                    baseFormat.getChannels(),
+                    baseFormat.getChannels() * 2,
+                    baseFormat.getSampleRate(),
+                    false
+            );
+            stream = AudioSystem.getAudioInputStream(targetFormat, stream);
+        }
+
+        Clip clip = AudioSystem.getClip();
+        clip.open(stream);
+        this.currentClip = clip;
+
+        durationMs = clip.getMicrosecondLength() / 1000;
+        positionMs = 0;
+        playing = true;
+
+        updateVolume();
+
+        clip.addLineListener(event -> {
+            if (event.getType() == LineEvent.Type.STOP && !stopRequested) {
+                Util.getMainWorkerExecutor().execute(() -> {
+                    if (!isState()) return;
+                    if (repeat.isValue()) {
+                        playCurrentTrack();
+                    } else {
+                        nextTrack();
+                    }
+                });
+            }
+        });
+
+        clip.start();
     }
 
     public void stopPlayback() {
@@ -161,6 +235,10 @@ public class MusicPlayer extends ModuleStructure {
                 }
             } catch (Exception e) {}
             currentClip = null;
+        }
+        if (playbackThread != null && playbackThread.isAlive()) {
+            playbackThread.interrupt();
+            playbackThread = null;
         }
         positionMs = 0;
     }

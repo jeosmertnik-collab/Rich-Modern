@@ -34,7 +34,7 @@ public class MusicHud extends AbstractHudElement {
     @Override
     public void tick() {
         MusicPlayer player = MusicPlayer.getInstance();
-        if (player != null && player.isState() && !player.getPlaylist().isEmpty()) {
+        if (player != null && player.isState()) {
             startAnimation();
         } else {
             stopAnimation();
@@ -47,7 +47,7 @@ public class MusicHud extends AbstractHudElement {
         if (alpha <= 0) return;
 
         MusicPlayer player = MusicPlayer.getInstance();
-        if (player == null || player.getPlaylist().isEmpty()) return;
+        if (player == null) return;
 
         float alphaFactor = alpha / 255.0f;
         int bgAlpha = (int) (255 * alphaFactor);
@@ -55,7 +55,7 @@ public class MusicHud extends AbstractHudElement {
         float x = getX();
         float y = getY();
         float w = 160;
-        float h = 32;
+        float h = player.getPlaylist().isEmpty() ? 20 : 32;
 
         setWidth((int) w);
         setHeight((int) h);
@@ -70,6 +70,14 @@ public class MusicHud extends AbstractHudElement {
 
         Render2D.outline(x, y, w, h, 1.0f,
                 new Color(accentR, accentG, accentB, (int) (bgAlpha * 0.35f)).getRGB(), 5);
+
+        if (player.getPlaylist().isEmpty()) {
+            Fonts.SFPRO_REGULAR.draw("No music files", x + 8, y + 5, 5.5f,
+                    new Color(180, 140, 140, bgAlpha).getRGB());
+            Fonts.SFPRO_REGULAR.draw("Put .mp3/.wav in RichMusic/", x + 8, y + 12, 4.5f,
+                    new Color(120, 120, 140, bgAlpha).getRGB());
+            return;
+        }
 
         String trackName = player.getCurrentTrackName();
         if (trackName.isEmpty()) trackName = "No track";
