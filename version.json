@@ -1,13 +1,13 @@
 {
-  "version": "1.0.14",
-  "launcherVersion": "1.0.12",
+  "version": "1.0.15",
+  "launcherVersion": "1.0.13",
   "clientVersion": "1.0.01",
-  "downloadUrl": "https://github.com/jeosmertnik-collab/Rich-Modern/releases/download/v1.0.14/rich-1.0.01.jar",
-  "launcherUrl": "https://github.com/jeosmertnik-collab/Rich-Modern/releases/download/v1.0.10/RichModern.exe",
+  "downloadUrl": "https://github.com/jeosmertnik-collab/Rich-Modern/releases/download/v1.0.15/rich-1.0.01.jar",
+  "launcherUrl": "https://github.com/jeosmertnik-collab/Rich-Modern/releases/download/v1.0.15/RichModern.exe",
   "changelog": {
-    "ru": "Changelog теперь popup меню. TargetHud компактный с предметами. LeafFarmer — автофарм листвы мотыгой. Лоанчер запоминает логин+пароль.",
-    "en": "Changelog is now a popup menu. Compact TargetHud with items. LeafFarmer auto-farms leaves with hoe. Launcher remembers login+password."
+    "ru": "Music Player с HUD баром. ClanHelper ставит факел и ломает. ClickGUI в стиле акцента. Прогресс-бар сборки в лаунчере. Автоубийство старых процессов при запуске.",
+    "en": "Music Player with HUD bar. ClanHelper places torch and breaks it. ClickGUI accent styling. Build progress bar in launcher. Auto-kill old processes on launch."
   },
   "required": false,
-  "releaseDate": "2026-07-26"
+  "releaseDate": "2026-07-27"
 }

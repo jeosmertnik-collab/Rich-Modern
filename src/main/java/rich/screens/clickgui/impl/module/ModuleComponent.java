@@ -95,6 +95,10 @@ public class ModuleComponent implements IMinecraft {
         rebuildDisplayList();
     }
 
+    public void triggerTogglePulse(ModuleStructure module) {
+        animationHandler.triggerTogglePulse(module);
+    }
+
     public void selectModuleFromSearch(ModuleStructure module) {
         animationHandler.setScrollTarget(module);
     }

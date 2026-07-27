@@ -91,6 +91,7 @@ public class LeafFarmer extends ModuleStructure {
             AngleConnection.INSTANCE.rotateTo(angle, AngleConfig.DEFAULT, TaskPriority.HIGH_IMPORTANCE_1, this);
         }
 
+        mc.interactionManager.updateBlockBreakingProgress(currentTarget, Direction.UP);
         mc.interactionManager.attackBlock(currentTarget, Direction.UP);
         mc.player.swingHand(Hand.MAIN_HAND);
 

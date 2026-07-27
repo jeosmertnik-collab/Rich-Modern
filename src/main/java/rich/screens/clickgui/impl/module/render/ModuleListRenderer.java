@@ -3,6 +3,7 @@ package rich.screens.clickgui.impl.module.render;
 import net.minecraft.client.gui.DrawContext;
 import org.lwjgl.glfw.GLFW;
 import rich.modules.module.ModuleStructure;
+import rich.modules.impl.render.Hud;
 import rich.screens.clickgui.impl.module.handler.ModuleAnimationHandler;
 import rich.screens.clickgui.impl.module.handler.ModuleBindHandler;
 import rich.screens.clickgui.impl.module.handler.ModuleScrollHandler;
@@ -150,6 +151,18 @@ public class ModuleListRenderer {
             float scaledWidth = (width - 6) * scale;
 
             Render2D.rect(animX, scaledModY, scaledWidth, scaledHeight, bgColor, 5);
+
+            float togglePulse = interactive ? animHandler.getTogglePulseAnimations().getOrDefault(module, 0f) : 0f;
+            if (togglePulse > 0.01f) {
+                int pulseAlpha = (int) (80 * togglePulse * combinedAlpha);
+                int aR = (Hud.getInstance().getAccentRGB() >> 16) & 0xFF;
+                int aG = (Hud.getInstance().getAccentRGB() >> 8) & 0xFF;
+                int aB = Hud.getInstance().getAccentRGB() & 0xFF;
+                Render2D.rect(animX, scaledModY, scaledWidth, scaledHeight,
+                        new Color(aR, aG, aB, pulseAlpha).getRGB(), 5);
+                Render2D.outline(animX, scaledModY, scaledWidth, scaledHeight, 1.5f,
+                        new Color(aR, aG, aB, (int) (160 * togglePulse * combinedAlpha)).getRGB(), 5);
+            }
 
             if (selected) {
                 float pulseValue = (float) (Math.sin(animHandler.getSelectedPulseAnimation()) * 0.5 + 0.5);

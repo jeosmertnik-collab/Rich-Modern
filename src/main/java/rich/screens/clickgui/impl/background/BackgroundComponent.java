@@ -100,14 +100,6 @@ public class BackgroundComponent implements IMinecraft {
         backgroundRenderer.renderCategoryPanel(bgX, bgY, BG_HEIGHT, alphaMultiplier);
     }
 
-    public boolean isChangelogOpen() { return backgroundRenderer.isChangelogOpen(); }
-    public void toggleChangelog() { backgroundRenderer.toggleChangelog(); }
-    public void closeChangelog() { backgroundRenderer.closeChangelog(); }
-    public void scrollChangelog(float amount) { backgroundRenderer.scrollChangelog(amount); }
-    public boolean isChangelogHovered(float mx, float my, float bgX, float bgY) { return backgroundRenderer.isChangelogHovered(mx, my, bgX, bgY); }
-    public boolean isChangelogCloseHovered(float mx, float my, float bgX, float bgY) { return backgroundRenderer.isCloseButtonHovered(mx, my, bgX, bgY); }
-    public boolean isChangelogPopupHovered(float mx, float my, float bgX, float bgY) { return backgroundRenderer.isPopupHovered(mx, my, bgX, bgY); }
-
     public void renderHeader(float bgX, float bgY, ModuleCategory selectedCategory, float alphaMultiplier) {
         headerRenderer.render(bgX, bgY, BG_WIDTH, selectedCategory, previousCategory, currentCategory,
                 headerTransition, searchHandler, alphaMultiplier);

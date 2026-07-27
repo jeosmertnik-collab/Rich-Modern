@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const https = require('https');
 const http = require('http');
-const { spawn } = require('child_process');
+const { spawn, execSync } = require('child_process');
 
 let win;
 
@@ -462,6 +462,26 @@ ipcMain.on('game:launch', (event, { nickname, ram }) => {
     launchViaGradlew(event, root, nickname, ram, log);
 });
 
+function killExistingGameProcesses(log) {
+    try {
+        const out = execSync('tasklist /FI "IMAGENAME eq java.exe" /FO CSV /NH', { encoding: 'utf8', timeout: 5000 });
+        const lines = out.split('\n').filter(l => l.includes('java.exe'));
+        for (const line of lines) {
+            const match = line.match(/"java\.exe","(\d+)"/);
+            if (match) {
+                const pid = parseInt(match[1]);
+                try {
+                    execSync(`taskkill /PID ${pid} /F`, { encoding: 'utf8', timeout: 5000 });
+                    log('killed old java process PID=' + pid);
+                } catch (e) {}
+            }
+        }
+        if (lines.length === 0) log('no existing java processes found');
+    } catch (e) {
+        log('tasklist failed: ' + e.message);
+    }
+}
+
 function findGameRoot() {
     const saved = loadSavedGameRoot();
     if (saved) {
@@ -509,6 +529,14 @@ function saveGameRoot(p) {
 }
 
 function launchViaGradlew(event, root, nickname, ram, log) {
+    const processedModsDir = path.join(root, 'run', '.fabric', 'processedMods');
+    try {
+        if (fs.existsSync(processedModsDir)) {
+            fs.rmSync(processedModsDir, { recursive: true, force: true });
+            log('cleared processedMods cache');
+        }
+    } catch (e) { log('failed to clear processedMods: ' + e.message); }
+
     const env = Object.assign({}, process.env);
     if (ram) {
         env.GRADLE_OPTS = `-Xmx${ram}M`;
@@ -526,7 +554,9 @@ function launchViaGradlew(event, root, nickname, ram, log) {
     log('java: ' + javaExe);
     log('wrapperJar: ' + wrapperJar);
 
-    event.reply('game:launch-status', { status: 'launching', message: 'Launching game...' });
+    event.reply('game:launch-status', { status: 'building', message: 'Preparing build...' });
+
+    killExistingGameProcesses(log);
 
     const jvmArgs = [];
     if (ram) jvmArgs.push(`-Xmx${ram}M`, `-Xms${Math.min(parseInt(ram), 512)}M`);
@@ -548,7 +578,41 @@ function launchViaGradlew(event, root, nickname, ram, log) {
     log('spawned, pid=' + game.pid);
 
     let stderr = '';
+    let lastTaskCount = 0;
     game.stderr.on('data', d => { stderr += d.toString(); });
+
+    game.stdout.on('data', d => {
+        const lines = d.toString().split('\n');
+        for (const line of lines) {
+            const trimmed = line.trim();
+            if (trimmed.startsWith('> Task :')) {
+                lastTaskCount++;
+                const taskName = trimmed.replace('> Task :', '').trim();
+                event.reply('game:launch-progress', {
+                    status: 'building',
+                    task: taskName,
+                    taskNumber: lastTaskCount,
+                    message: 'Building: ' + taskName
+                });
+            } else if (trimmed.includes('Download') && trimmed.includes('http')) {
+                const urlMatch = trimmed.match(/https?:\/\/[^\s]+/);
+                const fileName = urlMatch ? urlMatch[0].split('/').pop().substring(0, 40) : trimmed.substring(0, 50);
+                event.reply('game:launch-progress', {
+                    status: 'downloading',
+                    message: 'Downloading: ' + fileName
+                });
+            } else if (trimmed.includes('%')) {
+                const pctMatch = trimmed.match(/(\d+)%/);
+                if (pctMatch) {
+                    event.reply('game:launch-progress', {
+                        status: 'downloading',
+                        percent: parseInt(pctMatch[1]),
+                        message: trimmed.substring(0, 60)
+                    });
+                }
+            }
+        }
+    });
 
     game.on('error', (err) => {
         log('ERROR: ' + err.message);
@@ -557,17 +621,15 @@ function launchViaGradlew(event, root, nickname, ram, log) {
 
     game.on('close', (code) => {
         log('closed code=' + code);
-        if (win) win.show();
         if (code !== 0) {
             event.reply('game:launch-status', { status: 'error', message: 'Exit ' + code + ': ' + stderr.slice(-300) });
         } else {
-            event.reply('game:launch-status', { status: 'closed', message: 'Game closed' });
+            event.reply('game:launch-status', { status: 'started', message: 'Game started' });
+            setTimeout(() => { app.quit(); }, 3000);
         }
     });
 
     game.unref();
-    event.reply('game:launch-status', { status: 'started', message: 'Game started' });
-    setTimeout(() => { if (win) win.hide(); }, 3000);
 }
 
 function downloadFile(url, dest) {

@@ -7,6 +7,7 @@ import rich.modules.impl.combat.NoInteract;
 import rich.modules.impl.combat.AutoTotem;
 import rich.modules.impl.misc.*;
 import rich.modules.impl.misc.autoparser.AutoParser;
+import rich.modules.impl.util.*;
 import rich.modules.impl.movement.*;
 import rich.modules.impl.player.*;
 import rich.modules.impl.render.*;
@@ -107,9 +108,10 @@ public class ModuleRepository {
                 .add(new StorageESP())
                 .add(new InventoryManager())
                 .add(new EventWaypointParser())
-                .add(new AiAssistant())
+                .hidden(new AiAssistant())
                 .add(new VoiceAlert())
                 .add(new ClanHelper())
+                .add(new MusicPlayer())
                 .add(new ChatSpammer())
                 .add(new LeafFarmer())
                 .hidden(new AutoParser());

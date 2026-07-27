@@ -78,6 +78,11 @@
         .btn-launch:hover { background-color: var(--accent-white-hover); transform: translateY(-2px); box-shadow: 0 12px 30px rgba(255, 255, 255, 0.3); }
         .btn-launch:active { transform: translateY(1px); }
         .launch-status { margin-top: 10px; font-size: 13px; color: var(--text-muted); display: none; }
+        .launch-progress { display: none; margin-top: 12px; }
+        .launch-progress-bar { width: 100%; height: 4px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden; margin-bottom: 6px; }
+        .launch-progress-fill { height: 100%; background: var(--accent-white); border-radius: 2px; transition: width 0.3s ease; width: 0%; }
+        .launch-progress-text { font-size: 11px; color: var(--text-muted); display: flex; justify-content: space-between; }
+        .launch-progress-step { font-size: 11px; color: var(--accent-white); margin-top: 4px; font-weight: 600; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
         .update-banner { display: none; background: linear-gradient(135deg, rgba(34, 197, 94, 0.12) 0%, rgba(34, 197, 94, 0.04) 100%); border: 1px solid rgba(34, 197, 94, 0.2); border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; animation: screenSlideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
@@ -285,6 +290,13 @@
                                 <span data-i18n="btn_launch">ЗАПУСТИТЬ</span>
                             </button>
                             <div class="launch-status" id="launchStatus"></div>
+                            <div class="launch-progress" id="launchProgress">
+                                <div class="launch-progress-bar"><div class="launch-progress-fill" id="launchProgressFill"></div></div>
+                                <div class="launch-progress-text">
+                                    <span id="launchProgressText"></span>
+                                    <span id="launchProgressStep"></span>
+                                </div>
+                            </div>
                             <button class="btn-monochrome-sub" id="selectMinecraftBtn" style="display:none; width:100%; margin-top:6px; font-size:11px;">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
                                 <span data-i18n="btn_select_mc_folder">ВЫБРАТЬ ПАПКУ .minecraft</span>

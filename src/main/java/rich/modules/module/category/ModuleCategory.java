@@ -11,6 +11,7 @@ public enum ModuleCategory {
     RENDER("Render"),
     PLAYER("Player"),
     MISC("Misc"),
+    UTIL("Util"),
     AUTOBUY("AutoBuy");
 
     final String readableName;

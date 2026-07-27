@@ -34,6 +34,7 @@ public class HudManager {
         register(new Keystrokes());
         register(new FriendsListHud());
         register(new ThirdPersonHud());
+        register(new MusicHud());
 
         initialized = true;
 

@@ -34,7 +34,7 @@ public class SwingAnimation extends ModuleStructure {
             .setValue(false);
 
     public SwingAnimation() {
-        super("SwingAnimation", "Анимация взмаха руки", ModuleCategory.RENDER);
+        super("SwingAnimation", "Swing Animation", ModuleCategory.RENDER);
         settings(swingType, hitStrengthSetting, swingSpeedSetting, onlySwing, onlyAura);
     }
 

@@ -27,6 +27,8 @@ public class ModuleAnimationHandler {
     private Map<ModuleStructure, Float> moduleAlphaAnimations = new HashMap<>();
     private Map<ModuleStructure, Float> bindBoxWidthAnimations = new HashMap<>();
     private Map<ModuleStructure, Float> bindBoxAlphaAnimations = new HashMap<>();
+    private Map<ModuleStructure, Float> togglePulseAnimations = new HashMap<>();
+    private Map<ModuleStructure, Long> togglePulseStartTimes = new HashMap<>();
 
     private List<ModuleStructure> oldModules = new ArrayList<>();
     private double oldModuleDisplayScroll = 0;
@@ -61,6 +63,7 @@ public class ModuleAnimationHandler {
     private static final float POSITION_ANIM_SPEED = 6f;
     private static final float BIND_WIDTH_ANIM_SPEED = 12f;
     private static final float PULSE_SPEED = 5.5f;
+    private static final float TOGGLE_PULSE_DURATION = 400f;
     private static final float VISIBILITY_ANIM_SPEED = 8f;
     private static final float HEIGHT_ANIM_SPEED = 10f;
     private static final float CORNER_INSET = 3f;
@@ -129,6 +132,7 @@ public class ModuleAnimationHandler {
         updateSelectedIconAnimations(displayModules, selectedModule);
         updateFavoriteAnimations(displayModules);
         updateBindAnimations(displayModules);
+        updateTogglePulseAnimations(displayModules);
         updateHighlightAnimation();
         updateHoverAnimations(displayModules, mouseX, mouseY, listX, listY, listWidth, listHeight, scrollOffset);
     }
@@ -313,6 +317,30 @@ public class ModuleAnimationHandler {
         highlightedModule = module;
         highlightStartTime = System.currentTimeMillis();
         highlightAnimation = 1f;
+    }
+
+    public void triggerTogglePulse(ModuleStructure module) {
+        togglePulseStartTimes.put(module, System.currentTimeMillis());
+        togglePulseAnimations.put(module, 1f);
+    }
+
+    private void updateTogglePulseAnimations(List<ModuleStructure> displayModules) {
+        long currentTime = System.currentTimeMillis();
+        for (ModuleStructure module : displayModules) {
+            Long startTime = togglePulseStartTimes.get(module);
+            if (startTime == null) continue;
+
+            float elapsed = currentTime - startTime;
+            float progress = elapsed / TOGGLE_PULSE_DURATION;
+
+            if (progress >= 1f) {
+                togglePulseAnimations.put(module, 0f);
+                togglePulseStartTimes.remove(module);
+            } else {
+                float pulse = (float) (Math.sin(progress * Math.PI) * (1f - progress));
+                togglePulseAnimations.put(module, pulse);
+            }
+        }
     }
 
     public void setScrollTarget(ModuleStructure module) {

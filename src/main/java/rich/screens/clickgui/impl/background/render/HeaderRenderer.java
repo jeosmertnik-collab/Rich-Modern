@@ -1,6 +1,7 @@
 package rich.screens.clickgui.impl.background.render;
 
 import rich.modules.module.category.ModuleCategory;
+import rich.modules.impl.render.Hud;
 import rich.screens.clickgui.impl.background.search.SearchHandler;
 import rich.util.render.Render2D;
 import rich.util.render.shader.Scissor;
@@ -23,10 +24,12 @@ public class HeaderRenderer {
 
     private void renderHeaderPanel(float bgX, float bgY, float bgWidth, float alphaMultiplier) {
         int panelAlpha = (int) (25 * alphaMultiplier);
-        int outlineAlpha = (int) (255 * alphaMultiplier);
+        int aR = (Hud.getInstance().getAccentRGB() >> 16) & 0xFF;
+        int aG = (Hud.getInstance().getAccentRGB() >> 8) & 0xFF;
+        int aB = Hud.getInstance().getAccentRGB() & 0xFF;
 
         Render2D.rect(bgX + 92f, bgY + 7.5f, bgWidth - 100f, 25, new Color(128, 128, 128, panelAlpha).getRGB(), 8);
-        Render2D.outline(bgX + 92f, bgY + 7.5f, bgWidth - 100f, 25, 0.5f, new Color(55, 55, 55, outlineAlpha).getRGB(), 8);
+        Render2D.outline(bgX + 92f, bgY + 7.5f, bgWidth - 100f, 25, 0.5f, new Color(aR, aG, aB, (int) (100 * alphaMultiplier)).getRGB(), 8);
     }
 
     private void renderSearchBox(float bgX, float bgY, SearchHandler searchHandler, float alphaMultiplier) {
@@ -35,11 +38,15 @@ public class HeaderRenderer {
         float searchBoxW = 70f;
         float searchBoxH = 15f;
 
+        int aR = (Hud.getInstance().getAccentRGB() >> 16) & 0xFF;
+        int aG = (Hud.getInstance().getAccentRGB() >> 8) & 0xFF;
+        int aB = Hud.getInstance().getAccentRGB() & 0xFF;
+
         int outlineAlpha = (int) (255 * alphaMultiplier);
         int panelAlpha = (int) (25 * alphaMultiplier);
 
         Color searchOutline = searchHandler.isSearchActive()
-                ? new Color(180, 180, 180, outlineAlpha)
+                ? new Color(aR, aG, aB, outlineAlpha)
                 : new Color(55, 55, 55, outlineAlpha);
 
         int searchBgAlpha = (int) ((25 + searchHandler.getSearchFocusAnimation() * 15) * alphaMultiplier);

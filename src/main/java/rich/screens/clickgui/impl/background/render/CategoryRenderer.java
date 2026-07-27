@@ -1,6 +1,7 @@
 package rich.screens.clickgui.impl.background.render;
 
 import rich.modules.module.category.ModuleCategory;
+import rich.modules.impl.render.Hud;
 import rich.util.render.Render2D;
 import rich.util.render.font.Fonts;
 
@@ -11,10 +12,10 @@ import java.util.Map;
 public class CategoryRenderer {
 
     private static final ModuleCategory[] MAIN_CATEGORIES = {
-            ModuleCategory.COMBAT, ModuleCategory.MOVEMENT, ModuleCategory.RENDER, ModuleCategory.PLAYER, ModuleCategory.MISC
+            ModuleCategory.COMBAT, ModuleCategory.MOVEMENT, ModuleCategory.RENDER, ModuleCategory.PLAYER, ModuleCategory.UTIL, ModuleCategory.MISC
     };
-    private static final String[] MAIN_CATEGORY_NAMES = {"Combat", "Movement", "Render", "Player", "Util"};
-    private static final String[] MAIN_CATEGORY_ICONS = {"a", "b", "c", "d", "e"};
+    private static final String[] MAIN_CATEGORY_NAMES = {"Combat", "Movement", "Render", "Player", "Util", "Misc"};
+    private static final String[] MAIN_CATEGORY_ICONS = {"a", "b", "c", "d", "e", "h"};
 
     private static final ModuleCategory[] EXTRA_CATEGORIES = {
             ModuleCategory.AUTOBUY
@@ -109,11 +110,19 @@ public class CategoryRenderer {
     private void renderCategoryItem(float bgX, float textY, String name, String icon, float animation, float alphaMultiplier) {
         float offsetX = animation * MAX_OFFSET;
 
+        int aR = (Hud.getInstance().getAccentRGB() >> 16) & 0xFF;
+        int aG = (Hud.getInstance().getAccentRGB() >> 8) & 0xFF;
+        int aB = Hud.getInstance().getAccentRGB() & 0xFF;
+
         int baseGray = 128;
         int targetWhite = 255;
         int colorValue = (int) (baseGray + (targetWhite - baseGray) * animation);
         int alpha = (int) ((128 + 127 * animation) * alphaMultiplier);
-        Color textColor = new Color(colorValue, colorValue, colorValue, alpha);
+
+        int r = (int) (colorValue + (aR - colorValue) * animation * 0.5f);
+        int g = (int) (colorValue + (aG - colorValue) * animation * 0.5f);
+        int b = (int) (colorValue + (aB - colorValue) * animation * 0.5f);
+        Color textColor = new Color(r, g, b, alpha);
 
         float iconX = bgX + 17f + offsetX;
         float iconWidth = Fonts.CATEGORY_ICONS.getWidth(icon, ICON_SIZE);
@@ -125,12 +134,12 @@ public class CategoryRenderer {
         if (animation > 0.01f) {
             float lineWidth = (iconWidth + ICON_SPACING + textWidth) * animation;
             float lineAlpha = animation * 60 * alphaMultiplier;
-            Render2D.rect(iconX, textY + 9f, lineWidth, 0.5f, new Color(255, 255, 255, (int) lineAlpha).getRGB(), 0);
+            Render2D.rect(iconX, textY + 9f, lineWidth, 0.5f, new Color(aR, aG, aB, (int) lineAlpha).getRGB(), 0);
 
             float ballAlpha = animation * 200 * alphaMultiplier;
             float ballX = bgX + 12f;
             float ballY = textY + 2.5f;
-            Render2D.rect(ballX, ballY, BALL_SIZE, BALL_SIZE, new Color(255, 255, 255, (int) ballAlpha).getRGB(), BALL_SIZE / 2f);
+            Render2D.rect(ballX, ballY, BALL_SIZE, BALL_SIZE, new Color(aR, aG, aB, (int) ballAlpha).getRGB(), BALL_SIZE / 2f);
         }
 
         Fonts.BOLD.draw(name, textX, textY, TEXT_SIZE, textColor.getRGB());

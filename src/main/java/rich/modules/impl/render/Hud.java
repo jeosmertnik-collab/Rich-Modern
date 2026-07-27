@@ -5,23 +5,13 @@ import lombok.experimental.FieldDefaults;
 import rich.modules.module.category.ModuleCategory;
 import rich.modules.module.ModuleStructure;
 import rich.modules.module.setting.implement.*;
-
 import rich.util.Instance;
-import rich.util.lang.Lang;
 
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class Hud extends ModuleStructure {
     public static Hud getInstance() {
         return Instance.get(Hud.class);
     }
-
-    public SelectSetting language = new SelectSetting("Язык", "Язык интерфейса / Interface language")
-            .value("Русский", "English")
-            .selected("Русский");
-
-    public SelectSetting menuStyle = new SelectSetting("Стиль меню", "Визуальный стиль ClickGUI")
-            .value("Классический", "Модерн", "Минимал")
-            .selected("Классический");
 
     public MultiSelectSetting interfaceSettings = new MultiSelectSetting("Элементы", "Настройка элементов интерфейса")
             .value("Watermark",
@@ -36,7 +26,8 @@ public class Hud extends ModuleStructure {
                     "Radar",
                     "FriendsListHud",
                     "ThirdPersonHud",
-                    "Inventory")
+                    "Inventory",
+                    "MusicHud")
 
             .selected("Watermark",
                     "HotKeys",
@@ -50,7 +41,8 @@ public class Hud extends ModuleStructure {
                     "Radar",
                     "FriendsListHud",
                     "ThirdPersonHud",
-                    "Inventory");
+                    "Inventory",
+                    "MusicHud");
 
     public BooleanSetting showBps = new BooleanSetting("Show BPS", "Показывать блоки в секунду")
             .setValue(true)
@@ -65,22 +57,8 @@ public class Hud extends ModuleStructure {
             .presets(0xFF6C5CE7, 0xFF7C3AED, 0xFF22C55E, 0xFFE74C3C, 0xFF3498DB, 0xFFF39C12, 0xFFE91E63, 0xFF00BCD4);
 
     public Hud() {
-        super("Hud", "Настройка интерфейса", ModuleCategory.RENDER);
-        settings(language, menuStyle, interfaceSettings, showBps, showTps, accentColor);
-        accentColor.onChange(() -> {});
-        applyLanguage();
-    }
-
-    public void applyLanguage() {
-        if (language.isSelected("English")) {
-            Lang.init("en");
-        } else {
-            Lang.init("ru");
-        }
-    }
-
-    public int getStyleIndex() {
-        return menuStyle.isSelected("Модерн") ? 1 : menuStyle.isSelected("Минимал") ? 2 : 0;
+        super("Hud", ModuleCategory.RENDER);
+        settings(interfaceSettings, showBps, showTps, accentColor);
     }
 
     public int getAccentRGB() {

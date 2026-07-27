@@ -396,11 +396,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     ipcRenderer.on('game:launch-status', async (event, data) => {
         const t = await loadTranslations(currentLanguage);
-        if (launchStatus) launchStatus.textContent = data.message;
-
-        const selectMinecraftBtn = document.getElementById('selectMinecraftBtn');
+        const launchProgress = document.getElementById('launchProgress');
+        const launchProgressFill = document.getElementById('launchProgressFill');
+        const launchProgressText = document.getElementById('launchProgressText');
+        const launchProgressStep = document.getElementById('launchProgressStep');
 
         if (data.status === 'error') {
+            if (launchProgress) launchProgress.style.display = 'none';
             launchGameBtn.disabled = false;
             launchGameBtn.style.opacity = '1';
             launchGameBtn.style.pointerEvents = 'all';
@@ -408,18 +410,46 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data.message && (data.message.includes('not found') || data.message.includes('not installed'))) {
                 if (selectMinecraftBtn) selectMinecraftBtn.style.display = 'block';
             }
-        } else if (data.status === 'building' || data.status === 'launching') {
+        } else if (data.status === 'building') {
             if (selectMinecraftBtn) selectMinecraftBtn.style.display = 'none';
+            if (launchProgress) launchProgress.style.display = 'block';
+            if (launchProgressText) launchProgressText.textContent = t.launch_preparing || 'Подготовка...';
+            if (launchProgressStep) launchProgressStep.textContent = t.launch_build || 'Сборка';
             launchGameBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="animation: spin 1s linear infinite;"><circle cx="12" cy="12" r="10"></circle></svg> ${t.btn_launching || 'ЗАПУСК...'}`;
         } else if (data.status === 'started') {
+            if (launchProgress) launchProgress.style.display = 'none';
             launchGameBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"></circle><polyline points="8 12 11 15 16 9"></polyline></svg> ${t.status_started || 'ИГРА ЗАПУЩЕНА'}`;
         } else if (data.status === 'closed') {
+            if (launchProgress) launchProgress.style.display = 'none';
             launchGameBtn.disabled = false;
             launchGameBtn.style.opacity = '1';
             launchGameBtn.style.pointerEvents = 'all';
             launchGameBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> ${t.btn_launch || 'ЗАПУСТИТЬ'}`;
             if (launchStatus) launchStatus.style.display = 'none';
             updateLaunchState();
+        }
+    });
+
+    ipcRenderer.on('game:launch-progress', async (event, data) => {
+        const launchProgress = document.getElementById('launchProgress');
+        const launchProgressFill = document.getElementById('launchProgressFill');
+        const launchProgressText = document.getElementById('launchProgressText');
+        const launchProgressStep = document.getElementById('launchProgressStep');
+
+        if (launchProgress) launchProgress.style.display = 'block';
+
+        if (data.status === 'building') {
+            if (launchProgressText) launchProgressText.textContent = data.message || 'Building...';
+            if (launchProgressStep) launchProgressStep.textContent = '#' + (data.taskNumber || '');
+            if (data.taskNumber) {
+                const pct = Math.min(95, Math.round((data.taskNumber / 30) * 100));
+                if (launchProgressFill) launchProgressFill.style.width = pct + '%';
+            }
+        } else if (data.status === 'downloading') {
+            if (launchProgressText) launchProgressText.textContent = data.message || 'Downloading...';
+            if (data.percent && launchProgressFill) {
+                launchProgressFill.style.width = data.percent + '%';
+            }
         }
     });
 
