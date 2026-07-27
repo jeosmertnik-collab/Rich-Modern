@@ -34,7 +34,6 @@ import java.util.List;
 
 public class ClickGui extends Screen implements IMinecraft {
     public static ClickGui INSTANCE = new ClickGui();
-    private static final int FIXED_GUI_SCALE = 2;
 
     private final BackgroundComponent background = new BackgroundComponent();
     private final ModuleComponent moduleComponent = new ModuleComponent();
@@ -213,9 +212,7 @@ public class ClickGui extends Screen implements IMinecraft {
             Render2D.rect(0, 0, 5000, 5000, new Color(0, 0, 0, dimAlpha).getRGB(), 0);
         }
 
-        int mcGuiScale = mc.getWindow().calculateScaleFactor(mc.options.getGuiScale().getValue(), mc.forcesUnicodeFont());
-        float userScale = getGuiScale();
-        float scale = (float) FIXED_GUI_SCALE / mcGuiScale * userScale;
+        float scale = getGuiScale();
 
         float mx = mouseX / scale, my = mouseY / scale;
 
@@ -254,10 +251,10 @@ public class ClickGui extends Screen implements IMinecraft {
 
         float normalAlpha = background.getNormalPanelAlpha();
         float searchAlpha = background.getSearchPanelAlpha();
-        float renderScale = (float) FIXED_GUI_SCALE / mcGuiScale * userScale;
+        float guiScale = getGuiScale();
 
         if (normalAlpha > 0.01f) {
-            configsRenderer.render(context, bgX, bgY, mx, my, delta, (int) renderScale, alphaMultiplier * normalAlpha, selectedCategory);
+            configsRenderer.render(context, bgX, bgY, mx, my, delta, (int) guiScale, alphaMultiplier * normalAlpha, selectedCategory);
 
             boolean isAutoBuySliding = autoBuyRenderer.isSliding();
             boolean shouldRenderModules = isModuleCategory(selectedCategory);
@@ -266,15 +263,15 @@ public class ClickGui extends Screen implements IMinecraft {
             if (shouldRenderModules || slidingToModuleCategory) {
                 moduleComponent.updateScroll(delta, scrollSpeed);
                 moduleComponent.updateScrollFades(delta, scrollSpeed, mlH, spH);
-                moduleComponent.renderModuleList(context, mlX, mlY, mlW, mlH, mx, my, (int) renderScale, alphaMultiplier * normalAlpha);
-                moduleComponent.renderSettingsPanel(context, spX, spY, spW, spH, mx, my, delta, (int) renderScale, alphaMultiplier * normalAlpha);
+                moduleComponent.renderModuleList(context, mlX, mlY, mlW, mlH, mx, my, (int) guiScale, alphaMultiplier * normalAlpha);
+                moduleComponent.renderSettingsPanel(context, spX, spY, spW, spH, mx, my, delta, (int) guiScale, alphaMultiplier * normalAlpha);
             }
 
-            autoBuyRenderer.render(context, bgX, bgY, mx, my, delta, (int) renderScale, alphaMultiplier * normalAlpha, selectedCategory);
+            autoBuyRenderer.render(context, bgX, bgY, mx, my, delta, (int) guiScale, alphaMultiplier * normalAlpha, selectedCategory);
         }
 
         if (searchAlpha > 0.01f) {
-            background.renderSearchResults(context, bgX, bgY, mx, my, (int) renderScale, alphaMultiplier);
+            background.renderSearchResults(context, bgX, bgY, mx, my, (int) getGuiScale(), alphaMultiplier);
         }
 
         Scissor.reset();
@@ -297,9 +294,7 @@ public class ClickGui extends Screen implements IMinecraft {
     public boolean mouseClicked(Click click, boolean doubled) {
         if (closing) return false;
 
-        int mcGuiScale = mc.getWindow().calculateScaleFactor(mc.options.getGuiScale().getValue(), mc.forcesUnicodeFont());
-        float userScale = getGuiScale();
-        float scale = (float) FIXED_GUI_SCALE / mcGuiScale * userScale;
+        float scale = getGuiScale();
         double mx = click.x() / scale, my = click.y() / scale;
 
         float[] bg = calculateBackground(scale);
@@ -469,9 +464,8 @@ public class ClickGui extends Screen implements IMinecraft {
             return true;
         }
 
-        int mcGuiScale = mc.getWindow().calculateScaleFactor(mc.options.getGuiScale().getValue(), mc.forcesUnicodeFont());
-        float userScale = getGuiScale();
-        float scale = (float) FIXED_GUI_SCALE / mcGuiScale * userScale;
+        int guiScale = mc.getWindow().calculateScaleFactor(mc.options.getGuiScale().getValue(), mc.forcesUnicodeFont());
+        float scale = getGuiScale();
         double mx = mouseX / scale, my = mouseY / scale;
 
         float[] bg = calculateBackground(scale);
