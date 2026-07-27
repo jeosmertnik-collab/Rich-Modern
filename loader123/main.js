@@ -374,6 +374,11 @@ document.addEventListener('DOMContentLoaded', () => {
             launchGameBtn.style.opacity = '0.5';
             launchGameBtn.style.pointerEvents = 'none';
             if (launchStatus) launchStatus.style.display = 'block';
+            if (selectMinecraftBtn) {
+                selectMinecraftBtn.style.display = 'none';
+                selectMinecraftBtn.querySelector('[data-i18n]').textContent = t.btn_select_mc_folder || 'ВЫБРАТЬ ПАПКУ .minecraft';
+                selectMinecraftBtn.onclick = null;
+            }
 
             ipcRenderer.send('game:launch', { nickname, ram });
         });
@@ -407,8 +412,14 @@ document.addEventListener('DOMContentLoaded', () => {
             launchGameBtn.style.opacity = '1';
             launchGameBtn.style.pointerEvents = 'all';
             launchGameBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> ${t.btn_launch || 'ЗАПУСТИТЬ'}`;
-            if (data.message && (data.message.includes('not found') || data.message.includes('not installed'))) {
-                if (selectMinecraftBtn) selectMinecraftBtn.style.display = 'block';
+            if (data.message && data.message.includes('Java')) {
+                if (selectMinecraftBtn) {
+                    selectMinecraftBtn.style.display = 'block';
+                    selectMinecraftBtn.querySelector('[data-i18n]').textContent = 'СКАЧАТЬ JAVA 21';
+                    selectMinecraftBtn.onclick = () => {
+                        require('electron').shell.openExternal('https://adoptium.net/temurin/releases/?version=21');
+                    };
+                }
             }
         } else if (data.status === 'building') {
             if (selectMinecraftBtn) selectMinecraftBtn.style.display = 'none';
