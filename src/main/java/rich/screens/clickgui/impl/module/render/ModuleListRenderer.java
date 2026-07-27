@@ -3,7 +3,6 @@ package rich.screens.clickgui.impl.module.render;
 import net.minecraft.client.gui.DrawContext;
 import org.lwjgl.glfw.GLFW;
 import rich.modules.module.ModuleStructure;
-import rich.modules.impl.render.Hud;
 import rich.screens.clickgui.impl.module.handler.ModuleAnimationHandler;
 import rich.screens.clickgui.impl.module.handler.ModuleBindHandler;
 import rich.screens.clickgui.impl.module.handler.ModuleScrollHandler;
@@ -36,12 +35,6 @@ public class ModuleListRenderer {
         this.animationHandler = animationHandler;
         this.bindHandler = bindHandler;
         this.displayHelper = displayHelper;
-    }
-
-private float getFontScale() {
-        Hud hud = Hud.getInstance();
-        if (hud != null) return hud.getFontSize() / 12f;
-        return 1f;
     }
 
     public void render(DrawContext context, List<ModuleStructure> displayModules, ModuleStructure selectedModule,
@@ -97,14 +90,12 @@ private float getFontScale() {
                 scrollHandler.getModuleScrollBottomFade() * alphaMultiplier, 80, 15);
     }
 
-private void renderModuleItems(DrawContext context, List<ModuleStructure> moduleList, Map<ModuleStructure, Float> animations,
-                                    ModuleStructure selectedModule, ModuleStructure bindingModule,
-                                    float x, float y, float width, float height, float mouseX, float mouseY,
-                                    float alphaMultiplier, float offsetX, float scale, float scrollOffset,
-                                    boolean interactive, float topInset, float bottomInset, ModuleAnimationHandler animHandler) {
+    private void renderModuleItems(DrawContext context, List<ModuleStructure> moduleList, Map<ModuleStructure, Float> animations,
+                                   ModuleStructure selectedModule, ModuleStructure bindingModule,
+                                   float x, float y, float width, float height, float mouseX, float mouseY,
+                                   float alphaMultiplier, float offsetX, float scale, float scrollOffset,
+                                   boolean interactive, float topInset, float bottomInset, ModuleAnimationHandler animHandler) {
         if (alphaMultiplier <= 0.01f) return;
-
-        float fontScale = getFontScale();
 
         float startY = y + topInset + 2f + scrollOffset;
         float centerY = y + height / 2f;
@@ -169,13 +160,13 @@ private void renderModuleItems(DrawContext context, List<ModuleStructure> module
                 int pulseOutlineAlpha = (int) (40 + 40 * highlightBoost);
                 int outlineAlpha = (int) ((baseOutlineAlpha + pulseOutlineAlpha * pulseValue) * combinedAlpha);
 
-                int accentRGB = Hud.getInstance() != null ? Hud.getInstance().getAccentRGB() : 0x6496FF;
-                int accentR = (accentRGB >> 16) & 0xFF;
-                int accentG = (accentRGB >> 8) & 0xFF;
-                int accentB = accentRGB & 0xFF;
+                int baseColorValue = (int) (80 + 50 * highlightBoost);
+                int outlineColorValue = (int) (baseColorValue + 30 * pulseValue);
+                int outlineG = (int) (80 + 20 * pulseValue + 40 * highlightBoost);
+                int outlineB = (int) (80 + 20 * pulseValue + 40 * highlightBoost);
 
                 Render2D.outline(animX, scaledModY, scaledWidth, scaledHeight, 0.5f,
-                        new Color(accentR, accentG, accentB, outlineAlpha).getRGB(), 5);
+                        new Color(Math.min(255, outlineColorValue), Math.min(255, outlineG), Math.min(255, outlineB), outlineAlpha).getRGB(), 5);
             } else if (hoverAnim > 0.01f) {
                 int outlineAlpha = (int) (60 * hoverAnim * combinedAlpha);
                 Render2D.outline(animX, scaledModY, scaledWidth, scaledHeight, 0.5f,
@@ -188,9 +179,8 @@ private void renderModuleItems(DrawContext context, List<ModuleStructure> module
                 float ballAlpha = stateAnim * 200 * combinedAlpha;
                 float ballX = animX + 4;
                 float ballY = scaledModY + (scaledHeight - STATE_BALL_SIZE * scale) / 2f + 1F;
-                int accentRGB = Hud.getInstance() != null ? Hud.getInstance().getAccentRGB() : 0x6496FF;
                 Render2D.rect(ballX, ballY, STATE_BALL_SIZE * scale, STATE_BALL_SIZE * scale,
-                        new Color((accentRGB >> 16) & 0xFF, (accentRGB >> 8) & 0xFF, accentRGB & 0xFF, (int) ballAlpha).getRGB(),
+                        new Color(255, 255, 255, (int) ballAlpha).getRGB(),
                         STATE_BALL_SIZE * scale / 2f);
             }
 
@@ -213,8 +203,8 @@ private void renderModuleItems(DrawContext context, List<ModuleStructure> module
             Color textColor = new Color(textBrightness, textBrightness, textBrightness, Math.min(255, textAlphaValue));
 
             float textX = animX + 5 + stateTextOffset;
-            float textY = scaledModY + (scaledHeight - 6f * scale * fontScale) / 2f;
-            Fonts.BOLD.draw(name, textX, textY, 6 * scale * fontScale, textColor.getRGB());
+            float textY = scaledModY + (scaledHeight - 6f * scale) / 2f;
+            Fonts.BOLD.draw(name, textX, textY, 6 * scale, textColor.getRGB());
 
             if (interactive) {
                 renderBindBox(module, bindingModule, animX, scaledModY, scaledWidth, scaledHeight, scale, combinedAlpha, stateTextOffset, animHandler);
@@ -235,17 +225,17 @@ private void renderModuleItems(DrawContext context, List<ModuleStructure> module
                 int starB = (int) (starGray + (0 - starGray) * favoriteAnim);
                 float starAlpha = (80 + 120 * favoriteAnim + 55 * hoverAnim) * combinedAlpha;
 
-                Fonts.GUI_ICONS.draw("D", starX, iconY + 1, 8 * scale * fontScale, new Color(starR, starG, starB, (int) starAlpha).getRGB());
+                Fonts.GUI_ICONS.draw("D", starX, iconY + 1, 8 * scale, new Color(starR, starG, starB, (int) starAlpha).getRGB());
 
                 if (hasSettings) {
                     if (selectedIconAnim > 0.01f) {
                         float gearAlpha = (150 + 50 * (isHighlighted ? animHandler.getHighlightAnimation() : 0f)) * selectedIconAnim * combinedAlpha;
-                        Fonts.GUI_ICONS.draw("B", iconBaseX, iconY + 1, 8 * scale * fontScale, new Color(200, 200, 200, (int) gearAlpha).getRGB());
+                        Fonts.GUI_ICONS.draw("B", iconBaseX, iconY + 1, 8 * scale, new Color(200, 200, 200, (int) gearAlpha).getRGB());
                     }
 
                     if (selectedIconAnim < 0.99f) {
                         float dotsAlpha = 120 * (1f - selectedIconAnim) * combinedAlpha;
-                        Fonts.BOLD.draw("...", iconBaseX + 1f, iconY - 1f, 7 * scale * fontScale, new Color(150, 150, 150, (int) dotsAlpha).getRGB());
+                        Fonts.BOLD.draw("...", iconBaseX + 1f, iconY - 1f, 7 * scale, new Color(150, 150, 150, (int) dotsAlpha).getRGB());
                     }
                 }
             }
@@ -255,7 +245,6 @@ private void renderModuleItems(DrawContext context, List<ModuleStructure> module
     private void renderBindBox(ModuleStructure module, ModuleStructure bindingModule, float moduleX, float moduleY,
                                float moduleWidth, float moduleHeight, float scale, float combinedAlpha,
                                float stateTextOffset, ModuleAnimationHandler animHandler) {
-        float fontScale = getFontScale();
         boolean isBinding = module == bindingModule;
         int key = module.getKey();
 
@@ -272,7 +261,7 @@ private void renderModuleItems(DrawContext context, List<ModuleStructure> module
             bindText = bindHandler.getBindDisplayName(key);
         }
 
-        float textWidth = Fonts.BOLD.getWidth(bindText, 5 * scale * fontScale);
+        float textWidth = Fonts.BOLD.getWidth(bindText, 5 * scale);
         float targetWidth = Math.max(BIND_BOX_MIN_WIDTH, textWidth + BIND_BOX_PADDING * 2);
 
         float currentWidth = animHandler.getBindBoxWidthAnimations().getOrDefault(module, targetWidth);
@@ -289,7 +278,7 @@ private void renderModuleItems(DrawContext context, List<ModuleStructure> module
         float boxHeight = BIND_BOX_HEIGHT * scale;
         float boxWidth = currentWidth * scale * bindAlpha;
 
-        float nameWidth = Fonts.BOLD.getWidth(module.getName(), 6 * scale * fontScale);
+        float nameWidth = Fonts.BOLD.getWidth(module.getName(), 6 * scale);
         float boxX = moduleX + 5 + stateTextOffset + nameWidth;
         float boxY = moduleY + (moduleHeight - boxHeight) / 2f + 0.5f;
 
@@ -310,8 +299,8 @@ private void renderModuleItems(DrawContext context, List<ModuleStructure> module
             Color textColor = new Color(140, 140, 145, textAlpha);
 
             float textX = boxX + (boxWidth - textWidth) / 2f;
-            float textY = boxY + (boxHeight - 5f * scale * fontScale) / 2f;
-            Fonts.BOLD.draw(bindText, textX, textY, 5 * scale * fontScale, textColor.getRGB());
+            float textY = boxY + (boxHeight - 5f * scale) / 2f;
+            Fonts.BOLD.draw(bindText, textX, textY, 5 * scale, textColor.getRGB());
         }
     }
 

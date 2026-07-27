@@ -1,7 +1,6 @@
 package rich.screens.clickgui.impl.settingsrender;
 
 import net.minecraft.client.gui.DrawContext;
-import rich.modules.impl.render.Hud;
 import rich.util.interfaces.AbstractSettingComponent;
 import rich.modules.module.setting.implement.BooleanSetting;
 import rich.util.render.Render2D;
@@ -91,8 +90,7 @@ public class CheckboxComponent extends AbstractSettingComponent {
         float knobY = checkboxY + (checkboxSize - knobHeight) / 2f;
 
         Color offColor = new Color(59, 59, 59, 200);
-        int accentRGB = Hud.getInstance() != null ? Hud.getInstance().getAccentRGB() : 0x6496FF;
-        Color onColor = new Color((accentRGB >> 16) & 0xFF, (accentRGB >> 8) & 0xFF, accentRGB & 0xFF, 200);
+        Color onColor = new Color(159, 159, 159, 200);
         Color knobColor = lerpColor(offColor, onColor, checkAnimation);
 
         Render2D.rect(knobX, knobY, knobWidth, knobHeight, applyAlpha(knobColor).getRGB(), 4f);

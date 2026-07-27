@@ -10,7 +10,6 @@ import net.minecraft.text.Text;
 import org.lwjgl.glfw.GLFW;
 import rich.IMinecraft;
 import rich.Initialization;
-import rich.modules.impl.render.Hud;
 import rich.modules.module.category.ModuleCategory;
 import rich.modules.module.ModuleStructure;
 import rich.screens.clickgui.impl.DragHandler;
@@ -34,6 +33,7 @@ import java.util.List;
 
 public class ClickGui extends Screen implements IMinecraft {
     public static ClickGui INSTANCE = new ClickGui();
+    private static final int FIXED_GUI_SCALE = 2;
 
     private final BackgroundComponent background = new BackgroundComponent();
     private final ModuleComponent moduleComponent = new ModuleComponent();
@@ -48,12 +48,6 @@ public class ClickGui extends Screen implements IMinecraft {
     private boolean slideTriggered = false;
 
     private float hintAlphaAnimation = 0f;
-
-    public float getGuiScale() {
-        Hud hud = Hud.getInstance();
-        if (hud != null) return hud.getGuiScale();
-        return 1.0F;
-    }
     private long lastHintUpdateTime = System.currentTimeMillis();
     private static final float HINT_ANIM_SPEED = 6f;
     private static final float OFFSET_THRESHOLD = 5f;
@@ -121,8 +115,8 @@ public class ClickGui extends Screen implements IMinecraft {
     }
 
     private float[] calculateBackground(float scale) {
-        int vw = (int) (mc.getWindow().getWidth() / scale);
-        int vh = (int) (mc.getWindow().getHeight() / scale);
+        int vw = mc.getWindow().getWidth() / FIXED_GUI_SCALE;
+        int vh = mc.getWindow().getHeight() / FIXED_GUI_SCALE;
         float bgX = (vw - BackgroundComponent.BG_WIDTH) / 2f + dragHandler.getOffsetX();
         float bgY = (vh - BackgroundComponent.BG_HEIGHT) / 2f + dragHandler.getOffsetY();
         return new float[]{bgX, bgY, vw, vh};
@@ -212,7 +206,8 @@ public class ClickGui extends Screen implements IMinecraft {
             Render2D.rect(0, 0, 5000, 5000, new Color(0, 0, 0, dimAlpha).getRGB(), 0);
         }
 
-        float scale = getGuiScale();
+        int guiScale = mc.getWindow().calculateScaleFactor(mc.options.getGuiScale().getValue(), mc.forcesUnicodeFont());
+        float scale = (float) FIXED_GUI_SCALE / guiScale;
 
         float mx = mouseX / scale, my = mouseY / scale;
 
@@ -241,6 +236,8 @@ public class ClickGui extends Screen implements IMinecraft {
 
         float alphaMultiplier = animValue;
 
+        context.getMatrices().pushMatrix();
+
         background.render(context, bgX, bgY, selectedCategory, delta, alphaMultiplier);
         background.renderCategoryPanel(bgX, bgY, alphaMultiplier);
         background.renderHeader(bgX, bgY, selectedCategory, alphaMultiplier);
@@ -251,10 +248,9 @@ public class ClickGui extends Screen implements IMinecraft {
 
         float normalAlpha = background.getNormalPanelAlpha();
         float searchAlpha = background.getSearchPanelAlpha();
-        float guiScale = getGuiScale();
 
         if (normalAlpha > 0.01f) {
-            configsRenderer.render(context, bgX, bgY, mx, my, delta, (int) guiScale, alphaMultiplier * normalAlpha, selectedCategory);
+            configsRenderer.render(context, bgX, bgY, mx, my, delta, FIXED_GUI_SCALE, alphaMultiplier * normalAlpha, selectedCategory);
 
             boolean isAutoBuySliding = autoBuyRenderer.isSliding();
             boolean shouldRenderModules = isModuleCategory(selectedCategory);
@@ -263,15 +259,15 @@ public class ClickGui extends Screen implements IMinecraft {
             if (shouldRenderModules || slidingToModuleCategory) {
                 moduleComponent.updateScroll(delta, scrollSpeed);
                 moduleComponent.updateScrollFades(delta, scrollSpeed, mlH, spH);
-                moduleComponent.renderModuleList(context, mlX, mlY, mlW, mlH, mx, my, (int) guiScale, alphaMultiplier * normalAlpha);
-                moduleComponent.renderSettingsPanel(context, spX, spY, spW, spH, mx, my, delta, (int) guiScale, alphaMultiplier * normalAlpha);
+                moduleComponent.renderModuleList(context, mlX, mlY, mlW, mlH, mx, my, FIXED_GUI_SCALE, alphaMultiplier * normalAlpha);
+                moduleComponent.renderSettingsPanel(context, spX, spY, spW, spH, mx, my, delta, FIXED_GUI_SCALE, alphaMultiplier * normalAlpha);
             }
 
-            autoBuyRenderer.render(context, bgX, bgY, mx, my, delta, (int) guiScale, alphaMultiplier * normalAlpha, selectedCategory);
+            autoBuyRenderer.render(context, bgX, bgY, mx, my, delta, FIXED_GUI_SCALE, alphaMultiplier * normalAlpha, selectedCategory);
         }
 
         if (searchAlpha > 0.01f) {
-            background.renderSearchResults(context, bgX, bgY, mx, my, (int) getGuiScale(), alphaMultiplier);
+            background.renderSearchResults(context, bgX, bgY, mx, my, FIXED_GUI_SCALE, alphaMultiplier);
         }
 
         Scissor.reset();
@@ -294,7 +290,8 @@ public class ClickGui extends Screen implements IMinecraft {
     public boolean mouseClicked(Click click, boolean doubled) {
         if (closing) return false;
 
-        float scale = getGuiScale();
+        int guiScale = mc.getWindow().calculateScaleFactor(mc.options.getGuiScale().getValue(), mc.forcesUnicodeFont());
+        float scale = (float) FIXED_GUI_SCALE / guiScale;
         double mx = click.x() / scale, my = click.y() / scale;
 
         float[] bg = calculateBackground(scale);
@@ -465,7 +462,7 @@ public class ClickGui extends Screen implements IMinecraft {
         }
 
         int guiScale = mc.getWindow().calculateScaleFactor(mc.options.getGuiScale().getValue(), mc.forcesUnicodeFont());
-        float scale = getGuiScale();
+        float scale = (float) FIXED_GUI_SCALE / guiScale;
         double mx = mouseX / scale, my = mouseY / scale;
 
         float[] bg = calculateBackground(scale);

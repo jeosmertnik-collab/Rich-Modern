@@ -320,7 +320,7 @@ public class TargetHud extends AbstractHudElement {
         if (!(lastTarget instanceof net.minecraft.entity.player.PlayerEntity player)) return;
 
         float itemsY = y + 26;
-        float itemsX = x + 31;
+        float itemsX = x + 7;
 
         EquipmentSlot[] armorSlots = {
                 EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET

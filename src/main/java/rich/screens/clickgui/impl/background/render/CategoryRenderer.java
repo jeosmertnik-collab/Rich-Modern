@@ -1,7 +1,6 @@
 package rich.screens.clickgui.impl.background.render;
 
 import rich.modules.module.category.ModuleCategory;
-import rich.modules.impl.render.Hud;
 import rich.util.render.Render2D;
 import rich.util.render.font.Fonts;
 
@@ -33,12 +32,6 @@ public class CategoryRenderer {
     private static final float ICON_SPACING = 4f;
     private static final float SECTION_TEXT_SIZE = 5f;
     private static final float EXTRA_CATEGORY_OFFSET = 10f;
-
-    private float getFontScale() {
-        Hud hud = Hud.getInstance();
-        if (hud != null) return hud.getFontSize() / 12f;
-        return 1f;
-    }
 
     public CategoryRenderer() {
         for (ModuleCategory cat : MAIN_CATEGORIES) {
@@ -81,8 +74,7 @@ public class CategoryRenderer {
 
     private void renderSectionHeader(float bgX, float sectionY, String title, float alphaMultiplier) {
         float lineWidth = 18f;
-        float fontScale = getFontScale();
-        float textWidth = Fonts.BOLD.getWidth(title, SECTION_TEXT_SIZE * fontScale);
+        float textWidth = Fonts.BOLD.getWidth(title, SECTION_TEXT_SIZE);
         float totalWidth = 65f;
         float textX = bgX + 15f + (totalWidth - textWidth) / 2f;
         float lineY = sectionY + 3f;
@@ -90,21 +82,19 @@ public class CategoryRenderer {
         int textAlpha = (int) (100 * alphaMultiplier);
         Render2D.rect(bgX + 15f, lineY, lineWidth, 0.5f, new Color(255, 255, 255, lineAlpha).getRGB(), 0);
         Render2D.rect(bgX + 15f + totalWidth - lineWidth, lineY, lineWidth, 0.5f, new Color(255, 255, 255, lineAlpha).getRGB(), 0);
-        Fonts.BOLD.draw(title, textX, sectionY, SECTION_TEXT_SIZE * fontScale, new Color(150, 150, 150, textAlpha).getRGB());
+        Fonts.BOLD.draw(title, textX, sectionY, SECTION_TEXT_SIZE, new Color(150, 150, 150, textAlpha).getRGB());
     }
 
     private void renderMainCategories(float bgX, float bgY, float alphaMultiplier) {
-        float fontScale = getFontScale();
         for (int i = 0; i < MAIN_CATEGORY_NAMES.length; i++) {
             ModuleCategory cat = MAIN_CATEGORIES[i];
             float animation = categoryAnimations.getOrDefault(cat, 0f);
             float textY = bgY + 65f + i * 15f;
-            renderCategoryItem(bgX, textY, MAIN_CATEGORY_NAMES[i], MAIN_CATEGORY_ICONS[i], animation, alphaMultiplier, fontScale);
+            renderCategoryItem(bgX, textY, MAIN_CATEGORY_NAMES[i], MAIN_CATEGORY_ICONS[i], animation, alphaMultiplier);
         }
     }
 
     private void renderExtraCategories(float bgX, float bgY, float alphaMultiplier) {
-        float fontScale = getFontScale();
         float separatorY = bgY + 65f + MAIN_CATEGORY_NAMES.length * 15f + 1f;
         float extraStartY = separatorY + 18f - EXTRA_CATEGORY_OFFSET;
 
@@ -112,17 +102,12 @@ public class CategoryRenderer {
             ModuleCategory cat = EXTRA_CATEGORIES[i];
             float animation = categoryAnimations.getOrDefault(cat, 0f);
             float textY = extraStartY + i * 15f;
-            renderCategoryItem(bgX, textY, EXTRA_CATEGORY_NAMES[i], EXTRA_CATEGORY_ICONS[i], animation, alphaMultiplier, fontScale);
+            renderCategoryItem(bgX, textY, EXTRA_CATEGORY_NAMES[i], EXTRA_CATEGORY_ICONS[i], animation, alphaMultiplier);
         }
     }
 
-    private void renderCategoryItem(float bgX, float textY, String name, String icon, float animation, float alphaMultiplier, float fontScale) {
+    private void renderCategoryItem(float bgX, float textY, String name, String icon, float animation, float alphaMultiplier) {
         float offsetX = animation * MAX_OFFSET;
-
-        int accentRGB = Hud.getInstance() != null ? Hud.getInstance().getAccentRGB() : 0x6496FF;
-        int accentR = (accentRGB >> 16) & 0xFF;
-        int accentG = (accentRGB >> 8) & 0xFF;
-        int accentB = accentRGB & 0xFF;
 
         int baseGray = 128;
         int targetWhite = 255;
@@ -135,20 +120,20 @@ public class CategoryRenderer {
         float textX = iconX + iconWidth + ICON_SPACING;
         float textWidth = Fonts.BOLD.getWidth(name, TEXT_SIZE);
 
-        Fonts.CATEGORY_ICONS.draw(icon, iconX, textY + 0.5f, ICON_SIZE * fontScale, textColor.getRGB());
+        Fonts.CATEGORY_ICONS.draw(icon, iconX, textY + 0.5f, ICON_SIZE, textColor.getRGB());
 
         if (animation > 0.01f) {
             float lineWidth = (iconWidth + ICON_SPACING + textWidth) * animation;
-            float lineAlpha = animation * 180 * alphaMultiplier;
-            Render2D.rect(iconX, textY + 9f, lineWidth, 0.5f, new Color(accentR, accentG, accentB, (int) lineAlpha).getRGB(), 0);
+            float lineAlpha = animation * 60 * alphaMultiplier;
+            Render2D.rect(iconX, textY + 9f, lineWidth, 0.5f, new Color(255, 255, 255, (int) lineAlpha).getRGB(), 0);
 
-            float ballAlpha = animation * 220 * alphaMultiplier;
+            float ballAlpha = animation * 200 * alphaMultiplier;
             float ballX = bgX + 12f;
             float ballY = textY + 2.5f;
-            Render2D.rect(ballX, ballY, BALL_SIZE, BALL_SIZE, new Color(accentR, accentG, accentB, (int) ballAlpha).getRGB(), BALL_SIZE / 2f);
+            Render2D.rect(ballX, ballY, BALL_SIZE, BALL_SIZE, new Color(255, 255, 255, (int) ballAlpha).getRGB(), BALL_SIZE / 2f);
         }
 
-        Fonts.BOLD.draw(name, textX, textY, TEXT_SIZE * fontScale, textColor.getRGB());
+        Fonts.BOLD.draw(name, textX, textY, TEXT_SIZE, textColor.getRGB());
     }
 
     public ModuleCategory getCategoryAtPosition(double mouseX, double mouseY, float bgX, float bgY) {
