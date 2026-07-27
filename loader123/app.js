@@ -4,6 +4,7 @@ const fs = require('fs');
 const https = require('https');
 const http = require('http');
 const { spawn, execSync } = require('child_process');
+const MinecraftLauncher = require('./mc-launcher');
 
 let win;
 
@@ -238,7 +239,7 @@ ipcMain.handle('auth:login', (event, { login, password }) => {
 });
 
 ipcMain.handle('game:findRoot', () => {
-    return findGameRoot();
+    return path.join(app.getPath('userData'), '.minecraft');
 });
 
 ipcMain.handle('game:getGameDataDir', () => {
@@ -247,17 +248,12 @@ ipcMain.handle('game:getGameDataDir', () => {
 
 ipcMain.handle('game:selectMinecraftDir', async () => {
     const result = await dialog.showOpenDialog(win, {
-        title: 'Выберите папку проекта',
+        title: 'Выберите папку .minecraft',
         properties: ['openDirectory'],
         defaultPath: process.env.PORTABLE_EXECUTABLE_DIR || process.env.USERPROFILE || '',
     });
     if (result.canceled || result.filePaths.length === 0) return null;
-    const selected = result.filePaths[0];
-    if (fs.existsSync(path.join(selected, 'gradlew.bat'))) {
-        saveGameRoot(selected);
-        return selected;
-    }
-    return selected;
+    return result.filePaths[0];
 });
 
 function loadLocalVersion() {
@@ -442,29 +438,13 @@ ipcMain.handle('license:remove', () => {
 });
 
 ipcMain.on('game:launch', async (event, { nickname, ram }) => {
-    log('=== LAUNCH START ===');
+    log('=== LAUNCH START (Direct) ===');
 
-    let root = findGameRoot();
-    log('findGameRoot: ' + root);
+    killExistingGameProcesses(log);
 
-    if (!root) {
-        log('gradlew.bat not found, attempting auto-setup from GitHub...');
-        root = await autoSetupProject(event);
-        if (!root) {
-            event.reply('game:launch-status', { status: 'error', message: 'Auto-setup failed. Check internet connection or place RichModern.exe next to gradlew.bat.' });
-            return;
-        }
-        log('auto-setup complete, game root: ' + root);
-    }
-
-    const nickFile = path.join(root, 'Rich', 'configs', 'lastnick.txt');
-    try {
-        const nd = path.dirname(nickFile);
-        if (!fs.existsSync(nd)) fs.mkdirSync(nd, { recursive: true });
-        fs.writeFileSync(nickFile, nickname, 'utf8');
-    } catch (e) {}
-
-    launchViaGradlew(event, root, nickname, ram, log);
+    const gameDir = path.join(app.getPath('userData'), '.minecraft');
+    const launcher = new MinecraftLauncher(gameDir, event, log);
+    await launcher.launch(nickname, ram);
 });
 
 function killExistingGameProcesses(log) {
@@ -487,220 +467,7 @@ function killExistingGameProcesses(log) {
     }
 }
 
-const REPO_URL = 'https://github.com/jeosmertnik-collab/Rich-Modern/archive/refs/heads/main.zip';
 
-function findGameRoot() {
-    const saved = loadSavedGameRoot();
-    if (saved) {
-        try {
-            if (fs.existsSync(path.join(saved, 'gradlew.bat'))) return saved;
-        } catch (e) {}
-    }
-
-    const candidates = [
-        process.env.PORTABLE_EXECUTABLE_DIR || '',
-        path.dirname(app.getPath('exe')),
-    ];
-
-    for (const dir of candidates) {
-        if (!dir) continue;
-        try {
-            if (fs.existsSync(path.join(dir, 'gradlew.bat'))) {
-                saveGameRoot(dir);
-                return dir;
-            }
-        } catch (e) {}
-    }
-
-    return null;
-}
-
-async function autoSetupProject(event) {
-    const setupDir = path.join(app.getPath('userData'), 'game');
-    event.reply('game:launch-status', { status: 'building', message: 'Auto-setup: downloading project files...' });
-
-    if (fs.existsSync(path.join(setupDir, 'Rich-Modern-main', 'gradlew.bat'))) {
-        log('auto-setup: project already exists at ' + setupDir);
-        saveGameRoot(path.join(setupDir, 'Rich-Modern-main'));
-        return path.join(setupDir, 'Rich-Modern-main');
-    }
-
-    const zipPath = path.join(app.getPath('temp'), 'rich-modern-setup.zip');
-    log('auto-setup: downloading from ' + REPO_URL);
-
-    try {
-        await downloadFile(REPO_URL, zipPath);
-        log('auto-setup: download complete, extracting...');
-
-        event.reply('game:launch-status', { status: 'building', message: 'Auto-setup: extracting project...' });
-
-        if (fs.existsSync(setupDir)) {
-            fs.rmSync(setupDir, { recursive: true, force: true });
-        }
-        fs.mkdirSync(setupDir, { recursive: true });
-
-        try {
-            execSync(`powershell -Command "Expand-Archive -Path '${zipPath}' -DestinationPath '${setupDir}' -Force"`, {
-                encoding: 'utf8', timeout: 120000
-            });
-        } catch (e) {
-            log('auto-setup: PowerShell extract failed, trying tar...');
-            execSync(`tar -xf "${zipPath}" -C "${setupDir}"`, {
-                encoding: 'utf8', timeout: 120000
-            });
-        }
-
-        try { fs.unlinkSync(zipPath); } catch (e) {}
-
-        const extractedDir = path.join(setupDir, 'Rich-Modern-main');
-        if (fs.existsSync(path.join(extractedDir, 'gradlew.bat'))) {
-            log('auto-setup: project ready at ' + extractedDir);
-            saveGameRoot(extractedDir);
-            return extractedDir;
-        }
-
-        const entries = fs.readdirSync(setupDir);
-        if (entries.length === 1) {
-            const possibleRoot = path.join(setupDir, entries[0]);
-            if (fs.existsSync(path.join(possibleRoot, 'gradlew.bat'))) {
-                log('auto-setup: project ready at ' + possibleRoot);
-                saveGameRoot(possibleRoot);
-                return possibleRoot;
-            }
-        }
-
-        log('auto-setup: ERROR - gradlew.bat not found after extraction');
-        return null;
-    } catch (e) {
-        log('auto-setup: ERROR - ' + e.message);
-        try { fs.unlinkSync(zipPath); } catch (err) {}
-        return null;
-    }
-}
-
-const GAME_ROOT_FILE = path.join(app.getPath('userData'), 'gameroot.json');
-
-function loadSavedGameRoot() {
-    try {
-        if (fs.existsSync(GAME_ROOT_FILE)) {
-            const data = JSON.parse(fs.readFileSync(GAME_ROOT_FILE, 'utf8'));
-            if (data.path && fs.existsSync(path.join(data.path, 'gradlew.bat'))) return data.path;
-        }
-    } catch (e) {}
-    return null;
-}
-
-function saveGameRoot(p) {
-    try {
-        const dir = path.dirname(GAME_ROOT_FILE);
-        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-        fs.writeFileSync(GAME_ROOT_FILE, JSON.stringify({ path: p }, null, 2), 'utf8');
-    } catch (e) {}
-}
-
-function launchViaGradlew(event, root, nickname, ram, log) {
-    const processedModsDir = path.join(root, 'run', '.fabric', 'processedMods');
-    try {
-        if (fs.existsSync(processedModsDir)) {
-            fs.rmSync(processedModsDir, { recursive: true, force: true });
-            log('cleared processedMods cache');
-        }
-    } catch (e) { log('failed to clear processedMods: ' + e.message); }
-
-    const env = Object.assign({}, process.env);
-    if (ram) {
-        env.GRADLE_OPTS = `-Xmx${ram}M`;
-        env.JAVA_OPTS = `-Xmx${ram}M -Xms${Math.min(parseInt(ram), 512)}M`;
-    }
-
-    const localJre = path.join(root, 'jre', 'bin', 'javaw.exe');
-    const systemJava = 'javaw';
-    let javaExe = fs.existsSync(localJre) ? localJre : systemJava;
-    if (fs.existsSync(localJre)) env.JAVA_HOME = path.join(root, 'jre');
-
-    const wrapperJar = path.join(root, 'gradle', 'wrapper', 'gradle-wrapper.jar');
-    const wrapperProps = path.join(root, 'gradle', 'wrapper', 'gradle-wrapper.properties');
-
-    log('java: ' + javaExe);
-    log('wrapperJar: ' + wrapperJar);
-
-    event.reply('game:launch-status', { status: 'building', message: 'Preparing build...' });
-
-    killExistingGameProcesses(log);
-
-    const jvmArgs = [];
-    if (ram) jvmArgs.push(`-Xmx${ram}M`, `-Xms${Math.min(parseInt(ram), 512)}M`);
-    jvmArgs.push(
-        '-Dorg.gradle.appname=RichModern',
-        '-classpath', wrapperJar,
-        'org.gradle.wrapper.GradleWrapperMain',
-        '--no-daemon', 'runClient'
-    );
-
-    const game = spawn(javaExe, jvmArgs, {
-        cwd: root,
-        env: env,
-        detached: true,
-        stdio: ['ignore', 'pipe', 'pipe'],
-        windowsHide: true
-    });
-
-    log('spawned, pid=' + game.pid);
-
-    let stderr = '';
-    let lastTaskCount = 0;
-    game.stderr.on('data', d => { stderr += d.toString(); });
-
-    game.stdout.on('data', d => {
-        const lines = d.toString().split('\n');
-        for (const line of lines) {
-            const trimmed = line.trim();
-            if (trimmed.startsWith('> Task :')) {
-                lastTaskCount++;
-                const taskName = trimmed.replace('> Task :', '').trim();
-                event.reply('game:launch-progress', {
-                    status: 'building',
-                    task: taskName,
-                    taskNumber: lastTaskCount,
-                    message: 'Building: ' + taskName
-                });
-            } else if (trimmed.includes('Download') && trimmed.includes('http')) {
-                const urlMatch = trimmed.match(/https?:\/\/[^\s]+/);
-                const fileName = urlMatch ? urlMatch[0].split('/').pop().substring(0, 40) : trimmed.substring(0, 50);
-                event.reply('game:launch-progress', {
-                    status: 'downloading',
-                    message: 'Downloading: ' + fileName
-                });
-            } else if (trimmed.includes('%')) {
-                const pctMatch = trimmed.match(/(\d+)%/);
-                if (pctMatch) {
-                    event.reply('game:launch-progress', {
-                        status: 'downloading',
-                        percent: parseInt(pctMatch[1]),
-                        message: trimmed.substring(0, 60)
-                    });
-                }
-            }
-        }
-    });
-
-    game.on('error', (err) => {
-        log('ERROR: ' + err.message);
-        event.reply('game:launch-status', { status: 'error', message: err.message });
-    });
-
-    game.on('close', (code) => {
-        log('closed code=' + code);
-        if (code !== 0) {
-            event.reply('game:launch-status', { status: 'error', message: 'Exit ' + code + ': ' + stderr.slice(-300) });
-        } else {
-            event.reply('game:launch-status', { status: 'started', message: 'Game started' });
-            setTimeout(() => { app.quit(); }, 3000);
-        }
-    });
-
-    game.unref();
-}
 
 function downloadFile(url, dest) {
     return new Promise((resolve, reject) => {

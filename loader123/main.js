@@ -549,7 +549,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const root = await ipcRenderer.invoke('game:findRoot');
             if (root) {
-                targetPath = require('path').join(root, 'build', 'libs', jarName);
+                targetPath = require('path').join(root, 'mods', jarName);
             } else {
                 const gameDataDir = await ipcRenderer.invoke('game:getGameDataDir');
                 targetPath = require('path').join(gameDataDir, jarName);

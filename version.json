@@ -1,12 +1,12 @@
 {
-  "version": "1.0.16",
+  "version": "1.0.17",
   "launcherVersion": "1.0.14",
   "clientVersion": "1.0.01",
-  "downloadUrl": "https://github.com/jeosmertnik-collab/Rich-Modern/releases/download/v1.0.16/rich-1.0.01.jar",
-  "launcherUrl": "https://github.com/jeosmertnik-collab/Rich-Modern/releases/download/v1.0.16/RichModern.exe",
+  "downloadUrl": "https://github.com/jeosmertnik-collab/Rich-Modern/releases/download/v1.0.17/rich-1.0.01.jar",
+  "launcherUrl": "https://github.com/jeosmertnik-collab/Rich-Modern/releases/download/v1.0.17/RichModern.exe",
   "changelog": {
-    "ru": "Авто-установка: лаунчер сам скачивает проект с GitHub если gradlew.bat не найден. Исправлен Durability HUD. LeafFarmer совместим с 1.21.",
-    "en": "Auto-setup: launcher downloads project from GitHub automatically if gradlew.bat missing. Fixed Durability HUD. LeafFarmer compatible with 1.21."
+    "ru": "Лаунчер сам скачивает Minecraft + Fabric без gradlew. Полноценный лаунчер: MC, библиотеки, ассеты, Fabric API — всё автоматически.",
+    "en": "Launcher downloads Minecraft + Fabric directly without gradlew. Full launcher: MC, libraries, assets, Fabric API — all automatic."
   },
   "required": false,
   "releaseDate": "2026-07-27"
