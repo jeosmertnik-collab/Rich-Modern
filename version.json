@@ -1,12 +1,12 @@
 {
-  "version": "1.0.21",
+  "version": "1.0.22",
   "launcherVersion": "1.0.16",
   "clientVersion": "1.0.01",
-  "downloadUrl": "https://github.com/jeosmertnik-collab/Rich-Modern/releases/download/v1.0.21/rich-1.0.01.jar",
-  "launcherUrl": "https://github.com/jeosmertnik-collab/Rich-Modern/releases/download/v1.0.21/RichModern.exe",
+  "downloadUrl": "https://github.com/jeosmertnik-collab/Rich-Modern/releases/download/v1.0.22/rich-1.0.01.jar",
+  "launcherUrl": "https://github.com/jeosmertnik-collab/Rich-Modern/releases/download/v1.0.22/RichModern.exe",
   "changelog": {
-    "ru": "Исправлено: MusicHud теперь появляется при включении модуля Music Player.",
-    "en": "Fixed: MusicHud now appears when Music Player module is enabled."
+    "ru": "Исправлена распаковка Java 21: .NET ZipFile + больше путей поиска Java + все 3xx редиректы.",
+    "en": "Fixed Java 21 extraction: .NET ZipFile + more Java search paths + all 3xx redirects."
   },
   "required": false,
   "releaseDate": "2026-07-27"

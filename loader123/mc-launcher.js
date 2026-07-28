@@ -24,7 +24,7 @@ function downloadFile(url, dest, timeout) {
     return new Promise((resolve, reject) => {
         const client = url.startsWith('https') ? https : http;
         const req = client.get(url, { timeout: timeout || 120000 }, (res) => {
-            if (res.statusCode === 301 || res.statusCode === 302) {
+            if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
                 return downloadFile(res.headers.location, dest, timeout).then(resolve).catch(reject);
             }
             if (res.statusCode !== 200) return reject(new Error('HTTP ' + res.statusCode + ' for ' + url));
@@ -78,18 +78,34 @@ function extractZip(zipPath, destDir) {
     const lower = zipPath.toLowerCase();
     if (lower.endsWith('.tar.gz') || lower.endsWith('.tgz') || lower.endsWith('.tar')) {
         execSync(`tar -xf "${zipPath}" -C "${destDir}"`, {
-            encoding: 'utf8', timeout: 120000, stdio: 'ignore'
+            encoding: 'utf8', timeout: 120000, stdio: 'pipe'
         });
         return;
     }
+
     try {
-        execSync(`powershell -Command "Expand-Archive -Path '${zipPath}' -DestinationPath '${destDir}' -Force"`, {
-            encoding: 'utf8', timeout: 120000, stdio: 'ignore'
-        });
+        execSync(`powershell -NoProfile -NonInteractive -Command "` +
+            `Add-Type -AssemblyName System.IO.Compression.FileSystem; ` +
+            `[System.IO.Compression.ZipFile]::ExtractToDirectory('${zipPath.replace(/'/g, "''")}', '${destDir.replace(/'/g, "''")}')"`,
+            { encoding: 'utf8', timeout: 120000, stdio: 'pipe' }
+        );
+        return;
+    } catch (e) {}
+
+    try {
+        execSync(`powershell -NoProfile -NonInteractive -Command "Expand-Archive -Path '${zipPath.replace(/'/g, "''")}' -DestinationPath '${destDir.replace(/'/g, "''")}' -Force"`,
+            { encoding: 'utf8', timeout: 120000, stdio: 'pipe' }
+        );
+        return;
+    } catch (e) {}
+
+    try {
+        execSync(`tar -xf "${zipPath}" -C "${destDir}"`,
+            { encoding: 'utf8', timeout: 120000, stdio: 'pipe' }
+        );
+        return;
     } catch (e) {
-        execSync(`tar -xf "${zipPath}" -C "${destDir}"`, {
-            encoding: 'utf8', timeout: 120000, stdio: 'ignore'
-        });
+        throw new Error('Failed to extract zip. Tried: .NET ZipFile, Expand-Archive, tar.');
     }
 }
 
@@ -195,7 +211,10 @@ class MinecraftLauncher {
             'C:\\Program Files\\Eclipse Adoptium',
             'C:\\Program Files\\Microsoft',
             'C:\\Program Files\\Zulu',
-            process.env.LOCALAPPDATA ? path.join(process.env.LOCALAPPDATA, 'Programs', 'Java') : null
+            'C:\\Program Files\\Common Files\\Oracle\\Java',
+            process.env.LOCALAPPDATA ? path.join(process.env.LOCALAPPDATA, 'Programs', 'Java') : null,
+            process.env.LOCALAPPDATA ? path.join(process.env.LOCALAPPDATA, 'Programs', 'Eclipse Adoptium') : null,
+            process.env.LOCALAPPDATA ? path.join(process.env.LOCALAPPDATA, 'JetBrains') : null
         ].filter(Boolean);
 
         for (const base of commonPaths) {
