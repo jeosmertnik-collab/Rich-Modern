@@ -15,6 +15,7 @@ const VERSION_MANIFEST_URL = 'https://launchermeta.mojang.com/mc/game/version_ma
 const FABRIC_META_URL = `https://meta.fabricmc.net/v2/versions/loader/${MC_VERSION}/${FABRIC_LOADER_VERSION}`;
 const MODRINTH_API = 'https://api.modrinth.com/v2';
 const MOD_RELEASE_URL = 'https://api.github.com/repos/jeosmertnik-collab/Rich-Modern/releases/latest';
+const LAUNCHER_VERSION = require(path.join(__dirname, '..', 'version.json')).launcherVersion || '1.0.0';
 
 const OS_NAME = { win32: 'windows', darwin: 'osx', linux: 'linux' }[process.platform] || 'windows';
 const SEP = process.platform === 'win32' ? ';' : ':';
@@ -146,17 +147,35 @@ class MinecraftLauncher {
 
     async findJava() {
         const localJreDir = path.join(this.gameDir, 'jre');
-        const localJavaw = path.join(localJreDir, 'bin', 'javaw.exe');
 
-        if (fileExists(localJavaw)) {
+        // Search recursively in bundled jre/ directory
+        function findJavaw(dir) {
             try {
-                const out = execSync(`"${localJavaw}" -version`, { encoding: 'utf8', timeout: 10000, stdio: ['ignore', 'pipe', 'pipe'] });
-                const match = out.match(/version\s+"(\d+)/);
-                if (match && parseInt(match[1]) >= JAVA_MIN_VERSION) {
-                    this.log('Found bundled JRE: ' + localJavaw);
-                    return localJavaw;
+                for (const e of fs.readdirSync(dir)) {
+                    const p = path.join(dir, e);
+                    if (fs.statSync(p).isDirectory()) {
+                        const r = findJavaw(p);
+                        if (r) return r;
+                    } else if (e === 'javaw.exe') {
+                        return p;
+                    }
                 }
             } catch (e) {}
+            return null;
+        }
+
+        if (fs.existsSync(localJreDir)) {
+            const found = findJavaw(localJreDir);
+            if (found) {
+                try {
+                    const out = execSync(`"${found}" -version`, { encoding: 'utf8', timeout: 10000, stdio: ['ignore', 'pipe', 'pipe'] });
+                    const match = out.match(/version\s+"(\d+)/);
+                    if (match && parseInt(match[1]) >= JAVA_MIN_VERSION) {
+                        this.log('Found bundled JRE: ' + found);
+                        return found;
+                    }
+                } catch (e) {}
+            }
         }
 
         this.status('Поиск Java ' + JAVA_MIN_VERSION + '...');
@@ -212,50 +231,59 @@ class MinecraftLauncher {
 
     async downloadJava(jreDir, javaExe) {
         const zipPath = path.join(this.gameDir, 'jre-temp.zip');
+        const tempDir = path.join(this.gameDir, 'jre-temp-dir');
         try {
             const url = 'https://api.adoptium.net/v3/binary/latest/21/ga/windows/x64/jre/hotspot/normal/eclipse?project=jdk';
             this.status('Скачивание Java 21 (JRE)...');
             await this.downloadWithRetry(url, zipPath, 'Java 21 JRE');
 
             this.status('Установка Java 21...');
-            if (fs.existsSync(jreDir)) fs.rmSync(jreDir, { recursive: true, force: true });
-            ensureDir(jreDir);
-            extractZip(zipPath, jreDir);
+            if (fs.existsSync(tempDir)) fs.rmSync(tempDir, { recursive: true, force: true });
+            ensureDir(tempDir);
+            extractZip(zipPath, tempDir);
 
-            const entries = fs.readdirSync(jreDir);
-            for (const entry of entries) {
-                const entryPath = path.join(jreDir, entry);
-                if (fs.statSync(entryPath).isDirectory()) {
-                    const binPath = path.join(entryPath, 'bin');
-                    if (fs.existsSync(binPath)) {
-                        const all = fs.readdirSync(entryPath);
-                        for (const item of all) {
-                            try {
-                                fs.renameSync(path.join(entryPath, item), path.join(jreDir, item));
-                            } catch (e) {
-                                try { fs.cpSync(path.join(entryPath, item), path.join(jreDir, item), { recursive: true }); } catch (e2) {}
-                            }
+            function findJavaw(dir) {
+                try {
+                    for (const e of fs.readdirSync(dir)) {
+                        const p = path.join(dir, e);
+                        if (fs.statSync(p).isDirectory()) {
+                            const r = findJavaw(p);
+                            if (r) return r;
+                        } else if (e === 'javaw.exe') {
+                            return p;
                         }
-                        try { fs.rmSync(entryPath, { recursive: true, force: true }); } catch (e) {}
-                        break;
                     }
-                }
+                } catch (e) {}
+                return null;
             }
+
+            const found = findJavaw(tempDir);
+            if (!found) throw new Error('javaw.exe not found in extracted JRE');
+
+            const innerRoot = path.dirname(path.dirname(found));
+            if (fs.existsSync(jreDir)) fs.rmSync(jreDir, { recursive: true, force: true });
+            fs.cpSync(innerRoot, jreDir, { recursive: true });
 
             try { fs.unlinkSync(zipPath); } catch (e) {}
+            try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch (e) {}
 
-            if (fileExists(javaExe)) {
-                const out = execSync(`"${javaExe}" -version`, { encoding: 'utf8', timeout: 10000, stdio: ['ignore', 'pipe', 'pipe'] });
+            const jreExe = path.join(jreDir, 'bin', 'javaw.exe');
+            if (fileExists(jreExe)) {
+                const out = execSync(`"${jreExe}" -version`, { encoding: 'utf8', timeout: 10000, stdio: ['ignore', 'pipe', 'pipe'] });
                 const match = out.match(/version\s+"(\d+)/);
                 if (match && parseInt(match[1]) >= JAVA_MIN_VERSION) {
-                    this.log('Downloaded JRE OK: ' + javaExe);
-                    return javaExe;
+                    this.log('Downloaded JRE OK: ' + jreExe);
+                    return jreExe;
                 }
             }
+
+            const anyFound = findJavaw(jreDir);
+            if (anyFound) return anyFound;
 
             throw new Error('Java 21 JRE extracted but not found at expected path');
         } catch (e) {
             try { fs.unlinkSync(zipPath); } catch (err) {}
+            try { if (fs.existsSync(tempDir)) fs.rmSync(tempDir, { recursive: true, force: true }); } catch (err) {}
             try { if (fs.existsSync(jreDir)) fs.rmSync(jreDir, { recursive: true, force: true }); } catch (err) {}
             throw e;
         }
