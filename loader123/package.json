@@ -1,6 +1,6 @@
 {
   "name": "rich-modern-launcher",
-  "version": "1.0.16",
+  "version": "1.0.17",
   "description": "Rich Modern Launcher",
   "main": "app.js",
   "scripts": {

@@ -16,10 +16,12 @@ function log(msg) {
     console.log(line.trim());
 }
 
-const USERS_FILE = path.join(app.getPath('userData'), 'users.json');
-const LICENSE_FILE = path.join(app.getPath('userData'), 'license.json');
-const LICENSE_DB_FILE = path.join(app.getPath('userData'), 'licenses.json');
+const USERS_FILE = path.join(app.getPath('userData'), '.minecraft', 'users.json');
+const LICENSE_FILE = path.join(app.getPath('userData'), '.minecraft', 'license.json');
+const LICENSE_DB_FILE = path.join(app.getPath('userData'), '.minecraft', 'licenses.json');
 const VERSION_URL = 'https://raw.githubusercontent.com/jeosmertnik-collab/Rich-Modern/main/version.json';
+const REMOTE_USERS_URL = 'https://raw.githubusercontent.com/jeosmertnik-collab/Rich-Modern/main/users.json';
+const REMOTE_USERS_API = 'https://api.github.com/repos/jeosmertnik-collab/Rich-Modern/contents/users.json';
 const LICENSE_API_URL = 'http://localhost:3000/api/validate';
 const LOCAL_VERSION_FILE = path.join(app.getPath('userData'), 'version.json');
 const LICENSE_SECRET = 'rich-modern-secret-2026';
@@ -129,6 +131,7 @@ function startLicenseServer() {
         server.listen(3000, '127.0.0.1', () => {
             console.log('License server started on port 3000');
         });
+        server.unref();
 
         server.on('error', (err) => {
             console.log('License server port 3000 busy, retrying...');
@@ -204,7 +207,15 @@ function createWindow() {
         }
     });
     win.loadFile('index.html');
+    win.on('closed', () => {
+        try { killExistingGameProcesses(log); } catch (e) {}
+        app.quit();
+    });
 }
+
+app.on('before-quit', () => {
+    try { killExistingGameProcesses(log); } catch (e) {}
+});
 
 ipcMain.on('window-minimize', () => { if (win) win.minimize(); });
 ipcMain.on('window-close', () => { if (win) win.close(); });
@@ -223,11 +234,12 @@ ipcMain.on('open-avatar-dialog', (event) => {
     }).catch(err => console.log(err));
 });
 
-ipcMain.handle('auth:register', (event, { login, password }) => {
+ipcMain.handle('auth:register', (event, { login, password, email }) => {
     const users = loadUsers();
     if (users[login]) return { success: false, error: 'User already exists' };
-    users[login] = { password, registeredAt: Date.now() };
+    users[login] = { password, email: email || '', registeredAt: Date.now() };
     saveUsers(users);
+    log('Registered: ' + login + (email ? ' <' + email + '>' : ''));
     return { success: true };
 });
 
@@ -236,6 +248,31 @@ ipcMain.handle('auth:login', (event, { login, password }) => {
     if (!users[login]) return { success: false, error: 'User not found' };
     if (users[login].password !== password) return { success: false, error: 'Wrong password' };
     return { success: true, user: { login } };
+});
+
+ipcMain.handle('auth:sync-remote', async () => {
+    try {
+        let resp;
+        try {
+            resp = await fetchUrl(REMOTE_USERS_URL);
+        } catch (e) {
+            return { success: true, merged: 0, total: 0, note: 'Remote file not found' };
+        }
+        const remote = JSON.parse(resp);
+        if (!remote || typeof remote !== 'object') return { success: true, merged: 0, total: 0 };
+        const local = loadUsers();
+        let merged = 0;
+        for (const [login, data] of Object.entries(remote)) {
+            if (!local[login]) {
+                local[login] = data;
+                merged++;
+            }
+        }
+        if (merged > 0) saveUsers(local);
+        return { success: true, merged, total: Object.keys(remote).length };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
 });
 
 ipcMain.handle('game:findRoot', () => {

@@ -19,10 +19,12 @@
         }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; user-select: none; }
         body { background-color: #030406; color: var(--text-main); height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden; }
-        .launcher-window { width: 960px; height: 600px; background: #0c0d12 url('assets/mc-shader3.jpg') center/cover no-repeat; border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 16px; display: flex; flex-direction: column; position: relative; box-shadow: 0 40px 80px rgba(0, 0, 0, 0.9); overflow: hidden; animation: launcherSpawn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        @keyframes launcherSpawn { from { opacity: 0; transform: scale(0.95); filter: blur(10px); } to { opacity: 1; transform: scale(1); filter: blur(0); } }
-        .launcher-window::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(3, 4, 6, 0.65); pointer-events: none; z-index: 0; }
+        .launcher-window { width: 960px; height: 600px; background: #0c0d12; border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 16px; display: flex; flex-direction: column; position: relative; box-shadow: 0 40px 80px rgba(0, 0, 0, 0.9); overflow: hidden; opacity: 0; transition: opacity 0.4s ease; }
+        .launcher-window.loaded { opacity: 1; }
+        .launcher-window::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(3, 4, 6, 0.7); pointer-events: none; z-index: 1; }
         .launcher-window::after { content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.02) 0%, transparent 50%); pointer-events: none; animation: ambientGlow 15s linear infinite; z-index: 0; }
+        #bgCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 0.8s ease; z-index: 0; pointer-events: none; }
+        #bgCanvas.loaded { opacity: 0.35; }
         @keyframes ambientGlow { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
         .header { height: 60px; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; border-bottom: 1px solid rgba(255, 255, 255, 0.03); z-index: 10; -webkit-app-region: drag; position: relative; }
@@ -158,17 +160,18 @@
     </style>
 </head>
 <body>
-    <div class="launcher-window">
+    <div class="launcher-window" id="launcherWindow">
+        <img id="bgCanvas" src="assets/mc-shader2.jpg" alt="">
         <div class="header">
             <div class="header-left">
                 <div class="logo">Rich Modern</div>
                 <div class="lang-selector" id="langSelectorBtn">
-                    <img id="currentLangFlag" src="https://flagcdn.com/w20/ru.png" alt="RU">
+                    <span id="currentLangFlag" style="font-size:18px;">🇷🇺</span>
                     <span id="currentLangText">Русский</span>
                     <span style="font-size: 9px; opacity: 0.5;">&#9660;</span>
                     <div class="lang-dropdown-menu" id="langDropdownMenu">
-                        <div class="lang-option" data-lang="ru"><img src="https://flagcdn.com/w20/ru.png" alt="RU"> Русский</div>
-                        <div class="lang-option" data-lang="en"><img src="https://flagcdn.com/w20/us.png" alt="EN"> English</div>
+                        <div class="lang-option" data-lang="ru"><span style="font-size:18px;">🇷🇺</span> Русский</div>
+                        <div class="lang-option" data-lang="en"><span style="font-size:18px;">🇺🇸</span> English</div>
                     </div>
                 </div>
             </div>
@@ -344,6 +347,14 @@
                             <div id="vkStatus" style="margin-top: 8px; font-size: 12px; color: var(--text-muted);">Не подключено</div>
                         </div>
                     </div>
+                    <div style="margin-top: 20px;">
+                        <div class="card">
+                            <div class="card-title">Аккаунты</div>
+                            <div class="card-desc">Синхронизируй аккаунты между устройствами через GitHub.</div>
+                            <div id="syncStatus" style="font-size:12px; color:var(--text-muted); margin-bottom:8px;"></div>
+                            <button class="btn-monochrome-sub" id="syncAccountsBtn">СИНХРОНИЗИРОВАТЬ</button>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="screen" id="screen-subscription">
@@ -411,6 +422,10 @@
 
                 <div class="input-group" id="confirmGroup" style="display:none;">
                     <input type="password" id="loginConfirm" data-i18n-placeholder="confirm_password_placeholder" placeholder="Повторите пароль" maxlength="32">
+                </div>
+
+                <div class="input-group" id="emailGroup" style="display:none;">
+                    <input type="email" id="loginEmail" placeholder="Email (для восстановления)" maxlength="64" autocomplete="email">
                 </div>
 
                 <div class="error-text" id="errorHint"></div>

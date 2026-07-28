@@ -1,6 +1,16 @@
 const { ipcRenderer } = require('electron');
 
 document.addEventListener('DOMContentLoaded', () => {
+    const win = document.getElementById('launcherWindow');
+    const bg = document.getElementById('bgCanvas');
+    if (bg) {
+        bg.onload = () => { bg.classList.add('loaded'); };
+        if (bg.complete) bg.classList.add('loaded');
+    }
+    requestAnimationFrame(() => {
+        if (win) win.style.opacity = '1';
+    });
+
     let currentLanguage = localStorage.getItem('launcher_lang') || 'ru';
     let currentUser = null;
     let isRegisterMode = false;
@@ -25,7 +35,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const authSubtitle = document.getElementById('authSubtitle');
     const authSubmitBtn = document.getElementById('authSubmitBtn');
     const authSwitchBtn = document.getElementById('authSwitchBtn');
-    const confirmGroup = document.getElementById('confirmGroup');
+        const confirmGroup = document.getElementById('confirmGroup');
+        const emailGroup = document.getElementById('emailGroup');
+        const loginEmail = document.getElementById('loginEmail');
     const loginConfirm = document.getElementById('loginConfirm');
     const rememberCheck = document.getElementById('rememberCheck');
 
@@ -91,7 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('launcher_lang', lang);
         currentLanguage = lang;
         if (currentLangText) currentLangText.textContent = lang === 'ru' ? 'Русский' : 'English';
-        if (currentLangFlag) currentLangFlag.src = lang === 'ru' ? 'https://flagcdn.com/w20/ru.png' : 'https://flagcdn.com/w20/us.png';
+        if (currentLangFlag) currentLangFlag.textContent = lang === 'ru' ? '🇷🇺' : '🇺🇸';
         updateAuthModeTexts(t);
     }
 
@@ -103,12 +115,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (authSubmitBtn) authSubmitBtn.textContent = t.btn_register || 'REGISTER';
             if (authSwitchBtn) authSwitchBtn.textContent = t.btn_to_login || 'Already have an account? Login';
             if (confirmGroup) confirmGroup.style.display = 'block';
+            if (emailGroup) emailGroup.style.display = 'block';
         } else {
             if (authTitle) authTitle.textContent = t.auth_title || 'Authorization';
             if (authSubtitle) authSubtitle.textContent = t.auth_subtitle || 'Enter your credentials';
             if (authSubmitBtn) authSubmitBtn.textContent = t.btn_login || 'LOGIN';
             if (authSwitchBtn) authSwitchBtn.textContent = t.btn_to_register || 'No account? Register';
             if (confirmGroup) confirmGroup.style.display = 'none';
+            if (emailGroup) emailGroup.style.display = 'none';
         }
         if (errorHint) errorHint.style.display = 'none';
     }
@@ -177,6 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (isRegisterMode) {
                 const confirm = loginConfirm.value;
+                const email = loginEmail ? loginEmail.value.trim() : '';
                 if (password.length < 3) {
                     showError(t.error_short || 'Minimum 3 characters');
                     return;
@@ -189,7 +204,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     showError(t.error_passwords || 'Passwords do not match');
                     return;
                 }
-                const result = await ipcRenderer.invoke('auth:register', { login: username, password });
+                if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                    showError('Invalid email format');
+                    return;
+                }
+                const result = await ipcRenderer.invoke('auth:register', { login: username, password, email });
                 if (!result.success) {
                     showError(t.error_exists || 'Account already exists');
                     return;
@@ -305,6 +324,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     updateVkStatus();
+
+    const syncBtn = document.getElementById('syncAccountsBtn');
+    const syncStatus = document.getElementById('syncStatus');
+    if (syncBtn) {
+        syncBtn.addEventListener('click', async () => {
+            syncBtn.disabled = true;
+            syncBtn.textContent = 'Синхронизация...';
+            const result = await ipcRenderer.invoke('auth:sync-remote');
+            if (syncStatus) syncStatus.textContent = result.success
+                ? (result.merged > 0 ? 'Синхронизировано: ' + result.merged + ' аккаунтов' : 'Аккаунты актуальны')
+                : 'Ошибка: ' + (result.error || 'неизвестная');
+            syncBtn.disabled = false;
+            syncBtn.textContent = 'СИНХРОНИЗИРОВАТЬ';
+        });
+    }
 
     if (clientCard) {
         clientCard.addEventListener('click', async () => {
