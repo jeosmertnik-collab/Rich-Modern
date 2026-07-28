@@ -1,7 +1,7 @@
 {
-  "name": "rich-modern-launcher",
+  "name": "excel-client-launcher",
   "version": "1.0.17",
-  "description": "Rich Modern Launcher",
+  "description": "Excel Client Launcher",
   "main": "app.js",
   "scripts": {
     "start": "electron .",
@@ -9,15 +9,15 @@
     "build-installer": "electron-builder --win nsis"
   },
   "build": {
-    "appId": "com.rich.modern.launcher",
-    "productName": "Rich Modern",
+    "appId": "com.excel.client.launcher",
+    "productName": "Excel Client",
+    "icon": "excel.ico",
     "win": {
       "target": "portable",
-      "icon": null,
       "signAndEditExecutable": false
     },
     "portable": {
-      "artifactName": "RichModern.exe"
+      "artifactName": "ExcelClient.exe"
     },
     "files": [
       "**/*",
@@ -29,6 +29,7 @@
   "license": "ISC",
   "devDependencies": {
     "electron": "^30.0.0",
-    "electron-builder": "^24.0.0"
+    "electron-builder": "^24.0.0",
+    "rcedit": "^5.0.2"
   }
 }

@@ -7,15 +7,15 @@
   "authors": ["You"],
   "contact": {},
   "license": "MIT",
-  "icon": "assets/rich/textures/capes/cape.png",
+  "icon": "assets/excel/textures/capes/cape.png",
   "environment": "client",
   "entrypoints": {
     "preLaunch": [
-      "rich.util.mods.config.wave.ResourceManager",
-      "rich.util.mods.config.wave.WaveCapesConfigOverride"
+      "excel.util.mods.config.wave.ResourceManager",
+      "excel.util.mods.config.wave.WaveCapesConfigOverride"
     ],
     "client": [
-      "rich.Initialization"
+      "excel.Initialization"
     ]
   },
   "mixins": [

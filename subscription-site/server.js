@@ -71,7 +71,35 @@ function createLicense(plan, days, email, nick) {
     return key;
 }
 
+const MIME_TYPES = {
+    '.html': 'text/html; charset=utf-8',
+    '.css': 'text/css',
+    '.js': 'application/javascript',
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.ico': 'image/x-icon',
+};
+
+function serveStatic(url, res) {
+    let filePath = path.join(__dirname, url === '/' ? 'index.html' : url);
+    const ext = path.extname(filePath);
+    try {
+        if (fs.statSync(filePath).isFile()) {
+            res.writeHead(200, { 'Content-Type': MIME_TYPES[ext] || 'application/octet-stream' });
+            res.end(fs.readFileSync(filePath));
+            return true;
+        }
+    } catch (e) {}
+    return false;
+}
+
 const server = http.createServer((req, res) => {
+    if (req.method === 'GET' && !req.url.startsWith('/api/')) {
+        if (serveStatic(req.url, res)) return;
+        res.writeHead(404);
+        res.end('Not found');
+        return;
+    }
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
@@ -137,5 +165,5 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, () => {
-    console.log(`Rich Modern license API running on port ${PORT}`);
+    console.log(`Excel Client license API running on port ${PORT}`);
 });

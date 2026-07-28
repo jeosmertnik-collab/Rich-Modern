@@ -1,12 +1,12 @@
 @echo off
-title Rich Modern Loader
+title Excel Client Loader
 color 0B
 chcp 65001 >nul 2>&1
 setlocal enabledelayedexpansion
 
 echo.
 echo  ================================
-echo     RICH MODERN - Loader
+echo     EXCEL CLIENT - Loader
 echo  ================================
 echo.
 
@@ -81,5 +81,5 @@ REM ===== RUN =====
 echo [3/3] Launching game...
 echo.
 
-start "Rich Modern" /min cmd /c "cd /d "%ROOT%" && call gradlew.bat runClient --no-daemon"
+start "Excel Client" /min cmd /c "cd /d "%ROOT%" && call gradlew.bat runClient --no-daemon"
 exit

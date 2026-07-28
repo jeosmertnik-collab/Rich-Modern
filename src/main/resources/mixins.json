@@ -1,6 +1,6 @@
 {
   "required": true,
-  "package": "rich.mixin",
+  "package": "excel.mixin",
   "compatibilityLevel": "JAVA_21",
   "client": [
     "AccessibilityOnboardingScreenMixin",

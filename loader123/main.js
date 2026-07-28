@@ -474,6 +474,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (data.status === 'error') {
             if (launchProgress) launchProgress.style.display = 'none';
+            if (launchStatus) { launchStatus.textContent = data.message || t.error_unknown || 'Unknown error'; launchStatus.style.display = 'block'; launchStatus.style.color = '#ef4444'; }
             launchGameBtn.disabled = false;
             launchGameBtn.style.opacity = '1';
             launchGameBtn.style.pointerEvents = 'all';

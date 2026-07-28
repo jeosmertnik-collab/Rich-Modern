@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rich Modern — Подписки</title>
+    <title>Excel Client — Подписки</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
@@ -457,7 +457,7 @@
 
     <div class="container">
         <header>
-            <div class="logo">RICH MODERN</div>
+            <div class="logo">EXCEL CLIENT</div>
             <p>Выбери подписку и получи доступ к эксклюзивным функциям</p>
         </header>
 
@@ -612,7 +612,7 @@
     </div>
 
     <footer>
-        Rich Modern &copy; 2026 — Оплата защищена. Ключ действителен на 1 устройстве.
+        Excel Client &copy; 2026 — Оплата защищена. Ключ действителен на 1 устройстве.
     </footer>
 
     <script>
@@ -745,7 +745,13 @@
             btn.disabled = true;
             btn.textContent = 'Обработка...';
 
-            const key = generateLicenseKey(selectedPlan, selectedDays, email);
+            const cacheKey = selectedPlan + '_' + selectedDays + '_' + email;
+            let key = localStorage.getItem('rm_key_' + cacheKey);
+
+            if (!key) {
+                key = generateLicenseKey(selectedPlan, selectedDays, email);
+                localStorage.setItem('rm_key_' + cacheKey, key);
+            }
 
             await new Promise(r => setTimeout(r, 2000));
 
@@ -759,8 +765,9 @@
 
         function generateLicenseKey(plan, days, email) {
             const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+            const nonce = Date.now().toString(36) + Math.random().toString(36).substring(2, 8);
             let seed = 0;
-            const str = plan + days + email + 'rich-modern-secret-2026';
+            const str = plan + days + email + nonce + 'rich-modern-secret-2026';
             for (let i = 0; i < str.length; i++) {
                 seed = ((seed << 5) - seed + str.charCodeAt(i)) | 0;
             }

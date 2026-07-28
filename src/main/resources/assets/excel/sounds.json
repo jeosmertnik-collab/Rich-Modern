@@ -1,0 +1,62 @@
+{
+  "kolokolnia_kill": {
+    "sounds": [
+      "excel:kolokolnia_kill"
+    ]
+  },
+  "moan1": {
+    "sounds": [
+      "excel:moan1"
+    ]
+  },
+  "moan2": {
+    "sounds": [
+      "excel:moan2"
+    ]
+  },
+  "moan3": {
+    "sounds": [
+      "excel:moan3"
+    ]
+  },
+  "moan4": {
+    "sounds": [
+      "excel:moan4"
+    ]
+  },
+  "module_disable": {
+    "sounds": [
+      "excel:module_disable"
+    ]
+  },
+  "module_enable": {
+    "sounds": [
+      "excel:module_enable"
+    ]
+  },
+  "off": {
+    "sounds": [
+      "excel:off"
+    ]
+  },
+  "on": {
+    "sounds": [
+      "excel:on"
+    ]
+  },
+  "crime": {
+    "sounds": [
+      "excel:crime"
+    ]
+  },
+  "metallic": {
+    "sounds": [
+      "excel:metallic"
+    ]
+  },
+  "welcome": {
+  "sounds": [
+    "excel:welcome"
+  ]
+}
+}

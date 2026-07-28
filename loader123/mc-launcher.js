@@ -7,7 +7,7 @@ const crypto = require('crypto');
 
 const MC_VERSION = '1.21.11';
 const FABRIC_LOADER_VERSION = '0.18.4';
-const FABRIC_VERSION_ID = MC_VERSION + '-rich';
+const FABRIC_VERSION_ID = MC_VERSION + '-excel';
 const MODRINTH_FABRIC_API_ID = 'P7dR8mSH';
 const JAVA_MIN_VERSION = 21;
 
@@ -15,7 +15,7 @@ const VERSION_MANIFEST_URL = 'https://launchermeta.mojang.com/mc/game/version_ma
 const FABRIC_META_URL = `https://meta.fabricmc.net/v2/versions/loader/${MC_VERSION}/${FABRIC_LOADER_VERSION}`;
 const MODRINTH_API = 'https://api.modrinth.com/v2';
 const MOD_RELEASE_URL = 'https://api.github.com/repos/jeosmertnik-collab/Rich-Modern/releases/latest';
-const LAUNCHER_VERSION = require(path.join(__dirname, '..', 'version.json')).launcherVersion || '1.0.0';
+const LAUNCHER_VERSION = require('./version.json').launcherVersion || '1.0.0';
 
 const OS_NAME = { win32: 'windows', darwin: 'osx', linux: 'linux' }[process.platform] || 'windows';
 const SEP = process.platform === 'win32' ? ';' : ':';
@@ -241,6 +241,7 @@ class MinecraftLauncher {
         }
 
         this.status('Java 21 не найдена, скачиваю...');
+        const localJavaw = path.join(localJreDir, 'bin', 'javaw.exe');
         try {
             return await this.downloadJava(localJreDir, localJavaw);
         } catch (e) {
@@ -404,10 +405,12 @@ class MinecraftLauncher {
         this.status('Скачивание Fabric Loader ' + FABRIC_LOADER_VERSION + '...');
 
         const meta = await fetchJson(FABRIC_META_URL);
-        const entry = meta[0];
+        const entry = Array.isArray(meta) ? meta[0] : meta;
         if (!entry) throw new Error('Fabric loader metadata not found');
 
-        const fabricLibs = entry.launcherMeta && entry.launcherMeta.libraries;
+        const libMap = entry.launcherMeta && entry.launcherMeta.libraries;
+        if (!libMap) throw new Error('Fabric loader libraries not found in metadata');
+        const fabricLibs = [...(libMap.client || []), ...(libMap.common || [])];
         if (!fabricLibs) throw new Error('Fabric loader libraries not found in metadata');
 
         const fabricClasspath = [];
@@ -423,7 +426,11 @@ class MinecraftLauncher {
                 url = lib.url + lib.client.path;
                 libPath = lib.client.path;
             } else if (lib.url && lib.name) {
-                const mavenPath = lib.name.replace(/:/g, '/') + '.jar';
+                const parts = lib.name.split(':');
+                const groupPath = parts[0].replace(/\./g, '/');
+                const artifactId = parts[1];
+                const version = parts[2];
+                const mavenPath = groupPath + '/' + artifactId + '/' + version + '/' + artifactId + '-' + version + '.jar';
                 url = lib.url + mavenPath;
                 libPath = mavenPath;
             }
@@ -452,8 +459,9 @@ class MinecraftLauncher {
         if (fileExists(fabricJsonPath)) return;
 
         const meta = await fetchJson(FABRIC_META_URL);
-        const entry = meta[0];
-        const fabricLibs = (entry.launcherMeta && entry.launcherMeta.libraries) || [];
+        const entry = Array.isArray(meta) ? meta[0] : meta;
+        const libMap = (entry.launcherMeta && entry.launcherMeta.libraries) || {};
+        const fabricLibs = [...(libMap.client || []), ...(libMap.common || [])];
 
         const libraries = fabricLibs.map(lib => {
             const obj = { name: lib.name };
@@ -581,7 +589,7 @@ class MinecraftLauncher {
     }
 
     async downloadModJar() {
-        this.status('Скачивание Rich Modern мода...');
+        this.status('Скачивание Excel Client мода...');
         const dest = path.join(this.modsDir, 'rich.jar');
         if (fileExists(dest)) {
             this.log('Mod jar already exists');
@@ -596,7 +604,7 @@ class MinecraftLauncher {
         }
 
         const jarAsset = release.assets && release.assets.find(a => a.name && a.name.endsWith('.jar') && a.name.startsWith('rich'));
-        if (!jarAsset) throw new Error('Rich Modern JAR not found in latest release');
+        if (!jarAsset) throw new Error('Excel Client JAR not found in latest release');
 
         await this.downloadWithRetry(jarAsset.browser_download_url, dest, jarAsset.name);
     }
@@ -658,6 +666,9 @@ class MinecraftLauncher {
 
             this.log('spawned, pid=' + game.pid);
 
+            // Signal the game started successfully
+            this.event.reply('game:launch-status', { status: 'started', message: 'Game started' });
+
             let stderr = '';
             game.stderr.on('data', d => { stderr += d.toString(); });
             game.stdout.on('data', d => {
@@ -677,7 +688,7 @@ class MinecraftLauncher {
                     const lastErr = stderr.slice(-500);
                     this.error('Game exited with code ' + code + (lastErr ? '\n' + lastErr : ''));
                 } else {
-                    this.event.reply('game:launch-status', { status: 'started', message: 'Game started' });
+                    this.event.reply('game:launch-status', { status: 'closed', message: 'Game closed' });
                     setTimeout(() => { try { require('electron').app.quit(); } catch (e) {} }, 3000);
                 }
             });

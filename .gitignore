@@ -2,7 +2,6 @@
 build/
 build_*/
 run/
-Rich/
 WiNGS/
 *.class
 *.jar
@@ -15,3 +14,4 @@ RichModern.exe
 RichModern-*.exe
 RichModern/
 build_output/
+Rich/
