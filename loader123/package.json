@@ -13,11 +13,20 @@
     "productName": "Excel Client",
     "icon": "excel.ico",
     "win": {
-      "target": "portable",
+      "target": "nsis",
       "signAndEditExecutable": false
     },
-    "portable": {
-      "artifactName": "ExcelClient.exe"
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Excel Client",
+      "artifactName": "ExcelClientSetup.exe",
+      "installerIcon": "excel.ico",
+      "uninstallerIcon": "excel.ico",
+      "installerHeaderIcon": "excel.ico"
     },
     "files": [
       "**/*",
