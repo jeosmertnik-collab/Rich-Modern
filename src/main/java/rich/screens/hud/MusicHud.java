@@ -72,9 +72,9 @@ public class MusicHud extends AbstractHudElement {
                 new Color(accentR, accentG, accentB, (int) (bgAlpha * 0.35f)).getRGB(), 5);
 
         if (player.getPlaylist().isEmpty()) {
-            Fonts.SFPRO_REGULAR.draw("No music files", x + 8, y + 5, 5.5f,
+            Fonts.SFPRO_REGULAR.draw("VK Music", x + 8, y + 5, 5.5f,
                     new Color(180, 140, 140, bgAlpha).getRGB());
-            Fonts.SFPRO_REGULAR.draw("Put .mp3/.wav in RichMusic/", x + 8, y + 12, 4.5f,
+            Fonts.SFPRO_REGULAR.draw("Login via launcher", x + 8, y + 12, 4.5f,
                     new Color(120, 120, 140, bgAlpha).getRGB());
             return;
         }

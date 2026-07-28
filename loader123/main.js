@@ -274,6 +274,38 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    const vkLoginBtn = document.getElementById('vkLoginBtn');
+    const vkLogoutBtn = document.getElementById('vkLogoutBtn');
+    const vkStatus = document.getElementById('vkStatus');
+
+    async function updateVkStatus() {
+        const token = await ipcRenderer.invoke('vk:getToken');
+        if (vkStatus) {
+            vkStatus.textContent = token ? 'VK подключён (токен есть)' : 'Не подключено';
+            vkStatus.style.color = token ? '#22c55e' : 'var(--text-muted)';
+        }
+    }
+
+    if (vkLoginBtn) {
+        vkLoginBtn.addEventListener('click', async () => {
+            vkLoginBtn.disabled = true;
+            vkLoginBtn.textContent = 'Авторизация...';
+            const token = await ipcRenderer.invoke('vk:login');
+            vkLoginBtn.disabled = false;
+            vkLoginBtn.textContent = 'ВОЙТИ VK';
+            updateVkStatus();
+        });
+    }
+
+    if (vkLogoutBtn) {
+        vkLogoutBtn.addEventListener('click', async () => {
+            await ipcRenderer.invoke('vk:removeToken');
+            updateVkStatus();
+        });
+    }
+
+    updateVkStatus();
+
     if (clientCard) {
         clientCard.addEventListener('click', async () => {
             if (screenMain) { screenMain.style.display = 'none'; screenMain.classList.remove('active'); }

@@ -530,6 +530,67 @@ function selfUpdate() {
     });
 }
 
+ipcMain.handle('vk:getToken', () => {
+    const tokenFile = path.join(app.getPath('userData'), '.minecraft', 'Rich', 'configs', 'vk_token.txt');
+    try {
+        if (fs.existsSync(tokenFile)) {
+            return fs.readFileSync(tokenFile, 'utf8').trim();
+        }
+    } catch (e) {}
+    return '';
+});
+
+ipcMain.handle('vk:removeToken', () => {
+    const tokenFile = path.join(app.getPath('userData'), '.minecraft', 'Rich', 'configs', 'vk_token.txt');
+    try {
+        if (fs.existsSync(tokenFile)) fs.unlinkSync(tokenFile);
+        log('VK token removed');
+    } catch (e) {}
+});
+
+ipcMain.handle('vk:login', async () => {
+    const VK_APP_ID = '3140623';
+    const redirectUri = 'https://oauth.vk.com/blank.html';
+    const scope = 'audio,offline';
+    const authUrl = `https://oauth.vk.com/authorize?client_id=${VK_APP_ID}&display=page&redirect_uri=${redirectUri}&scope=${scope}&response_type=token&v=5.131&revoke=1`;
+
+    return new Promise((resolve) => {
+        const authWin = new BrowserWindow({
+            width: 800, height: 600,
+            title: 'VK Login',
+            webPreferences: { nodeIntegration: false, contextIsolation: true }
+        });
+
+        authWin.loadURL(authUrl);
+
+        authWin.webContents.on('will-redirect', (event, url) => {
+            if (url.startsWith(redirectUri) && url.includes('access_token=')) {
+                const fragment = url.split('#')[1] || '';
+                const params = new URLSearchParams(fragment);
+                const token = params.get('access_token');
+                if (token) {
+                    const tokenFile = path.join(app.getPath('userData'), '.minecraft', 'Rich', 'configs', 'vk_token.txt');
+                    try {
+                        const dir = path.dirname(tokenFile);
+                        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+                        fs.writeFileSync(tokenFile, token, 'utf8');
+                        log('VK token saved to ' + tokenFile);
+                        resolve(token);
+                        authWin.close();
+                        return;
+                    } catch (e) {
+                        log('VK token save error: ' + e.message);
+                    }
+                }
+                resolve('');
+                authWin.close();
+            }
+        });
+
+        authWin.on('closed', () => resolve(''));
+    });
+});
+
 app.whenReady().then(() => {
     startLicenseServer();
     createWindow();

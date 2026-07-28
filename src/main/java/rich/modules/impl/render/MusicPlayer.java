@@ -5,13 +5,14 @@ import lombok.Getter;
 import lombok.experimental.FieldDefaults;
 import lombok.experimental.NonFinal;
 import net.minecraft.util.Util;
-import org.lwjgl.glfw.GLFW;
 import rich.events.api.EventHandler;
 import rich.events.impl.TickEvent;
 import rich.modules.module.ModuleStructure;
 import rich.modules.module.category.ModuleCategory;
 import rich.modules.module.setting.implement.BooleanSetting;
 import rich.modules.module.setting.implement.SliderSettings;
+import rich.util.vk.VkApi;
+import rich.util.vk.VkApi.VkTrack;
 
 import javazoom.jl.decoder.*;
 import javazoom.jl.player.AudioDevice;
@@ -19,6 +20,12 @@ import javazoom.jl.player.FactoryRegistry;
 
 import javax.sound.sampled.*;
 import java.io.*;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -38,38 +45,76 @@ public class MusicPlayer extends ModuleStructure {
 
     BooleanSetting repeat = new BooleanSetting("Повтор", "Повторять текущий трек");
 
-    @NonFinal List<File> playlist = new ArrayList<>();
+    @NonFinal List<VkTrack> playlist = new ArrayList<>();
     @NonFinal int currentTrackIndex = -1;
     @NonFinal String currentTrackName = "";
     @NonFinal boolean playing = false;
     @NonFinal long positionMs = 0;
     @NonFinal long durationMs = 0;
     @NonFinal boolean userToggled = false;
+    @NonFinal boolean vkReady = false;
 
     @NonFinal private Clip currentClip;
     @NonFinal private Thread playbackThread;
     @NonFinal private volatile boolean stopRequested = false;
 
-    private static final String MUSIC_DIR_NAME = "RichMusic";
-    private static final String[] EXTENSIONS = {"mp3", "ogg", "wav"};
+    @NonFinal private VkApi vkApi;
+    @NonFinal private HttpClient httpClient;
 
     public MusicPlayer() {
         super("Music Player", "Музыкальный проигрыватель", ModuleCategory.RENDER);
         settings(volume, shuffle, repeat);
     }
 
+    private String readToken() {
+        try {
+            File tokenFile = new File("Rich/configs/vk_token.txt");
+            if (tokenFile.exists()) {
+                return new String(Files.readAllBytes(tokenFile.toPath()), StandardCharsets.UTF_8).trim();
+            }
+            File altFile = new File("../Rich/configs/vk_token.txt");
+            if (altFile.exists()) {
+                return new String(Files.readAllBytes(altFile.toPath()), StandardCharsets.UTF_8).trim();
+            }
+            return "";
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
     @Override
     public void activate() {
         stopRequested = false;
         userToggled = true;
-        scanMusicFiles();
-        if (!playlist.isEmpty() && currentTrackIndex == -1) {
-            currentTrackIndex = 0;
-            updateTrackName();
+        vkReady = false;
+
+        String token = readToken();
+        if (token.isEmpty()) {
+            currentTrackName = "VK: no token";
+            return;
         }
-        if (!playlist.isEmpty()) {
-            playCurrentTrack();
-        }
+
+        vkApi = new VkApi(token);
+        httpClient = HttpClient.newHttpClient();
+
+        new Thread(() -> {
+            try {
+                List<VkTrack> tracks = vkApi.fetchTracks();
+                if (tracks != null && !tracks.isEmpty()) {
+                    playlist.clear();
+                    playlist.addAll(tracks);
+                    if (shuffle.isValue()) Collections.shuffle(playlist);
+                    currentTrackIndex = 0;
+                    vkReady = true;
+                    updateTrackName();
+                    playCurrentTrack();
+                } else {
+                    currentTrackName = "VK: no tracks found";
+                }
+            } catch (Exception e) {
+                currentTrackName = "VK error: " + e.getMessage();
+            }
+        }, "VK-FetchThread").start();
     }
 
     @Override
@@ -94,23 +139,19 @@ public class MusicPlayer extends ModuleStructure {
     }
 
     public void playCurrentTrack() {
-        if (playlist.isEmpty()) return;
+        if (playlist.isEmpty() || !vkReady) return;
         if (currentTrackIndex < 0 || currentTrackIndex >= playlist.size()) {
             currentTrackIndex = 0;
         }
         stopPlayback();
         updateTrackName();
 
-        File file = playlist.get(currentTrackIndex);
+        VkTrack track = playlist.get(currentTrackIndex);
         stopRequested = false;
 
         playbackThread = new Thread(() -> {
             try {
-                if (file.getName().toLowerCase().endsWith(".mp3")) {
-                    playMp3(file);
-                } else {
-                    playWav(file);
-                }
+                playVkTrack(track);
             } catch (Exception ex) {
                 playing = false;
             }
@@ -119,9 +160,26 @@ public class MusicPlayer extends ModuleStructure {
         playbackThread.start();
     }
 
-    private void playMp3(File file) throws Exception {
-        try (FileInputStream fis = new FileInputStream(file);
-             BufferedInputStream bis = new BufferedInputStream(fis)) {
+    private void playVkTrack(VkTrack track) throws Exception {
+        String trackUrl = track.url;
+
+        if (trackUrl == null || trackUrl.isEmpty()) {
+            playing = false;
+            return;
+        }
+
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(URI.create(trackUrl))
+                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
+                .timeout(java.time.Duration.ofSeconds(30))
+                .GET()
+                .build();
+
+        HttpResponse<InputStream> resp = httpClient.send(req, HttpResponse.BodyHandlers.ofInputStream());
+
+        try (InputStream is = resp.body();
+             BufferedInputStream bis = new BufferedInputStream(is)) {
+
             Bitstream bitstream = new Bitstream(bis);
             Decoder decoder = new Decoder();
             AudioDevice audioDevice = FactoryRegistry.systemRegistry().createAudioDevice();
@@ -163,9 +221,10 @@ public class MusicPlayer extends ModuleStructure {
                 }
             }
 
-            durationMs = System.currentTimeMillis() - startTime;
+            durationMs = track.duration > 0 ? (long) track.duration * 1000 : System.currentTimeMillis() - startTime;
             audioDevice.flush();
             playing = false;
+
             if (!stopRequested) {
                 Util.getMainWorkerExecutor().execute(() -> {
                     if (!isState()) return;
@@ -176,52 +235,7 @@ public class MusicPlayer extends ModuleStructure {
                     }
                 });
             }
-        } catch (Exception e) {
-            playing = false;
         }
-    }
-
-    private void playWav(File file) throws Exception {
-        AudioInputStream stream = AudioSystem.getAudioInputStream(file);
-        AudioFormat baseFormat = stream.getFormat();
-
-        if (baseFormat.getEncoding() != AudioFormat.Encoding.PCM_SIGNED) {
-            AudioFormat targetFormat = new AudioFormat(
-                    AudioFormat.Encoding.PCM_SIGNED,
-                    baseFormat.getSampleRate(),
-                    16,
-                    baseFormat.getChannels(),
-                    baseFormat.getChannels() * 2,
-                    baseFormat.getSampleRate(),
-                    false
-            );
-            stream = AudioSystem.getAudioInputStream(targetFormat, stream);
-        }
-
-        Clip clip = AudioSystem.getClip();
-        clip.open(stream);
-        this.currentClip = clip;
-
-        durationMs = clip.getMicrosecondLength() / 1000;
-        positionMs = 0;
-        playing = true;
-
-        updateVolume();
-
-        clip.addLineListener(event -> {
-            if (event.getType() == LineEvent.Type.STOP && !stopRequested) {
-                Util.getMainWorkerExecutor().execute(() -> {
-                    if (!isState()) return;
-                    if (repeat.isValue()) {
-                        playCurrentTrack();
-                    } else {
-                        nextTrack();
-                    }
-                });
-            }
-        });
-
-        clip.start();
     }
 
     public void stopPlayback() {
@@ -244,7 +258,7 @@ public class MusicPlayer extends ModuleStructure {
     }
 
     public void nextTrack() {
-        if (playlist.isEmpty()) return;
+        if (playlist.isEmpty() || !vkReady) return;
         if (shuffle.isValue()) {
             currentTrackIndex = (int) (Math.random() * playlist.size());
         } else {
@@ -258,7 +272,7 @@ public class MusicPlayer extends ModuleStructure {
     }
 
     public void prevTrack() {
-        if (playlist.isEmpty()) return;
+        if (playlist.isEmpty() || !vkReady) return;
         if (positionMs > 3000) {
             playCurrentTrack();
             return;
@@ -298,45 +312,11 @@ public class MusicPlayer extends ModuleStructure {
 
     private void updateTrackName() {
         if (playlist.isEmpty() || currentTrackIndex < 0 || currentTrackIndex >= playlist.size()) {
-            currentTrackName = "";
+            currentTrackName = !vkReady && readToken().isEmpty() ? "VK: enter token in launcher" : "No tracks";
             return;
         }
-        String name = playlist.get(currentTrackIndex).getName();
-        int lastDot = name.lastIndexOf('.');
-        currentTrackName = lastDot > 0 ? name.substring(0, lastDot) : name;
-    }
-
-    private void scanMusicFiles() {
-        playlist.clear();
-        File musicDir = new File(MUSIC_DIR_NAME);
-        if (!musicDir.exists()) {
-            musicDir.mkdirs();
-            return;
-        }
-        scanDir(musicDir);
-        if (shuffle.isValue()) {
-            Collections.shuffle(playlist);
-        }
-    }
-
-    private void scanDir(File dir) {
-        File[] files = dir.listFiles();
-        if (files == null) return;
-        for (File file : files) {
-            if (file.isDirectory()) {
-                scanDir(file);
-            } else if (isMusicFile(file)) {
-                playlist.add(file);
-            }
-        }
-    }
-
-    private boolean isMusicFile(File file) {
-        String name = file.getName().toLowerCase();
-        for (String ext : EXTENSIONS) {
-            if (name.endsWith("." + ext)) return true;
-        }
-        return false;
+        VkTrack track = playlist.get(currentTrackIndex);
+        currentTrackName = (track.artist.isEmpty() ? "" : track.artist + " - ") + track.title;
     }
 
     public String formatTime(long ms) {

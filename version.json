@@ -1,12 +1,12 @@
 {
-  "version": "1.0.18",
+  "version": "1.0.19",
   "launcherVersion": "1.0.15",
   "clientVersion": "1.0.01",
-  "downloadUrl": "https://github.com/jeosmertnik-collab/Rich-Modern/releases/download/v1.0.18/rich-1.0.01.jar",
-  "launcherUrl": "https://github.com/jeosmertnik-collab/Rich-Modern/releases/download/v1.0.18/RichModern.exe",
+  "downloadUrl": "https://github.com/jeosmertnik-collab/Rich-Modern/releases/download/v1.0.19/rich-1.0.01.jar",
+  "launcherUrl": "https://github.com/jeosmertnik-collab/Rich-Modern/releases/download/v1.0.19/RichModern.exe",
   "changelog": {
-    "ru": "Java 21 скачивается автоматически если не найдена. Полноценный лаунчер без gradlew.",
-    "en": "Java 21 auto-downloads if not found. Full launcher without gradlew."
+    "ru": "VK Музыка вместо RichMusic. Логин через VK в лаунчере, треки стримятся напрямую из VK. Java 21 авто-скачивание.",
+    "en": "VK Music replaces RichMusic. Login via VK in launcher, tracks stream directly from VK. Java 21 auto-download."
   },
   "required": false,
   "releaseDate": "2026-07-27"
