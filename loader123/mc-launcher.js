@@ -74,13 +74,20 @@ function offlineUUID(username) {
 }
 
 function extractZip(zipPath, destDir) {
+    const lower = zipPath.toLowerCase();
+    if (lower.endsWith('.tar.gz') || lower.endsWith('.tgz') || lower.endsWith('.tar')) {
+        execSync(`tar -xf "${zipPath}" -C "${destDir}"`, {
+            encoding: 'utf8', timeout: 120000, stdio: 'ignore'
+        });
+        return;
+    }
     try {
         execSync(`powershell -Command "Expand-Archive -Path '${zipPath}' -DestinationPath '${destDir}' -Force"`, {
-            encoding: 'utf8', timeout: 60000, stdio: 'ignore'
+            encoding: 'utf8', timeout: 120000, stdio: 'ignore'
         });
     } catch (e) {
         execSync(`tar -xf "${zipPath}" -C "${destDir}"`, {
-            encoding: 'utf8', timeout: 60000, stdio: 'ignore'
+            encoding: 'utf8', timeout: 120000, stdio: 'ignore'
         });
     }
 }
@@ -138,6 +145,20 @@ class MinecraftLauncher {
     }
 
     async findJava() {
+        const localJreDir = path.join(this.gameDir, 'jre');
+        const localJavaw = path.join(localJreDir, 'bin', 'javaw.exe');
+
+        if (fileExists(localJavaw)) {
+            try {
+                const out = execSync(`"${localJavaw}" -version`, { encoding: 'utf8', timeout: 10000, stdio: ['ignore', 'pipe', 'pipe'] });
+                const match = out.match(/version\s+"(\d+)/);
+                if (match && parseInt(match[1]) >= JAVA_MIN_VERSION) {
+                    this.log('Found bundled JRE: ' + localJavaw);
+                    return localJavaw;
+                }
+            } catch (e) {}
+        }
+
         this.status('Поиск Java ' + JAVA_MIN_VERSION + '...');
         const candidates = [];
 
@@ -181,7 +202,63 @@ class MinecraftLauncher {
             } catch (e) {}
         }
 
-        throw new Error('Java ' + JAVA_MIN_VERSION + ' not found! Install JDK ' + JAVA_MIN_VERSION + ' and add to PATH or set JAVA_HOME.');
+        this.status('Java 21 не найдена, скачиваю...');
+        try {
+            return await this.downloadJava(localJreDir, localJavaw);
+        } catch (e) {
+            throw new Error('Java 21 не найдена и скачать не удалось. Установите вручную: https://adoptium.net/temurin/releases/?version=21');
+        }
+    }
+
+    async downloadJava(jreDir, javaExe) {
+        const zipPath = path.join(this.gameDir, 'jre-temp.zip');
+        try {
+            const url = 'https://api.adoptium.net/v3/binary/latest/21/ga/windows/x64/jre/hotspot/normal/eclipse?project=jdk';
+            this.status('Скачивание Java 21 (JRE)...');
+            await this.downloadWithRetry(url, zipPath, 'Java 21 JRE');
+
+            this.status('Установка Java 21...');
+            if (fs.existsSync(jreDir)) fs.rmSync(jreDir, { recursive: true, force: true });
+            ensureDir(jreDir);
+            extractZip(zipPath, jreDir);
+
+            const entries = fs.readdirSync(jreDir);
+            for (const entry of entries) {
+                const entryPath = path.join(jreDir, entry);
+                if (fs.statSync(entryPath).isDirectory()) {
+                    const binPath = path.join(entryPath, 'bin');
+                    if (fs.existsSync(binPath)) {
+                        const all = fs.readdirSync(entryPath);
+                        for (const item of all) {
+                            try {
+                                fs.renameSync(path.join(entryPath, item), path.join(jreDir, item));
+                            } catch (e) {
+                                try { fs.cpSync(path.join(entryPath, item), path.join(jreDir, item), { recursive: true }); } catch (e2) {}
+                            }
+                        }
+                        try { fs.rmSync(entryPath, { recursive: true, force: true }); } catch (e) {}
+                        break;
+                    }
+                }
+            }
+
+            try { fs.unlinkSync(zipPath); } catch (e) {}
+
+            if (fileExists(javaExe)) {
+                const out = execSync(`"${javaExe}" -version`, { encoding: 'utf8', timeout: 10000, stdio: ['ignore', 'pipe', 'pipe'] });
+                const match = out.match(/version\s+"(\d+)/);
+                if (match && parseInt(match[1]) >= JAVA_MIN_VERSION) {
+                    this.log('Downloaded JRE OK: ' + javaExe);
+                    return javaExe;
+                }
+            }
+
+            throw new Error('Java 21 JRE extracted but not found at expected path');
+        } catch (e) {
+            try { fs.unlinkSync(zipPath); } catch (err) {}
+            try { if (fs.existsSync(jreDir)) fs.rmSync(jreDir, { recursive: true, force: true }); } catch (err) {}
+            throw e;
+        }
     }
 
     async downloadVersionJson() {
