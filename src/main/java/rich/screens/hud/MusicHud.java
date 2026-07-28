@@ -4,7 +4,6 @@ import net.minecraft.client.gui.DrawContext;
 import rich.client.draggables.AbstractHudElement;
 import rich.modules.impl.render.Hud;
 import rich.modules.impl.render.MusicPlayer;
-import rich.util.animations.Direction;
 import rich.util.render.Render2D;
 import rich.util.render.font.Fonts;
 
@@ -28,7 +27,8 @@ public class MusicHud extends AbstractHudElement {
 
     @Override
     public boolean visible() {
-        return !scaleAnimation.isFinished(Direction.BACKWARDS);
+        MusicPlayer player = MusicPlayer.getInstance();
+        return player != null && player.isState();
     }
 
     @Override
