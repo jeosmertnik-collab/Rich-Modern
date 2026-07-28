@@ -39,8 +39,8 @@ function log(msg) {
 const USERS_FILE = path.join(app.getPath('userData'), '.minecraft', 'users.json');
 const LICENSE_FILE = path.join(app.getPath('userData'), '.minecraft', 'license.json');
 const LICENSE_DB_FILE = path.join(app.getPath('userData'), '.minecraft', 'licenses.json');
-const VERSION_URL = 'https://raw.githubusercontent.com/jeosmertnik-collab/Excel-Client/main/version.json';
-const REMOTE_USERS_URL = 'https://raw.githubusercontent.com/jeosmertnik-collab/Excel-Client/main/users.json';
+const VERSION_URL = 'https://raw.githubusercontent.com/jeosmertnik-collab/Rich-Modern/main/version.json';
+const REMOTE_USERS_URL = 'https://raw.githubusercontent.com/jeosmertnik-collab/Rich-Modern/main/users.json';
 const REMOTE_USERS_API = 'https://api.github.com/repos/jeosmertnik-collab/Rich-Modern/contents/users.json';
 const LICENSE_API_URL = 'http://localhost:3000/api/validate';
 const LOCAL_VERSION_FILE = path.join(app.getPath('userData'), 'version.json');

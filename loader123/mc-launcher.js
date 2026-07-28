@@ -14,8 +14,8 @@ const JAVA_MIN_VERSION = 21;
 const VERSION_MANIFEST_URL = 'https://launchermeta.mojang.com/mc/game/version_manifest_v2.json';
 const FABRIC_META_URL = `https://meta.fabricmc.net/v2/versions/loader/${MC_VERSION}/${FABRIC_LOADER_VERSION}`;
 const MODRINTH_API = 'https://api.modrinth.com/v2';
-const MOD_RELEASE_URL = 'https://api.github.com/repos/jeosmertnik-collab/Rich-Modern/releases/latest';
 const LAUNCHER_VERSION = require('./version.json').launcherVersion || '1.0.0';
+const MOD_DOWNLOAD_URL = require('./version.json').downloadUrl;
 
 const OS_NAME = { win32: 'windows', darwin: 'osx', linux: 'linux' }[process.platform] || 'windows';
 const SEP = process.platform === 'win32' ? ';' : ':';
@@ -596,17 +596,9 @@ class MinecraftLauncher {
             return;
         }
 
-        let release;
-        try {
-            release = await fetchJson(MOD_RELEASE_URL);
-        } catch (e) {
-            throw new Error('Failed to fetch latest release from GitHub: ' + e.message);
-        }
+        if (!MOD_DOWNLOAD_URL) throw new Error('downloadUrl not set in version.json');
 
-        const jarAsset = release.assets && release.assets.find(a => a.name && a.name.endsWith('.jar') && a.name.startsWith('rich'));
-        if (!jarAsset) throw new Error('Excel Client JAR not found in latest release');
-
-        await this.downloadWithRetry(jarAsset.browser_download_url, dest, jarAsset.name);
+        await this.downloadWithRetry(MOD_DOWNLOAD_URL, dest, 'excel.jar');
     }
 
     async launch(nickname, ram) {
