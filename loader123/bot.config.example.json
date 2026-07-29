@@ -1,0 +1,5 @@
+{
+  "token": "YOUR_BOT_TOKEN_HERE",
+  "admins": ["your_telegram_username", 123456789],
+  "dataDir": null
+}

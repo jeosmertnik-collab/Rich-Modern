@@ -15,3 +15,5 @@ RichModern-*.exe
 RichModern/
 build_output/
 Rich/
+loader123/bot.config.json
+*.log

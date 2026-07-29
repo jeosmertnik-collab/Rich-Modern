@@ -1164,6 +1164,49 @@ document.addEventListener('DOMContentLoaded', () => {
     updateSoundUI();
     // --- END SOUND SYSTEM ---
 
+    // --- NOTIFICATION TOAST SYSTEM ---
+    function showToast(icon, title, text, duration) {
+        const container = document.getElementById('toastContainer');
+        if (!container) return;
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.innerHTML = '<div class="toast-icon">' + icon + '</div><div class="toast-content"><div class="toast-title">' + title + '</div><div class="toast-text">' + text + '</div></div>';
+        container.appendChild(toast);
+        setTimeout(() => { toast.style.animation = 'toastOut 0.3s ease forwards'; setTimeout(() => toast.remove(), 300); }, duration || 4000);
+        playNotificationSound();
+    }
+
+    // Check subscription expiry on launch
+    async function checkSubExpiryNotification() {
+        const license = await ipcRenderer.invoke('license:get');
+        if (!license) return;
+        const daysLeft = Math.ceil((license.expiresAt - Date.now()) / 86400000);
+        if (daysLeft <= 3 && daysLeft > 0) {
+            showToast('⏳', 'Подписка истекает', 'Осталось ' + daysLeft + ' ' + (daysLeft === 1 ? 'день' : daysLeft < 5 ? 'дня' : 'дней') + '. Продли на сайте.', 6000);
+        }
+    }
+
+    // Friend online notifications (checked in friends section)
+    let prevFriendStatus = {};
+
+    function checkFriendNotifications(friends) {
+        const now = Date.now();
+        friends.forEach(f => {
+            const url = getPresenceURL() + '/api/presence/' + encodeURIComponent(f.username);
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 2000);
+            fetch(url, { signal: controller.signal }).then(r => r.json()).then(data => {
+                clearTimeout(timer);
+                const wasOnline = prevFriendStatus[f.username];
+                const isOnline = data && data.status === 'online' && (now - data.lastSeen) < 120000;
+                if (isOnline && !wasOnline && f.username !== currentUser) {
+                    showToast('🟢', 'Друг в игре', f.username + ' зашёл' + (data.game ? ' на ' + data.game : '') + '!');
+                }
+                prevFriendStatus[f.username] = isOnline;
+            }).catch(() => { clearTimeout(timer); });
+        });
+    }
+
     // --- KEY GENERATOR (admin) ---
     function showKeyGenPanel() {
         const panel = document.getElementById('keyGenPanel');
@@ -1348,9 +1391,19 @@ document.addEventListener('DOMContentLoaded', () => {
     let friendsRefreshTimer = null;
     function startFriendsRefresh() {
         if (friendsRefreshTimer) clearInterval(friendsRefreshTimer);
-        friendsRefreshTimer = setInterval(() => renderFriendList(), 15000);
+        friendsRefreshTimer = setInterval(() => {
+            const friends = loadFriends();
+            renderFriendList();
+            checkFriendNotifications(friends);
+        }, 15000);
     }
     startFriendsRefresh();
+
+    // Initial notification check
+    setTimeout(() => {
+        const friends = loadFriends();
+        if (friends.length > 0) checkFriendNotifications(friends);
+    }, 5000);
 
     // Update own presence on game launch (hooks into game:launch-status via IPC)
     // The presence update is handled alongside the UI updates in the existing game:launch-status handler
@@ -1362,6 +1415,93 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('beforeunload', () => {
         removeOwnPresence();
     });
+
+    // Check sub expiry notification
+    checkSubExpiryNotification();
+
+    // --- DAILY BONUS SYSTEM ---
+    const dailyBonusCard = document.getElementById('dailyBonusCard');
+    const dailyBonusTitle = document.getElementById('dailyBonusTitle');
+    const dailyBonusDesc = document.getElementById('dailyBonusDesc');
+    const dailyBonusStreak = document.getElementById('dailyBonusStreak');
+    const dailyClaimBtn = document.getElementById('dailyClaimBtn');
+
+    const BONUS_AMOUNTS = [0, 50, 75, 100, 125, 150, 200, 250, 300, 400];
+
+    function getDailyState() {
+        try { return JSON.parse(localStorage.getItem('launcher_daily')) || {}; } catch (e) { return {}; }
+    }
+
+    function saveDailyState(s) {
+        localStorage.setItem('launcher_daily', JSON.stringify(s));
+    }
+
+    function updateDailyBonusUI() {
+        if (!dailyBonusCard || !dailyClaimBtn) return;
+        const state = getDailyState();
+        const now = new Date();
+        const today = now.toDateString();
+
+        const lastDate = state.lastClaimDate || '';
+        const yesterday = new Date(now);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toDateString();
+
+        if (lastDate !== today && lastDate !== yesterdayStr) {
+            state.streak = 0;
+            saveDailyState(state);
+        }
+
+        if (state.lastClaimDate === today) {
+            dailyClaimBtn.disabled = true;
+            dailyClaimBtn.textContent = '📅 ПОЛУЧЕНО';
+            dailyBonusTitle.textContent = 'Ежедневный бонус';
+            const claimed = state.lastAmount || 0;
+            dailyBonusDesc.textContent = 'Сегодня получено ' + claimed + ' монет';
+        } else {
+            dailyClaimBtn.disabled = false;
+            const nextStreak = (state.streak || 0) + 1;
+            const amount = BONUS_AMOUNTS[Math.min(nextStreak, BONUS_AMOUNTS.length - 1)];
+            dailyClaimBtn.textContent = 'ЗАБРАТЬ ' + amount;
+            dailyBonusTitle.textContent = 'Ежедневный бонус';
+            dailyBonusDesc.textContent = 'Забери ' + amount + ' монет за вход!';
+        }
+
+        const streak = state.lastClaimDate === today ? (state.streak || 0) : (state.streak || 0);
+        dailyBonusStreak.textContent = '🔥 Дней подряд: ' + streak;
+
+        if (dailyBonusCard.style.display === 'none' || !dailyBonusCard.style.display) {
+            dailyBonusCard.style.display = 'flex';
+        }
+    }
+
+    if (dailyClaimBtn) {
+        dailyClaimBtn.addEventListener('click', () => {
+            const state = getDailyState();
+            const now = new Date();
+            const today = now.toDateString();
+            if (state.lastClaimDate === today) return;
+
+            const yesterday = new Date(now);
+            yesterday.setDate(yesterday.getDate() - 1);
+
+            if (state.lastClaimDate === yesterday.toDateString()) {
+                state.streak = (state.streak || 0) + 1;
+            } else {
+                state.streak = 1;
+            }
+
+            const amount = BONUS_AMOUNTS[Math.min(state.streak, BONUS_AMOUNTS.length - 1)];
+            state.coins = (state.coins || 0) + amount;
+            state.lastClaimDate = today;
+            state.lastAmount = amount;
+            saveDailyState(state);
+            updateDailyBonusUI();
+            showToast('🎁', 'Бонус получен!', '+' + amount + ' монет (стрик: ' + state.streak + ' дней)', 3000);
+        });
+    }
+
+    updateDailyBonusUI();
 
     loadSubscriptionStatus();
     updateLaunchState();
