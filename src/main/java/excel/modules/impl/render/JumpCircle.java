@@ -16,6 +16,7 @@ import excel.modules.module.ModuleStructure;
 import excel.modules.module.category.ModuleCategory;
 import excel.modules.module.setting.implement.BooleanSetting;
 import excel.modules.module.setting.implement.ColorSetting;
+import excel.modules.module.setting.implement.SelectSetting;
 import excel.modules.module.setting.implement.SliderSettings;
 import excel.util.ColorUtil;
 import excel.util.render.сliemtpipeline.ClientPipelines;
@@ -30,8 +31,10 @@ public class JumpCircle extends ModuleStructure implements IMinecraft {
 
     private final List<Circle> circles = new ArrayList<>();
 
-    final Identifier circleTexture = Identifier.of("excel", "images/circle/circle.png");
     final Identifier glowTexture = Identifier.of("excel", "images/particle/glow.png");
+
+    final SelectSetting textureChoice = new SelectSetting("Текстура", "Выберите текстуру круга")
+            .value("Стандартная", "Круг 1", "Кончалебаль").selected("Стандартная");
 
     final SliderSettings maxSize = new SliderSettings("Max Size", "Максимальный размер круга")
             .setValue(2f)
@@ -54,7 +57,15 @@ public class JumpCircle extends ModuleStructure implements IMinecraft {
 
     public JumpCircle() {
         super("JumpCircle", "Круги при прыжке", ModuleCategory.RENDER);
-        settings(maxSize, speed, glow, color1, color2);
+        settings(textureChoice, maxSize, speed, glow, color1, color2);
+    }
+
+    private Identifier getCircleTexture() {
+        return switch (textureChoice.getSelected()) {
+            case "Круг 1" -> Identifier.of("excel", "images/circle/circle1.png");
+            case "Кончалебаль" -> Identifier.of("excel", "images/circle/konchalebal.png");
+            default -> Identifier.of("excel", "images/circle/circle.png");
+        };
     }
 
     @EventHandler
@@ -143,7 +154,7 @@ public class JumpCircle extends ModuleStructure implements IMinecraft {
 
     private void renderGradientCircle(MatrixStack matrices, VertexConsumerProvider.Immediate immediate,
                                       Vec3d pos, float size, float alpha, float rotationOffset, Vec3d cameraPos) {
-        VertexConsumer buffer = immediate.getBuffer(ClientPipelines.BLOOM_ESP.apply(circleTexture));
+        VertexConsumer buffer = immediate.getBuffer(ClientPipelines.BLOOM_ESP.apply(getCircleTexture()));
 
         matrices.push();
 

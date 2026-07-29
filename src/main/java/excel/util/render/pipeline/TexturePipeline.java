@@ -24,6 +24,8 @@ import org.lwjgl.opengl.GL13;
 import org.lwjgl.system.MemoryUtil;
 
 import java.nio.ByteBuffer;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.OptionalDouble;
 import java.util.OptionalInt;
 
@@ -36,6 +38,8 @@ public class TexturePipeline {
     private static final Vector3f MODEL_OFFSET = new Vector3f(0, 0, 0);
     private static final Matrix4f TEXTURE_MATRIX = new Matrix4f();
     private static final float FIXED_GUI_SCALE = 2.0f;
+
+    private final Map<GpuTexture, Integer> textureGlIdCache = new HashMap<>();
 
     private static final RenderPipeline PIPELINE = RenderPipelines.register(
             RenderPipeline.builder(RenderPipelines.TRANSFORMS_AND_PROJECTION_SNIPPET)
@@ -244,15 +248,20 @@ public class TexturePipeline {
     }
 
     private int getTextureGlId(GpuTexture gpuTexture) {
+        Integer cached = textureGlIdCache.get(gpuTexture);
+        if (cached != null) {
+            return cached;
+        }
+        int id = 0;
         try {
             var field = gpuTexture.getClass().getDeclaredField("id");
             field.setAccessible(true);
-            return field.getInt(gpuTexture);
+            id = field.getInt(gpuTexture);
         } catch (Exception e1) {
             try {
                 var field = gpuTexture.getClass().getDeclaredField("glId");
                 field.setAccessible(true);
-                return field.getInt(gpuTexture);
+                id = field.getInt(gpuTexture);
             } catch (Exception e2) {
                 try {
                     for (var f : gpuTexture.getClass().getDeclaredFields()) {
@@ -260,15 +269,19 @@ public class TexturePipeline {
                             f.setAccessible(true);
                             int value = f.getInt(gpuTexture);
                             if (value > 0) {
-                                return value;
+                                id = value;
+                                break;
                             }
                         }
                     }
-                } catch (Exception e3) {
+                } catch (Exception ignored) {
                 }
             }
         }
-        return 0;
+        if (id != 0) {
+            textureGlIdCache.put(gpuTexture, id);
+        }
+        return id;
     }
 
     public void flush() {

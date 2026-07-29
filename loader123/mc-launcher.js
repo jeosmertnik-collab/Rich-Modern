@@ -139,7 +139,12 @@ class MinecraftLauncher {
     }
 
     progress(msg) {
-        this.event.reply('game:launch-progress', { status: 'downloading', message: msg });
+        this.progressCount = (this.progressCount || 0) + 1;
+        this.event.reply('game:launch-progress', {
+            status: 'downloading',
+            message: msg,
+            taskNumber: this.progressCount
+        });
     }
 
     error(msg) {
@@ -631,7 +636,7 @@ class MinecraftLauncher {
         await this.downloadWithRetry(MOD_DOWNLOAD_URL, dest, 'excel.jar');
     }
 
-    async launch(nickname, ram) {
+    async launch(nickname, ram, server) {
         try {
             const javaPath = await this.findJava();
             const versionJson = await this.downloadVersionJson();
@@ -674,6 +679,12 @@ class MinecraftLauncher {
                 '--userType', 'offline',
                 '--versionType', LAUNCHER_VERSION
             ];
+
+            if (server) {
+                const parts = server.split(':');
+                gameArgs.push('--server', parts[0]);
+                gameArgs.push('--port', parts[1] || '25565');
+            }
 
             this.log('java: ' + javaPath);
             this.log('classpath entries: ' + (mcClasspath.length + fabricClasspath.length));

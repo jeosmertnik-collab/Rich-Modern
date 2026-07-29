@@ -28,6 +28,15 @@ public class Drag {
     private static final Map<HudElement, SweepAnim> sweepAnimations = new HashMap<>();
     private static final Map<HudElement, Boolean> wasHovered = new HashMap<>();
 
+    public static void onDrawCleanup() {
+        if (draggingElement != null) {
+            DragConfig.getInstance().save();
+            draggingElement = null;
+        }
+        sweepAnimations.clear();
+        wasHovered.clear();
+    }
+
     public static void onDraw(DrawContext context, int mouseX, int mouseY, float delta, boolean isChatScreen) {
         HudManager hudManager = getHudManager();
         if (hudManager == null) return;
@@ -35,23 +44,14 @@ public class Drag {
         Hud hud = Hud.getInstance();
         if (hud == null || !hud.isState()) return;
 
-        if (!isChatScreen) {
-            if (draggingElement != null) {
-                DragConfig.getInstance().save();
-                draggingElement = null;
-            }
-            sweepAnimations.clear();
-            wasHovered.clear();
-        }
-
-        if (isChatScreen && draggingElement != null) {
-            draggingElement.setX(mouseX - startX);
-            draggingElement.setY(mouseY - startY);
-        }
-
-        hudManager.render(context, delta, mouseX, mouseY);
-
         if (isChatScreen) {
+            if (draggingElement != null) {
+                draggingElement.setX(mouseX - startX);
+                draggingElement.setY(mouseY - startY);
+            }
+
+            hudManager.render(context, delta, mouseX, mouseY);
+
             for (HudElement element : hudManager.getEnabledElements()) {
                 if (!element.visible()) {
                     sweepAnimations.remove(element);
@@ -152,7 +152,7 @@ public class Drag {
                 mouseY >= y && mouseY <= y + height;
     }
 
-    private static HudManager getHudManager() {
+    public static HudManager getHudManager() {
         if (Initialization.getInstance() == null) return null;
         if (Initialization.getInstance().getManager() == null) return null;
         return Initialization.getInstance().getManager().getHudManager();

@@ -129,25 +129,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     changeLanguage(currentLanguage);
 
-    // Auto-login if remembered
-    const savedCredentials = localStorage.getItem('launcher_credentials');
-    if (savedCredentials) {
-        try {
-            const { user, pass } = JSON.parse(savedCredentials);
-            if (user) {
-                if (loginUser) loginUser.value = user;
-                if (loginPassword) loginPassword.value = pass || '';
-                if (rememberCheck) rememberCheck.checked = true;
-                loginAs(user, pass);
-            }
-        } catch (e) {
-            // Fallback for old format (plain username string)
-            const savedUser = localStorage.getItem('launcher_remember');
-            if (savedUser) {
-                if (loginUser) loginUser.value = savedUser;
-                loginAs(savedUser);
-            }
+    // Auto-login
+    const savedUser = localStorage.getItem('launcher_remember');
+    const accounts = loadAccounts();
+    if (savedUser) {
+        const found = accounts.find(a => a.user === savedUser);
+        if (found) {
+            loginAs(found.user, found.pass || '');
+        } else if (accounts.length > 0) {
+            loginAs(accounts[0].user, accounts[0].pass || '');
         }
+    } else if (accounts.length > 0) {
+        loginAs(accounts[0].user, accounts[0].pass || '');
     }
 
     if (langSelectorBtn && langDropdownMenu) {
@@ -235,13 +228,117 @@ document.addEventListener('DOMContentLoaded', () => {
         if (pswdGroup) { pswdGroup.classList.add('error'); setTimeout(() => pswdGroup.classList.remove('error'), 400); }
     }
 
+    // --- MULTI-ACCOUNT MANAGEMENT ---
+    function loadAccounts() {
+        try {
+            const raw = localStorage.getItem('launcher_accounts');
+            if (raw) return JSON.parse(raw);
+        } catch (e) {}
+        const old = localStorage.getItem('launcher_credentials');
+        if (old) {
+            try {
+                const parsed = JSON.parse(old);
+                return [parsed];
+            } catch (e2) {}
+        }
+        const oldUser = localStorage.getItem('launcher_remember');
+        if (oldUser) return [{ user: oldUser, pass: '' }];
+        return [];
+    }
+
+    function saveAccounts(accounts) {
+        localStorage.setItem('launcher_accounts', JSON.stringify(accounts));
+    }
+
+    function saveCurrentCredentials(username, password) {
+        let accounts = loadAccounts();
+        const idx = accounts.findIndex(a => a.user === username);
+        if (idx >= 0) {
+            if (password) accounts[idx].pass = password;
+        } else {
+            accounts.push({ user: username, pass: password || '' });
+        }
+        saveAccounts(accounts);
+    }
+
+    function removeAccount(username) {
+        let accounts = loadAccounts();
+        accounts = accounts.filter(a => a.user !== username);
+        saveAccounts(accounts);
+        renderAccountList();
+    }
+
+    function switchToAccount(username) {
+        const accounts = loadAccounts();
+        const found = accounts.find(a => a.user === username);
+        if (found) {
+            currentUser = found.user;
+            localStorage.setItem('launcher_remember', found.user);
+            if (profileLoginEl) profileLoginEl.textContent = currentUser || '';
+            if (profileUidEl) profileUidEl.textContent = currentUser || '-';
+            renderAccountList();
+            populateAccountSelect();
+        }
+    }
+
+    function populateAccountSelect() {
+        const select = document.getElementById('launchAccountSelect');
+        if (!select) return;
+        const accounts = loadAccounts();
+        const current = select.value || currentUser;
+        select.innerHTML = '';
+        accounts.forEach(acc => {
+            const opt = document.createElement('option');
+            opt.value = acc.user;
+            opt.textContent = acc.user;
+            if (acc.user === current) opt.selected = true;
+            select.appendChild(opt);
+        });
+        select.onchange = () => {
+            if (select.value) switchToAccount(select.value);
+        };
+    }
+
+    function renderAccountList() {
+        const container = document.getElementById('accountList');
+        if (!container) return;
+        const accounts = loadAccounts();
+        container.innerHTML = '';
+        if (accounts.length === 0) {
+            container.innerHTML = '<div style="font-size:13px;color:var(--text-muted);padding:12px 0;" data-i18n="accounts_empty">Нет сохранённых аккаунтов</div>';
+            return;
+        }
+        accounts.forEach(acc => {
+            const row = document.createElement('div');
+            row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:10px;background:rgba(255,255,255,0.02);border:1px solid var(--border-color);margin-bottom:6px;transition:all 0.2s;cursor:pointer;';
+            if (acc.user === currentUser) {
+                row.style.borderColor = 'rgba(100,150,255,0.3)';
+                row.style.background = 'rgba(100,150,255,0.06)';
+            }
+            row.innerHTML = `
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <div style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;">${acc.user.charAt(0).toUpperCase()}</div>
+                    <div>
+                        <div style="font-weight:600;font-size:13px;">${acc.user}</div>
+                        <div style="font-size:11px;color:var(--text-muted);">${acc.pass ? '••••••••' : 'без пароля'}</div>
+                    </div>
+                </div>
+                <div style="display:flex;gap:6px;">
+                    ${acc.user !== currentUser ? `<button class="acc-switch-btn" style="background:rgba(100,150,255,0.1);border:none;color:#6496FF;padding:6px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;">Войти</button>` : '<span style="font-size:11px;color:#22c55e;font-weight:600;">Активен</span>'}
+                    <button class="acc-remove-btn" style="background:rgba(255,74,74,0.1);border:none;color:#ff4a4a;padding:6px 10px;border-radius:6px;font-size:11px;cursor:pointer;">✕</button>
+                </div>
+            `;
+            const switchBtn = row.querySelector('.acc-switch-btn');
+            if (switchBtn) switchBtn.addEventListener('click', (e) => { e.stopPropagation(); switchToAccount(acc.user); });
+            const removeBtn = row.querySelector('.acc-remove-btn');
+            if (removeBtn) removeBtn.addEventListener('click', (e) => { e.stopPropagation(); removeAccount(acc.user); });
+            container.appendChild(row);
+        });
+    }
+
     function loginAs(username, password) {
         currentUser = username;
-        if (rememberCheck && rememberCheck.checked && password) {
-            localStorage.setItem('launcher_credentials', JSON.stringify({ user: username, pass: password }));
-        } else {
-            localStorage.removeItem('launcher_credentials');
-        }
+        saveCurrentCredentials(username, password);
         localStorage.setItem('launcher_remember', username);
         if (loginGroup) loginGroup.classList.remove('error');
         if (pswdGroup) pswdGroup.classList.remove('error');
@@ -265,6 +362,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (navItems.length > 0) navItems[0].classList.add('active');
         if (profileLoginEl) profileLoginEl.textContent = currentUser || '';
         if (profileUidEl) profileUidEl.textContent = currentUser || '-';
+        renderAccountList();
+        populateAccountSelect();
     }
 
     if (pwdToggle) {
@@ -284,7 +383,6 @@ document.addEventListener('DOMContentLoaded', () => {
         logoutBtn.addEventListener('click', () => {
             currentUser = null;
             localStorage.removeItem('launcher_remember');
-            localStorage.removeItem('launcher_credentials');
             if (loginUser) loginUser.value = '';
             if (loginPassword) loginPassword.value = '';
             if (rememberCheck) rememberCheck.checked = false;
@@ -401,8 +499,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            const nickname = currentUser || 'Player';
+            const accountSelect = document.getElementById('launchAccountSelect');
+            const nickname = (accountSelect && accountSelect.value) || currentUser || 'Player';
             const ram = ramSlider ? ramSlider.value : '2048';
+            const quickJoinServer = document.getElementById('quickJoinServer');
+            const server = quickJoinServer ? quickJoinServer.value : '';
 
             launchGameBtn.disabled = true;
             launchGameBtn.style.opacity = '0.5';
@@ -414,7 +515,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 selectMinecraftBtn.onclick = null;
             }
 
-            ipcRenderer.send('game:launch', { nickname, ram });
+            ipcRenderer.send('game:launch', { nickname, ram, server: server || undefined });
         });
     }
 
@@ -513,87 +614,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ramSlider.addEventListener('input', (e) => { if (ramValue) ramValue.textContent = e.target.value; });
     }
 
-    // --- COSMETICS ---
-    const COSMETIC_CHARS = [
-        { id: 'default', name: 'Обычный', icon: '🧑' },
-        { id: 'steve', name: 'Steve', icon: '👨' },
-        { id: 'alex', name: 'Alex', icon: '👩' },
-        { id: 'noor', name: 'Noor', icon: '🧕' },
-        { id: 'sunny', name: 'Sunny', icon: '👦' },
-        { id: 'ari', name: 'Ari', icon: '👧' },
-        { id: 'zuri', name: 'Zuri', icon: '🧒' },
-        { id: 'efe', name: 'Efe', icon: '👶' },
-        { id: 'kay', name: 'Kay', icon: '🧑‍🦰' },
-        { id: 'makena', name: 'Makena', icon: '👱' },
-    ];
-    const COSMETIC_WINGS = [
-        { id: 'none', name: 'Выкл', icon: '❌' },
-        { id: 'ANGELIC', name: 'Ангельские', icon: '🪽' },
-        { id: 'DRAGON', name: 'Драконьи', icon: '🐉' },
-        { id: 'BUTTERFLY', name: 'Бабочка', icon: '🦋' },
-        { id: 'PHOENIX', name: 'Феникс', icon: '🔥' },
-        { id: 'CRYSTAL', name: 'Кристальные', icon: '💎' },
-        { id: 'MECHANICAL', name: 'Механические', icon: '⚙️' },
-        { id: 'FAIRY', name: 'Феи', icon: '✨' },
-        { id: 'DEMON', name: 'Демонические', icon: '😈' },
-    ];
-    const COSMETIC_MASKS = [
-        { id: 'none', name: 'Выкл', icon: '❌' },
-        { id: 'clown', name: 'Клоун', icon: '🤡' },
-        { id: 'ninja', name: 'Ниндзя', icon: '🥷' },
-        { id: 'skull', name: 'Череп', icon: '💀' },
-        { id: 'cat', name: 'Кошка', icon: '🐱' },
-        { id: 'fox', name: 'Лиса', icon: '🦊' },
-        { id: 'gas', name: 'Противогаз', icon: '🧪' },
-        { id: 'bandit', name: 'Бандит', icon: '😎' },
-        { id: 'oni', name: 'Они', icon: '👹' },
-    ];
-
-    let cosmeticsData = { character: 'default', wing: 'none', mask: 'none' };
-
-    async function loadCosmetics() {
-        try {
-            const data = await ipcRenderer.invoke('cosmetics:load');
-            if (data) cosmeticsData = data;
-        } catch (e) {
-            console.error('Failed to load cosmetics:', e);
-        }
-    }
-
-    async function saveCosmetics() {
-        try {
-            await ipcRenderer.invoke('cosmetics:save', cosmeticsData);
-        } catch (e) {
-            console.error('Failed to save cosmetics:', e);
-        }
-    }
-
-    function buildCosmeticGrid(containerId, items, category, currentId) {
-        const grid = document.getElementById(containerId);
-        if (!grid) return;
-        grid.innerHTML = '';
-        items.forEach(item => {
-            const card = document.createElement('div');
-            card.className = 'cosmetic-card' + (item.id === currentId ? ' selected' : '');
-            card.innerHTML = `<div class="preview">${item.icon}</div><div class="name">${item.name}</div>`;
-            card.addEventListener('click', () => {
-                grid.querySelectorAll('.cosmetic-card').forEach(c => c.classList.remove('selected'));
-                card.classList.add('selected');
-                cosmeticsData[category] = item.id;
-                saveCosmetics();
-            });
-            grid.appendChild(card);
-        });
-    }
-
-    async function initCosmetics() {
-        await loadCosmetics();
-        buildCosmeticGrid('charGrid', COSMETIC_CHARS, 'character', cosmeticsData.character);
-        buildCosmeticGrid('wingGrid', COSMETIC_WINGS, 'wing', cosmeticsData.wing);
-        buildCosmeticGrid('maskGrid', COSMETIC_MASKS, 'mask', cosmeticsData.mask);
-    }
-
-    initCosmetics();
+    // --- COSMETICS (removed) ---
 
     // --- ONLINE UPDATE SYSTEM ---
     const updateBanner = document.getElementById('updateBanner');
@@ -803,8 +824,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (activateKeyBtn) {
         activateKeyBtn.addEventListener('click', async () => {
-            const key = (licenseKeyInput ? licenseKeyInput.value.trim() : '').toUpperCase();
-            if (!key || key.length < 28) {
+            const key = (licenseKeyInput ? licenseKeyInput.value.trim().toUpperCase() : '');
+            if (!key || key.length < 14 || !key.startsWith('RM-')) {
                 if (licenseError) {
                     licenseError.textContent = currentLanguage === 'ru' ? 'Неверный формат ключа' : 'Invalid key format';
                     licenseError.style.display = 'block';
@@ -1001,6 +1022,117 @@ document.addEventListener('DOMContentLoaded', () => {
         rpSearchBtn.addEventListener('click', () => renderResourcePacks(rpSearch.value));
         rpSearch.addEventListener('keyup', (e) => { if (e.key === 'Enter') renderResourcePacks(rpSearch.value); });
     }
+
+    // --- QUICK JOIN ---
+    document.querySelectorAll('.quick-join-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const server = btn.getAttribute('data-server');
+            const serverInput = document.getElementById('quickJoinServer');
+            if (serverInput) serverInput.value = server;
+            document.querySelectorAll('.quick-join-btn').forEach(b => {
+                b.style.borderColor = 'var(--border-color)';
+                b.style.background = '';
+            });
+            btn.style.borderColor = 'rgba(255,255,255,0.3)';
+            btn.style.background = 'rgba(255,255,255,0.04)';
+            const launchBtn = document.getElementById('launchGameBtn');
+            if (launchBtn) {
+                const span = launchBtn.querySelector('span');
+                if (span) span.textContent = (currentLanguage === 'ru' ? 'ЗАПУСТИТЬ НА ' : 'LAUNCH ON ') + server;
+            }
+        });
+    });
+
+    // --- THEME SYSTEM ---
+    let currentTheme = localStorage.getItem('launcher_theme') || 'dark';
+    const themeAccentInput = document.getElementById('themeAccent');
+    const themePresets = document.querySelectorAll('.theme-preset');
+
+    function applyTheme(accent) {
+        if (!accent) return;
+        document.documentElement.style.setProperty('--accent-white', accent);
+        document.documentElement.style.setProperty('--accent-white-hover', accent + 'cc');
+        localStorage.setItem('launcher_accent', accent);
+    }
+
+    const savedAccent = localStorage.getItem('launcher_accent');
+    if (savedAccent) applyTheme(savedAccent);
+
+    if (themeAccentInput) {
+        themeAccentInput.addEventListener('input', (e) => applyTheme(e.target.value));
+    }
+
+    themePresets.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const color = btn.getAttribute('data-color');
+            if (color) {
+                applyTheme(color);
+                if (themeAccentInput) themeAccentInput.value = color;
+            }
+        });
+    });
+
+    // Reset accent to default
+    const themeResetBtn = document.getElementById('themeResetBtn');
+    if (themeResetBtn) {
+        themeResetBtn.addEventListener('click', () => {
+            applyTheme('#ffffff');
+            if (themeAccentInput) themeAccentInput.value = '#ffffff';
+            document.querySelectorAll('.theme-preset').forEach(b => b.classList.remove('active'));
+        });
+    }
+
+    // --- KEY GENERATOR (admin) ---
+    function showKeyGenPanel() {
+        const panel = document.getElementById('keyGenPanel');
+        if (panel) panel.style.display = '';
+    }
+
+    // Click subscription title 5 times to show generator
+    let genClicks = 0;
+    const subTitle = document.querySelector('#subStatusCard .card-title');
+    if (subTitle) {
+        subTitle.addEventListener('dblclick', () => {
+            genClicks++;
+            if (genClicks >= 2) {
+                showKeyGenPanel();
+                genClicks = 0;
+            }
+        });
+    }
+
+    const genKeyBtn = document.getElementById('genKeyBtn');
+    const genKeyOutput = document.getElementById('genKeyOutput');
+    const genKeyDisplay = document.getElementById('genKeyDisplay');
+
+    if (genKeyBtn) {
+        genKeyBtn.addEventListener('click', async () => {
+            const plan = document.getElementById('genPlanSelect')?.value || 'beta';
+            const days = document.getElementById('genDaysSelect')?.value || '30';
+            genKeyBtn.disabled = true;
+            genKeyBtn.textContent = 'ГЕНЕРАЦИЯ...';
+            const result = await ipcRenderer.invoke('license:generate', { plan, days });
+            genKeyBtn.disabled = false;
+            genKeyBtn.textContent = 'СГЕНЕРИРОВАТЬ';
+            if (result && result.key) {
+                if (genKeyDisplay) genKeyDisplay.textContent = result.key;
+                if (genKeyOutput) genKeyOutput.style.display = '';
+            }
+        });
+    }
+
+    window.copyGeneratedKey = function() {
+        const el = document.getElementById('genKeyDisplay');
+        if (!el) return;
+        const key = el.textContent;
+        if (key && key !== 'RM-XXXX-XXXX-XXXX') {
+            navigator.clipboard.writeText(key).then(() => {
+                el.style.color = '#22c55e';
+                el.textContent = '✓ Скопировано!';
+                setTimeout(() => { el.style.color = '#a78bfa'; el.textContent = key; }, 1500);
+            });
+        }
+    };
 
     loadSubscriptionStatus();
     updateLaunchState();

@@ -13,7 +13,6 @@ import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector4d;
 import org.joml.Vector4f;
-import org.lwjgl.opengl.GL11;
 import excel.IMinecraft;
 import excel.modules.impl.combat.aura.Angle;
 import excel.modules.impl.combat.aura.MathAngle;
@@ -29,8 +28,7 @@ public class Projection implements IMinecraft {
         if (camera == null) return Vec3d.ZERO;
 
         int displayHeight = mc.getWindow().getHeight();
-        int[] viewport = new int[4];
-        GL11.glGetIntegerv(GL11.GL_VIEWPORT, viewport);
+        int[] viewport = {0, 0, mc.getWindow().getFramebufferWidth(), mc.getWindow().getFramebufferHeight()};
         Vector3f target = new Vector3f();
 
         double deltaX = pos.x - camera.getCameraPos().x;
@@ -153,8 +151,7 @@ public class Projection implements IMinecraft {
         }
 
         int displayHeight = mc.getWindow().getHeight();
-        int[] viewport = new int[4];
-        GL11.glGetIntegerv(GL11.GL_VIEWPORT, viewport);
+        int[] viewport = {0, 0, mc.getWindow().getFramebufferWidth(), mc.getWindow().getFramebufferHeight()};
         double scale = mc.getWindow().getScaleFactor();
 
         double screenW = mc.getWindow().getScaledWidth();

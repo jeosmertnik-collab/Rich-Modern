@@ -28,6 +28,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import excel.Initialization;
 import excel.client.draggables.Drag;
+import excel.client.draggables.HudManager;
 import excel.events.api.EventManager;
 import excel.events.impl.FovEvent;
 import excel.events.impl.WorldRenderEvent;
@@ -183,13 +184,27 @@ public abstract class GameRendererMixin {
 
         DrawContext context = new DrawContext(client, guiState, mouseX, mouseY);
 
+        Screen screen = client.currentScreen;
         Hud hud = Hud.getInstance();
-        if (hud != null && hud.isState()) {
-            boolean isChatScreen = client.currentScreen instanceof ChatScreen;
-            Drag.onDraw(context, mouseX, mouseY, tickDelta, isChatScreen);
+        boolean hudEnabled = hud != null && hud.isState();
+
+        if (screen instanceof ChatScreen) {
+            if (hudEnabled) {
+                Drag.onDraw(context, mouseX, mouseY, tickDelta, true);
+            }
+        } else if (screen == null) {
+            if (hudEnabled) {
+                Drag.onDrawCleanup();
+            }
         }
 
-        if (client.currentScreen instanceof ClickGui clickGui) {
+        if (screen instanceof ClickGui clickGui) {
+            if (hudEnabled) {
+                HudManager hudManager = Drag.getHudManager();
+                if (hudManager != null) {
+                    hudManager.render(context, tickDelta, mouseX, mouseY);
+                }
+            }
             clickGui.renderOverlay(context, tickCounter);
             return;
         }

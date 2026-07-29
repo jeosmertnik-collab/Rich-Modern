@@ -44,67 +44,44 @@ const LICENSE_API_URL = 'http://localhost:3000/api/validate';
 const LOCAL_VERSION_FILE = path.join(app.getPath('userData'), 'version.json');
 const LICENSE_SECRET = 'rich-modern-secret-2026';
 
-function generateLicenseKey(plan, days, email, nick) {
+function generateRandomSegment() {
     const crypto = require('crypto');
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    function randomSegment() {
-        const buf = crypto.randomBytes(3);
-        let s = '';
-        for (let i = 0; i < 4; i++) {
-            s += chars[buf[i] % chars.length];
-        }
-        return s;
+    const buf = crypto.randomBytes(4);
+    let s = '';
+    for (let i = 0; i < 4; i++) {
+        s += chars[buf[i] % chars.length];
     }
-    function hmacSegment(prefix) {
-        const hmac = crypto.createHmac('sha256', LICENSE_SECRET).update(prefix).digest();
-        let s = '';
-        for (let i = 0; i < 6; i++) {
-            s += chars[hmac[i] % chars.length];
-        }
-        return s;
-    }
-    const planCode = { stable: 'ST', beta: 'BT', alpha: 'AL' }[plan];
-    const daysCode = days.toString(16).toUpperCase().padStart(2, '0');
-    const prefix = `RM-${planCode}${daysCode}-${randomSegment()}-${randomSegment()}`;
-    return `${prefix}-${hmacSegment(prefix)}`;
+    return s;
+}
+
+function generateLicenseKey(plan, days, email, nick) {
+    const crypto = require('crypto');
+    const key = `RM-${generateRandomSegment()}-${generateRandomSegment()}-${generateRandomSegment()}`;
+
+    const db = loadLicenseDB();
+    if (db[key]) return generateLicenseKey(plan, days, email, nick);
+
+    const expiresAt = days === 9999 ? Date.now() + 3650 * 86400000 : Date.now() + days * 86400000;
+    db[key] = { plan, days, createdAt: Date.now(), expiresAt, hwid: null, email: email || '' };
+    saveLicenseDB(db);
+
+    return { key, plan, expiresAt };
 }
 
 function validateKeyLocal(key, hwid) {
-    if (!key || key.length < 22) return { valid: false, error: 'Invalid key format' };
+    if (!key || key.length < 18) return { valid: false, error: 'Invalid key format' };
 
     const parts = key.split('-');
-    if (parts.length !== 5 || parts[0] !== 'RM') return { valid: false, error: 'Invalid key format' };
-
-    const crypto = require('crypto');
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    const prefix = parts.slice(0, 4).join('-');
-    const sig = parts[4];
-    const expectedHmac = crypto.createHmac('sha256', LICENSE_SECRET).update(prefix).digest();
-    let expectedSig = '';
-    for (let i = 0; i < 6; i++) {
-        expectedSig += chars[expectedHmac[i] % chars.length];
+    if (parts.length !== 4 || parts[0] !== 'RM') return { valid: false, error: 'Invalid key format' };
+    for (let i = 1; i < 4; i++) {
+        if (parts[i].length !== 4) return { valid: false, error: 'Invalid key format' };
     }
-    if (sig !== expectedSig) {
-        return { valid: false, error: 'Key signature invalid' };
-    }
-
-    const planMap = { ST: 'stable', BT: 'beta', AL: 'alpha' };
-    const planPart = parts[1].substring(0, 2);
-    const daysHex = parts[1].substring(2, 4);
-    const plan = planMap[planPart];
-    if (!plan) return { valid: false, error: 'Unknown plan' };
-
-    const days = parseInt(daysHex, 16);
-    if (isNaN(days) || days <= 0) return { valid: false, error: 'Invalid duration' };
 
     const db = loadLicenseDB();
-    let entry = db[key];
+    const entry = db[key];
 
-    if (!entry) {
-        entry = { plan, days, createdAt: Date.now(), expiresAt: Date.now() + days * 86400000, hwid: null };
-        db[key] = entry;
-        saveLicenseDB(db);
-    }
+    if (!entry) return { valid: false, error: 'Key not found' };
 
     if (entry.hwid && entry.hwid !== hwid) {
         return { valid: false, error: 'Key bound to another device' };
@@ -250,7 +227,7 @@ function startLicenseServer() {
 '<div id="successContent" style="display:none;">' +
 '<div class="success-content"><div class="success-icon">✓</div><h2>Оплата прошла!</h2>' +
 '<p class="subtitle">Твой лицензионный ключ</p>' +
-'<div class="license-key" id="licenseKeyDisplay" onclick="copyLicense()">RM-XXXX-XXXX-XXXX-XXXX</div>' +
+'<div class="license-key" id="licenseKeyDisplay" onclick="copyLicense()">RM-XXXX-XXXX-XXXX</div>' +
 '<p class="copy-hint">Нажми на ключ чтобы скопировать</p>' +
 '<p style="margin-top:20px;font-size:13px;color:#71717a">Вставь этот ключ в лаунчер: <strong>Настройки → Подписка → Активировать</strong></p>' +
 '</div></div></div></div>' +
@@ -317,9 +294,9 @@ function startLicenseServer() {
                 req.on('end', () => {
                     try {
                         const { plan, days, email } = JSON.parse(body);
-                        const key = generateLicenseKey(plan, parseInt(days), email || '');
+                        const result = generateLicenseKey(plan, parseInt(days), email || '');
                         res.writeHead(200, { 'Content-Type': 'application/json' });
-                        res.end(JSON.stringify({ key }));
+                        res.end(JSON.stringify({ key: result.key }));
                     } catch (e) {
                         res.writeHead(400);
                         res.end(JSON.stringify({ error: 'Invalid request' }));
@@ -693,39 +670,6 @@ ipcMain.handle('update:getLocalVersion', () => {
 
 // === SUBSCRIPTION HANDLERS ===
 
-const COSMETICS_FILE = path.join(app.getPath('userData'), '.minecraft', 'Excel', 'configs', 'cosmetics.json');
-
-function loadCosmetics() {
-    try {
-        if (fs.existsSync(COSMETICS_FILE)) {
-            return JSON.parse(fs.readFileSync(COSMETICS_FILE, 'utf-8'));
-        }
-    } catch (e) {
-        console.error('Failed to load cosmetics:', e.message);
-    }
-    return { character: 'default', wing: 'none', mask: 'none' };
-}
-
-function saveCosmetics(data) {
-    try {
-        const dir = path.dirname(COSMETICS_FILE);
-        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-        fs.writeFileSync(COSMETICS_FILE, JSON.stringify(data, null, 2), 'utf-8');
-        return true;
-    } catch (e) {
-        console.error('Failed to save cosmetics:', e.message);
-        return false;
-    }
-}
-
-ipcMain.handle('cosmetics:load', () => {
-    return loadCosmetics();
-});
-
-ipcMain.handle('cosmetics:save', (event, data) => {
-    return saveCosmetics(data);
-});
-
 ipcMain.handle('license:activate', async (event, { key }) => {
     const hwid = getHardwareId();
     const result = validateKeyLocal(key, hwid);
@@ -743,6 +687,11 @@ ipcMain.handle('license:get', () => {
 ipcMain.handle('license:remove', () => {
     try { fs.unlinkSync(LICENSE_FILE); } catch (e) {}
     return true;
+});
+
+ipcMain.handle('license:generate', async (event, { plan, days }) => {
+    const result = generateLicenseKey(plan, parseInt(days));
+    return result;
 });
 
 ipcMain.handle('resourcepacks:install', async (event, { url, name }) => {
@@ -779,14 +728,14 @@ ipcMain.handle('resourcepacks:remove', async (event, { name }) => {
     }
 });
 
-ipcMain.on('game:launch', async (event, { nickname, ram }) => {
-    log('=== LAUNCH START (Direct) ===');
+ipcMain.on('game:launch', async (event, { nickname, ram, server }) => {
+    log('=== LAUNCH START (Direct) ===' + (server ? ' server=' + server : ''));
 
     killExistingGameProcesses(log);
 
     const gameDir = path.join(app.getPath('userData'), '.minecraft');
     const launcher = new MinecraftLauncher(gameDir, event, log);
-    await launcher.launch(nickname, ram);
+    await launcher.launch(nickname, ram, server);
     app.exit(0);
 });
 

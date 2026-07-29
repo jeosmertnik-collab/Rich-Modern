@@ -16,14 +16,14 @@ public class Loading {
 
     private static final String[] LOADING_TEXTS = {
             "Запуск паста клиент",
-            "Панчан ответь",
-            "Панчан где связь",
-            "Панчан молодец"
+            "Excel ответь",
+            "Excel где связь",
+            "Excel молодец"
     };
 
-    private static final long TEXT_DISPLAY_DURATION = 2200L;
-    private static final long LAST_TEXT_DISPLAY_DURATION = 2500L;
-    private static final long TEXT_TRANSITION_DURATION = 400L;
+    private static final long TEXT_DISPLAY_DURATION = 1200L;
+    private static final long LAST_TEXT_DISPLAY_DURATION = 1200L;
+    private static final long TEXT_TRANSITION_DURATION = 300L;
     private static final float ZOOM_LEVEL = 1.08f;
 
     private float animatedProgress = 0f;
@@ -369,10 +369,10 @@ public class Loading {
         int alpha = (int)(opacity * 50);
         float fontSize = 6f;
         
-        String version = "PastaRicha · 1.21.11";
+        String version = "Excel Client · 1.21.11";
         Fonts.BOLD.draw(version, 15, y, fontSize, withAlpha(0xFFFFFFFF, alpha));
         
-        String copyright = "Panhan Client";
+        String copyright = "Excel Client";
         float copyrightW = Fonts.BOLD.getWidth(copyright, fontSize);
         Fonts.BOLD.draw(copyright, width - copyrightW - 15, y, fontSize, withAlpha(0xFFFFFFFF, alpha));
 
@@ -389,6 +389,12 @@ public class Loading {
     }
     public void markComplete() {
         resourcesLoaded = true;
+        if (!allTextsShown) {
+            allTextsShown = true;
+            lastTextShownTime = Util.getMeasuringTimeMs();
+            currentTextIndex = LOADING_TEXTS.length - 1;
+            isTransitioning = false;
+        }
     }
 
     public boolean isContentFadedOut() {
