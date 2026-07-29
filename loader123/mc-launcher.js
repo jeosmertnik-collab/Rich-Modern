@@ -646,7 +646,7 @@ class MinecraftLauncher {
             this.status('Запуск игры...');
 
             const clientJar = path.join(this.versionsDir, MC_VERSION, MC_VERSION + '.jar');
-            const allClasspath = [clientJar, ...fabricClasspath].join(SEP);
+            const allClasspath = [clientJar, ...mcClasspath, ...fabricClasspath].join(SEP);
 
             const uuid = offlineUUID(nickname);
             const assetsIndex = versionJson.assetIndex ? versionJson.assetIndex.id : 'legacy';
