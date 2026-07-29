@@ -16,12 +16,15 @@ import net.minecraft.util.math.MathHelper;
 import excel.Initialization;
 import excel.screens.account.AccountEntry;
 import excel.screens.account.AccountRenderer;
+import excel.screens.account.SkinManager;
+import excel.util.config.impl.background.BackgroundConfig;
 import excel.util.config.impl.account.AccountConfig;
 import excel.util.render.Render2D;
 import excel.util.render.font.Fonts;
 import excel.util.session.SessionChanger;
 
 import java.awt.*;
+import java.io.File;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -31,7 +34,6 @@ import java.util.Random;
 public class MainMenuScreen extends Screen {
 
     private static final Identifier BACKGROUND_TEXTURE = Identifier.of("excel", "textures/menu/backmenu.png");
-    private static final Identifier LOGO_TEXTURE = Identifier.of("excel", "images/elements/logo.png");
     private static final float FIXED_GUI_SCALE = 2.0f;
 
     private static final long ENTRANCE_LOGO_DELAY = 0;
@@ -210,15 +212,45 @@ public class MainMenuScreen extends Screen {
     }
 
     private void drawBackground(int screenWidth, int screenHeight) {
-        initParticles(screenWidth, screenHeight);
-
         int bgAlpha = (int) (screenFadeIn * 255);
-        Render2D.rect(0, 0, screenWidth, screenHeight, withAlpha(0x0C0F12, bgAlpha));
+        BackgroundConfig bg = BackgroundConfig.getInstance();
 
-        for (MenuParticle p : particles) {
-            if (!p.isDead && p.alpha > 0.01f) {
-                int alpha = (int) (p.alpha * screenFadeIn * 255);
-                Render2D.rect(p.x, p.y, p.size, p.size, withAlpha(0xFFFFFF, alpha));
+        switch (bg.getBackgroundType()) {
+            case "IMAGE": {
+                String img = bg.getBackgroundImage();
+                if (img != null && !img.isEmpty()) {
+                    try {
+                        Identifier texId = Identifier.of(img);
+                        Render2D.texture(texId, 0, 0, screenWidth, screenHeight, 0, 0, 1, 1, withAlpha(0xFFFFFF, bgAlpha), 0, 0);
+                    } catch (Exception e) {
+                        Render2D.rect(0, 0, screenWidth, screenHeight, withAlpha(bg.getSolidColor(), bgAlpha));
+                    }
+                } else {
+                    Render2D.rect(0, 0, screenWidth, screenHeight, withAlpha(bg.getSolidColor(), bgAlpha));
+                }
+                break;
+            }
+            case "GRADIENT":
+                Render2D.gradientRect(0, 0, screenWidth, screenHeight,
+                        new int[]{
+                                withAlpha(bg.getGradientTop(), bgAlpha),
+                                withAlpha(bg.getGradientTop(), bgAlpha),
+                                withAlpha(bg.getGradientBottom(), bgAlpha),
+                                withAlpha(bg.getGradientBottom(), bgAlpha)
+                        }, 0);
+                break;
+            default:
+                Render2D.rect(0, 0, screenWidth, screenHeight, withAlpha(bg.getSolidColor(), bgAlpha));
+                break;
+        }
+
+        if (bg.isParticlesEnabled()) {
+            initParticles(screenWidth, screenHeight);
+            for (MenuParticle p : particles) {
+                if (!p.isDead && p.alpha > 0.01f) {
+                    int alpha = (int) (p.alpha * screenFadeIn * 255);
+                    Render2D.rect(p.x, p.y, p.size, p.size, withAlpha(0xFFFFFF, alpha));
+                }
             }
         }
     }
@@ -240,17 +272,22 @@ public class MainMenuScreen extends Screen {
 
         float logoAlpha = easeOutBack(getEntranceProgress(currentTime, ENTRANCE_LOGO_DELAY)) * screenFadeIn;
         float logoScale = MathHelper.lerp(easeOutBack(getEntranceProgress(currentTime, ENTRANCE_LOGO_DELAY)), 0.3f, 1f);
-        float logoSize = 35 * logoScale;
+        float logoSize = 44 * logoScale;
         float logoY = centerY - 110;
 
         if (logoAlpha > 0.01f) {
             int a = (int) (logoAlpha * 255);
-            int[] logoColors = {withAlpha(0xFFFFFF, a), withAlpha(0xFFFFFF, a), withAlpha(0xFFFFFF, a), withAlpha(0xFFFFFF, a)};
-            float[] logoRadii = {0, 0, 0, 0};
+            String logoText = "Excel";
 
-            Initialization.getInstance().getManager().getRenderCore().getTexturePipeline()
-                    .drawTexture(LOGO_TEXTURE, centerX - logoSize / 2f, logoY, logoSize, logoSize,
-                            0, 0, 1, 1, logoColors, logoRadii, 1f);
+            float breathe = (float) Math.sin(currentTime * 0.0012f) * 1.5f;
+            float textW = Fonts.BOLD.getWidth(logoText, logoSize);
+            float textX = centerX - textW / 2f;
+            float textY = logoY + breathe;
+
+            int glowA = (int)(a * 0.3f);
+            Fonts.BOLD.draw(logoText, textX, textY + 2, logoSize, withAlpha(0x6366F1, glowA));
+            Fonts.BOLD.draw(logoText, textX + 1, textY + 1, logoSize, withAlpha(0x000000, a / 4));
+            Fonts.BOLD.draw(logoText, textX, textY, logoSize, withAlpha(0x6366F1, a));
         }
 
         float greetingAlpha = easeOutCubic(getEntranceProgress(currentTime, ENTRANCE_GREETING_DELAY)) * screenFadeIn;
@@ -325,7 +362,7 @@ public class MainMenuScreen extends Screen {
         float totalBottomWidth = bottomButtonWidth * 3 + bottomSpacing * 2;
         float bottomStartX = centerX - totalBottomWidth / 2f;
 
-        String[] smallLabels = {"Options", "Proxies", "Exit"};
+        String[] smallLabels = {"Options", "Background", "Exit"};
         for (int i = 0; i < 3; i++) {
             float btnAlpha = easeOutCubic(getEntranceProgress(currentTime, ENTRANCE_BUTTON_START_DELAY + (i + 3) * ENTRANCE_BUTTON_STAGGER)) * screenFadeIn;
             float btnSlide = (1f - easeOutCubic(getEntranceProgress(currentTime, ENTRANCE_BUTTON_START_DELAY + (i + 3) * ENTRANCE_BUTTON_STAGGER))) * 20f;
@@ -333,6 +370,64 @@ public class MainMenuScreen extends Screen {
                 float x = bottomStartX + i * (bottomButtonWidth + bottomSpacing);
                 drawSmallButton(x, bottomY + btnSlide, bottomButtonWidth, bottomButtonHeight,
                         smallLabels[i], i + 3, mouseX, mouseY, btnAlpha);
+            }
+        }
+
+        float skinSize = 60;
+        float skinX = centerX + 180;
+        float skinY = centerY - 80;
+        String activeName = getDisplayName();
+        Identifier skinId = SkinManager.getSkin(activeName);
+        accountRenderer.drawPlayerFace(skinId, skinX, skinY, skinSize, withAlpha(0xFFFFFF, (int)(screenFadeIn * 255)));
+
+        int nameA = (int)(screenFadeIn * 200);
+        float nameWidth = Fonts.BOLD.getWidth(activeName, 8f);
+        Fonts.BOLD.drawCentered(activeName, skinX + skinSize / 2f, skinY + skinSize + 4, 8f, withAlpha(0xFFFFFF, nameA));
+
+        String activeDate = accountConfig.getActiveAccountDate();
+        if (activeDate != null && !activeDate.isEmpty()) {
+            Fonts.REGULARNEW.drawCentered(activeDate, skinX + skinSize / 2f, skinY + skinSize + 14, 5f, withAlpha(0x808890, nameA));
+        }
+
+        float serverListY = bottomY + bottomButtonHeight + 18;
+        float serverListAlpha = easeOutCubic(getEntranceProgress(currentTime, ENTRANCE_FOOTER_DELAY)) * screenFadeIn;
+        if (serverListAlpha > 0.01f) {
+            int slA = (int)(serverListAlpha * 200);
+            Fonts.BOLD.drawCentered("— Servers —", centerX, serverListY, 7f, withAlpha(0x808890, slA));
+
+            try {
+                File serversDat = new File(client.runDirectory, "servers.dat");
+                if (serversDat.exists()) {
+                    String json = new String(java.nio.file.Files.readAllBytes(serversDat.toPath()));
+                    if (json.contains("\"name\"")) {
+                        String[] parts = json.split("\\},\\{");
+                        int maxServers = Math.min(4, parts.length);
+                        for (int i = 0; i < maxServers; i++) {
+                            String part = i == 0 ? parts[i] : (i > 0 ? "{" + parts[i] : parts[i]);
+                            String sName = "";
+                            int nameIdx = part.indexOf("\"name\":");
+                            if (nameIdx >= 0) {
+                                int start = part.indexOf("\"", nameIdx + 7) + 1;
+                                int end = part.indexOf("\"", start);
+                                if (start > 0 && end > start) sName = part.substring(start, end);
+                            }
+                            String sIp = "";
+                            int ipIdx = part.indexOf("\"ip\":");
+                            if (ipIdx >= 0) {
+                                int start = part.indexOf("\"", ipIdx + 5) + 1;
+                                int end = part.indexOf("\"", start);
+                                if (start > 0 && end > start) sIp = part.substring(start, end);
+                            }
+                            String label = sName.isEmpty() ? sIp : sName;
+                            float sy = serverListY + 12 + i * 16;
+                            Fonts.REGULAR.draw("\u25CF " + label, centerX - 90, sy, 6f, withAlpha(0xB4B4B4, slA));
+                            if (sIp.contains(".") || sIp.contains(":")) {
+                                Fonts.REGULARNEW.draw(sIp, centerX - 90 + 130, sy, 5f, withAlpha(0x646464, slA));
+                            }
+                        }
+                    }
+                }
+            } catch (Exception e) {
             }
         }
 
@@ -531,7 +626,7 @@ public class MainMenuScreen extends Screen {
             }
             case 2 -> currentView = View.ALT_SCREEN;
             case 3 -> this.client.setScreen(new OptionsScreen(this, this.client.options));
-            case 4 -> {}
+            case 4 -> this.client.setScreen(new BackgroundSettingsScreen());
             case 5 -> this.client.scheduleStop();
         }
     }
