@@ -448,6 +448,23 @@ class MinecraftLauncher {
             fabricClasspath.push(dest);
         }
 
+        // The fabric-loader JAR itself is not included in launcherMeta.libraries;
+        // it must be added manually from entry.loader.maven
+        if (entry.loader && entry.loader.maven) {
+            const lparts = entry.loader.maven.split(':');
+            const lGroup = lparts[0].replace(/\./g, '/');
+            const lArtifact = lparts[1];
+            const lVersion = lparts[2];
+            const lMavenPath = lGroup + '/' + lArtifact + '/' + lVersion + '/' + lArtifact + '-' + lVersion + '.jar';
+            const lUrl = 'https://maven.fabricmc.net/' + lMavenPath;
+            const lDest = path.join(this.libsDir, lMavenPath);
+            if (!fileExists(lDest)) {
+                ensureDir(path.dirname(lDest));
+                await this.downloadWithRetry(lUrl, lDest, entry.loader.maven);
+            }
+            fabricClasspath.push(lDest);
+        }
+
         return fabricClasspath;
     }
 
@@ -468,6 +485,11 @@ class MinecraftLauncher {
             if (lib.url) obj.url = lib.url;
             return obj;
         });
+
+        // Include the Fabric Loader itself (not present in launcherMeta.libraries)
+        if (entry.loader && entry.loader.maven) {
+            libraries.push({ name: entry.loader.maven, url: 'https://maven.fabricmc.net/' });
+        }
 
         const fabricJson = {
             id: FABRIC_VERSION_ID,
