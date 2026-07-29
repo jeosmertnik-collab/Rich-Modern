@@ -8,9 +8,7 @@ const MinecraftLauncher = require('./mc-launcher');
 
 let win;
 let g_licenseServer = null;
-let g_vkHandlerSetup = false;
-let g_vkExchangeCode = null;
-let g_vkResolve = null;
+
 
 process.on('uncaughtException', (err) => {
     try {
@@ -297,16 +295,9 @@ function startLicenseServer() {
                     beta:   { name: 'Beta',   prices: { 7: 2.99, 30: 5.99, 90: 15.27, 180: 26.96, 365: 43.13 } },
                     alpha:  { name: 'Alpha',  prices: { 7: 4.99, 30: 9.99, 90: 25.48, 180: 44.96, 365: 71.93 } }
                 }));
-            } else if (req.url.startsWith('/vk_callback') && req.method === 'GET') {
+            } else if (req.url === '/ym_callback') {
                 res.writeHead(200, { 'Content-Type': 'text/html' });
-                res.end('<html><body><h2>VK авторизация успешна!</h2><p>Закройте вкладку.</p><script>window.close()</script></body></html>');
-                const url = new URL(req.url, 'http://localhost:3000');
-                const code = url.searchParams.get('code');
-                if (code && g_vkExchangeCode) {
-                    g_vkExchangeCode(code).then(token => {
-                        if (token && g_vkResolve) { g_vkResolve(token); g_vkResolve = null; }
-                    });
-                }
+                res.end('<html><body><h2>Авторизация Яндекс Музыки успешна!</h2><p>Закройте вкладку.</p><script>window.close()</script></body></html>');
             } else {
                 res.writeHead(404);
                 res.end(JSON.stringify({ error: 'Not found' }));
@@ -775,10 +766,10 @@ function selfUpdate() {
     });
 }
 
-ipcMain.handle('vk:getToken', () => {
+ipcMain.handle('ym:getToken', () => {
     const dirs = ['Excel', 'Rich'];
     for (const dir of dirs) {
-        const tokenFile = path.join(app.getPath('userData'), '.minecraft', dir, 'configs', 'vk_token.txt');
+        const tokenFile = path.join(app.getPath('userData'), '.minecraft', dir, 'configs', 'ym_token.txt');
         try {
             if (fs.existsSync(tokenFile)) return fs.readFileSync(tokenFile, 'utf8').trim();
         } catch (e) {}
@@ -786,101 +777,149 @@ ipcMain.handle('vk:getToken', () => {
     return '';
 });
 
-ipcMain.handle('vk:removeToken', () => {
-    const tokenFile = path.join(app.getPath('userData'), '.minecraft', 'Excel', 'configs', 'vk_token.txt');
+ipcMain.handle('ym:removeToken', () => {
+    const tokenFile = path.join(app.getPath('userData'), '.minecraft', 'Excel', 'configs', 'ym_token.txt');
     try {
         if (fs.existsSync(tokenFile)) fs.unlinkSync(tokenFile);
-        // Also remove old path
-        const oldFile = path.join(app.getPath('userData'), '.minecraft', 'Rich', 'configs', 'vk_token.txt');
+        const oldFile = path.join(app.getPath('userData'), '.minecraft', 'Rich', 'configs', 'ym_token.txt');
         try { if (fs.existsSync(oldFile)) fs.unlinkSync(oldFile); } catch (e) {}
-        log('VK token removed');
+        log('Yandex token removed');
     } catch (e) {}
 });
 
-ipcMain.handle('vk:login', async () => {
-    const VK_APP_ID = '2274003';
-    const VK_APP_SECRET = 'hHbJjNqNJmTqiPvT';
-    const scope = 'audio,offline';
-    const redirectUri = 'http://localhost:3000/vk_callback';
-    const authUrl = `https://oauth.vk.com/authorize?client_id=${VK_APP_ID}&display=page&redirect_uri=${redirectUri}&scope=${scope}&response_type=code&v=5.131&revoke=1`;
-
+ipcMain.handle('ym:login', async () => {
     function saveToken(token) {
-        const tokenFile = path.join(app.getPath('userData'), '.minecraft', 'Excel', 'configs', 'vk_token.txt');
+        const tokenFile = path.join(app.getPath('userData'), '.minecraft', 'Excel', 'configs', 'ym_token.txt');
         try {
             const dir = path.dirname(tokenFile);
             if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
             fs.writeFileSync(tokenFile, token, 'utf8');
-            log('VK token saved');
+            log('Yandex token saved');
             return true;
         } catch (e) {
-            log('VK token save error: ' + e.message);
+            log('Yandex token save error: ' + e.message);
             return false;
         }
     }
 
-    async function exchangeCode(code) {
-        try {
-            const tokenUrl = `https://oauth.vk.com/access_token?client_id=${VK_APP_ID}&client_secret=${VK_APP_SECRET}&redirect_uri=${redirectUri}&code=${code}`;
-            const resp = await fetch(tokenUrl);
-            const data = await resp.json();
-            if (data.access_token) {
-                saveToken(data.access_token);
-                return data.access_token;
-            }
-            log('VK exchange error: ' + JSON.stringify(data));
-            return '';
-        } catch (e) {
-            log('VK exchange exception: ' + e.message);
-            return '';
-        }
+    function httpsPost(url, data) {
+        return new Promise((resolve, reject) => {
+            const u = new URL(url);
+            const body = Object.keys(data).map(k => encodeURIComponent(k) + '=' + encodeURIComponent(data[k])).join('&');
+            const options = {
+                hostname: u.hostname,
+                port: 443,
+                path: u.pathname + u.search,
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Content-Length': Buffer.byteLength(body),
+                    'User-Agent': 'ExcelClient/1.0'
+                }
+            };
+            const req = https.request(options, (res) => {
+                let buf = '';
+                res.on('data', chunk => buf += chunk);
+                res.on('end', () => {
+                    try { resolve(JSON.parse(buf)); }
+                    catch (e) { reject(new Error('Invalid JSON: ' + buf.substring(0, 200))); }
+                });
+            });
+            req.on('error', reject);
+            req.setTimeout(20000, () => { req.destroy(); reject(new Error('Timeout')); });
+            req.write(body);
+            req.end();
+        });
     }
-
-    // Set up globals so the permanent /vk_callback route can use them
-    g_vkExchangeCode = exchangeCode;
 
     return new Promise((resolve) => {
         let resolved = false;
-        const done = (token) => { if (!resolved) { resolved = true; g_vkResolve = null; resolve(token); } };
-        g_vkResolve = done;
+        const done = (token, err) => { if (!resolved) { resolved = true; resolve(err ? 'Ошибка: ' + err : (token || '')); } };
 
-        // Open auth in BrowserWindow
         const authWin = new BrowserWindow({
-            width: 800, height: 600,
-            title: 'VK Login',
-            webPreferences: { nodeIntegration: false, contextIsolation: true }
+            width: 400, height: 420,
+            title: 'Вход в Яндекс Музыку',
+            resizable: false,
+            webPreferences: { nodeIntegration: true, contextIsolation: false }
         });
 
-        authWin.loadURL(authUrl).catch(err => {
-            log('VK BrowserWindow failed: ' + err.message);
-            const { shell } = require('electron');
-            shell.openExternal(authUrl);
-        });
-
-        const checkUrl = async (url) => {
-            if (url.includes('code=')) {
-                try {
-                    const code = new URL(url).searchParams.get('code');
-                    if (code) { const t = await exchangeCode(code); if (t) done(t); }
-                } catch (e) {}
+        // Handle IPC from renderer
+        ipcMain.once('ym:submit-login', async (event, credentials) => {
+            const { login, password } = credentials;
+            if (!login || !password) {
+                event.sender.send('ym:login-result', { error: 'Заполни оба поля' });
+                return;
             }
-        };
-
-        authWin.webContents.on('will-redirect', async (e, url) => checkUrl(url));
-        authWin.webContents.on('will-navigate', async (e, url) => checkUrl(url));
-        authWin.webContents.on('did-navigate', async (e, url) => checkUrl(url));
-
-        const filter = { urls: [redirectUri + '*'] };
-        authWin.webContents.session.webRequest.onBeforeRequest(async (details, callback) => {
-            if (details.url.includes('code=')) {
-                try {
-                    const code = new URL(details.url).searchParams.get('code');
-                    if (code) { const t = await exchangeCode(code); if (t) { done(t); authWin.close(); return callback({ cancel: true }); } }
-                } catch (e) {}
+            try {
+                const data = await httpsPost('https://oauth.yandex.ru/token', {
+                    grant_type: 'password',
+                    client_id: '23cabbbdc6cd41889a4d7c679d0b3c76',
+                    client_secret: '',
+                    username: login,
+                    password: password
+                });
+                if (data.access_token) {
+                    saveToken(data.access_token);
+                    event.sender.send('ym:login-result', { token: data.access_token });
+                } else {
+                    event.sender.send('ym:login-result', { error: data.error_description || data.error || 'Ошибка авторизации' });
+                }
+            } catch (e) {
+                event.sender.send('ym:login-result', { error: 'Ошибка сети: ' + e.message });
             }
-            callback({});
         });
 
-        authWin.on('closed', () => setTimeout(() => done(''), 3000));
+        const html = `
+        <html>
+        <head><meta charset="utf-8"></head>
+        <body style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;margin:0;background:#1a1a2e;color:#fff;font-family:sans-serif;padding:24px;box-sizing:border-box;">
+            <h2 style="margin:0 0 8px;font-size:18px;">Яндекс Музыка</h2>
+            <p style="color:#aaa;font-size:13px;margin:0 0 20px;">Введи логин и пароль от Яндекса</p>
+            <input id="login" type="text" placeholder="Логин или email" 
+                style="width:100%;padding:10px;margin-bottom:10px;border:1px solid #333;border-radius:6px;background:#16213e;color:#fff;font-size:14px;box-sizing:border-box;">
+            <input id="pass" type="password" placeholder="Пароль" 
+                style="width:100%;padding:10px;margin-bottom:16px;border:1px solid #333;border-radius:6px;background:#16213e;color:#fff;font-size:14px;box-sizing:border-box;">
+            <button id="submitBtn" 
+                style="width:100%;padding:10px;border:none;border-radius:6px;background:#0b75cc;color:#fff;font-size:15px;cursor:pointer;font-weight:bold;">ВОЙТИ</button>
+            <div id="errorMsg" style="color:#ef4444;font-size:12px;margin-top:10px;display:none;"></div>
+            <button onclick="window.close()" style="margin-top:12px;background:transparent;color:#666;border:none;font-size:12px;cursor:pointer;">Отмена</button>
+            <script>
+                const { ipcRenderer } = require('electron');
+                document.getElementById('submitBtn').addEventListener('click', () => {
+                    const login = document.getElementById('login').value.trim();
+                    const password = document.getElementById('pass').value;
+                    const btn = document.getElementById('submitBtn');
+                    const err = document.getElementById('errorMsg');
+                    if (!login || !password) { err.textContent = 'Заполни оба поля'; err.style.display = 'block'; return; }
+                    btn.disabled = true;
+                    btn.textContent = 'Авторизация...';
+                    err.style.display = 'none';
+                    ipcRenderer.send('ym:submit-login', { login, password });
+                });
+                ipcRenderer.on('ym:login-result', (event, result) => {
+                    const btn = document.getElementById('submitBtn');
+                    const err = document.getElementById('errorMsg');
+                    if (result.token) {
+                        btn.textContent = 'Готово!';
+                        setTimeout(() => window.close(), 500);
+                    } else {
+                        err.textContent = result.error || 'Неизвестная ошибка';
+                        err.style.display = 'block';
+                        btn.disabled = false;
+                        btn.textContent = 'ВОЙТИ';
+                    }
+                });
+            </script>
+        </body>
+        </html>`;
+
+        authWin.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html)).catch(e => {
+            done('', 'Ошибка загрузки: ' + e.message);
+        });
+
+        authWin.on('closed', () => {
+            setTimeout(() => { if (!resolved) done(''); }, 500);
+        });
     });
 });
 

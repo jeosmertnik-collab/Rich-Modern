@@ -1,22 +1,20 @@
 package excel.util.media;
 
-import excel.util.vk.VkApi.VkTrack;
-
 import java.util.List;
 
 public class MediaPlayer {
 
-    private final VkMusicPlayer player;
+    private final YandexMusicPlayer player;
 
     public MediaPlayer() {
-        this.player = new VkMusicPlayer();
+        this.player = new YandexMusicPlayer();
     }
 
     public void init() {
         player.init();
     }
 
-    public VkMusicPlayer getPlayer() {
+    public YandexMusicPlayer getPlayer() {
         return player;
     }
 
@@ -35,7 +33,7 @@ public class MediaPlayer {
     }
 
     public boolean fullNullCheck() {
-        return !player.isVkReady() || player.getPlaylist() == null || player.getPlaylist().isEmpty();
+        return !player.isYmReady() || player.getPlaylist() == null || player.getPlaylist().isEmpty();
     }
 
     public double getDuration() {
@@ -52,6 +50,6 @@ public class MediaPlayer {
     public void prevTrack() { player.prevTrack(); }
     public void setVolume(float vol) { player.setVolume(vol); }
     public float getVolume() { return player.getVolume(); }
-    public List<VkTrack> getPlaylist() { return player.getPlaylist(); }
+    public List<YandexTrack> getPlaylist() { return player.getPlaylist(); }
     public int getCurrentTrackIndex() { return player.getCurrentTrackIndex(); }
 }

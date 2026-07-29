@@ -1,8 +1,6 @@
 package excel.screens.hud;
 
-import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.gui.DrawContext;
-import net.minecraft.util.Identifier;
 import excel.client.draggables.AbstractHudElement;
 import excel.modules.impl.render.Hud;
 import excel.util.render.Render2D;
@@ -15,7 +13,6 @@ import java.time.format.DateTimeFormatter;
 
 public class Watermark extends AbstractHudElement {
 
-    private static final Identifier EXCEL_TEXTURE = Identifier.of("excel", "textures/gui/excel.png");
     private String lastFps = "";
     private String oldFps = "";
     private long fpsAnimationStart = 0;
@@ -134,12 +131,8 @@ public class Watermark extends AbstractHudElement {
         float textY = y + 7;
         float offsetX = x + 12 + 5;
 
-        float iconDrawSize = 12;
-        context.drawTexture(RenderPipelines.GUI_TEXTURED, EXCEL_TEXTURE,
-                (int)offsetX, (int)(textY + 0.5f),
-                0, 0, (int)iconDrawSize, (int)iconDrawSize,
-                360, 360, new Color(accentR, accentG, accentB, 255).getRGB());
-        offsetX += iconDrawSize + 2;
+        Fonts.BOLD.draw("Excel", offsetX, textY + 2, 9, new Color(accentR, accentG, accentB, 255).getRGB());
+        offsetX += Fonts.BOLD.getWidth("Excel", 9) + 3;
 
         // Rich text
         Fonts.SFPRO_REGULAR.draw(richText, offsetX, textY + 3, 6, new Color(220, 230, 255, 255).getRGB());

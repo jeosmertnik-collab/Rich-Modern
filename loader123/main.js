@@ -293,37 +293,51 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    const vkLoginBtn = document.getElementById('vkLoginBtn');
-    const vkLogoutBtn = document.getElementById('vkLogoutBtn');
-    const vkStatus = document.getElementById('vkStatus');
+    const ymLoginBtn = document.getElementById('ymLoginBtn');
+    const ymLogoutBtn = document.getElementById('ymLogoutBtn');
+    const ymStatus = document.getElementById('ymStatus');
 
-    async function updateVkStatus() {
-        const token = await ipcRenderer.invoke('vk:getToken');
-        if (vkStatus) {
-            vkStatus.textContent = token ? 'VK подключён (токен есть)' : 'Не подключено';
-            vkStatus.style.color = token ? '#22c55e' : 'var(--text-muted)';
+    async function updateYmStatus() {
+        const token = await ipcRenderer.invoke('ym:getToken');
+        if (ymStatus) {
+            ymStatus.textContent = token ? 'Яндекс Музыка подключена (токен есть)' : 'Не подключено';
+            ymStatus.style.color = token ? '#22c55e' : 'var(--text-muted)';
         }
     }
 
-    if (vkLoginBtn) {
-        vkLoginBtn.addEventListener('click', async () => {
-            vkLoginBtn.disabled = true;
-            vkLoginBtn.textContent = 'Авторизация...';
-            const token = await ipcRenderer.invoke('vk:login');
-            vkLoginBtn.disabled = false;
-            vkLoginBtn.textContent = 'ВОЙТИ VK';
-            updateVkStatus();
+    if (ymLoginBtn) {
+        ymLoginBtn.addEventListener('click', async () => {
+            try {
+                ymLoginBtn.disabled = true;
+                ymLoginBtn.textContent = 'Авторизация...';
+                const result = await ipcRenderer.invoke('ym:login');
+                ymLoginBtn.disabled = false;
+                ymLoginBtn.textContent = 'ВОЙТИ ЯНДЕКС';
+                if (typeof result === 'string' && result.startsWith('Ошибка')) {
+                    if (ymStatus) { ymStatus.textContent = result; ymStatus.style.color = '#ef4444'; }
+                } else {
+                    updateYmStatus();
+                }
+            } catch (e) {
+                ymLoginBtn.disabled = false;
+                ymLoginBtn.textContent = 'ВОЙТИ ЯНДЕКС';
+                if (ymStatus) { ymStatus.textContent = 'Ошибка: ' + e.message; ymStatus.style.color = '#ef4444'; }
+            }
         });
     }
 
-    if (vkLogoutBtn) {
-        vkLogoutBtn.addEventListener('click', async () => {
-            await ipcRenderer.invoke('vk:removeToken');
-            updateVkStatus();
+    if (ymLogoutBtn) {
+        ymLogoutBtn.addEventListener('click', async () => {
+            try {
+                await ipcRenderer.invoke('ym:removeToken');
+                updateYmStatus();
+            } catch (e) {
+                if (ymStatus) { ymStatus.textContent = 'Ошибка: ' + e.message; ymStatus.style.color = '#ef4444'; }
+            }
         });
     }
 
-    updateVkStatus();
+    try { updateYmStatus(); } catch (e) { console.error('YM init error:', e); }
 
     const syncBtn = document.getElementById('syncAccountsBtn');
     const syncStatus = document.getElementById('syncStatus');

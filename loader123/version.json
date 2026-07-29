@@ -1,13 +1,13 @@
 {
-  "version": "1.0.25",
-  "launcherVersion": "1.0.18",
+  "version": "1.0.26",
+  "launcherVersion": "1.0.19",
   "clientVersion": "1.0.02",
-  "downloadUrl": "https://github.com/jeosmertnik-collab/Rich-Modern/releases/download/v1.0.25/excel-1.0.02.jar",
-  "launcherUrl": "https://github.com/jeosmertnik-collab/Rich-Modern/releases/download/v1.0.25/ExcelClientSetup.exe",
+  "downloadUrl": "https://github.com/jeosmertnik-collab/Rich-Modern/releases/download/v1.0.26/excel-1.0.02.jar",
+  "launcherUrl": "https://github.com/jeosmertnik-collab/Rich-Modern/releases/download/v1.0.26/ExcelClientSetup.exe",
   "changelog": {
-    "ru": "Fabric metadata: починена загрузка библиотек (новый формат API). Статусы запуска: ошибки теперь видны в интерфейсе, started/closed разделены. VK авторизация: переписана через code flow (response_type=code). Сайт подписки: добавлены email, промокод, кнопка Оплатить, способы оплаты.",
-    "en": "Fabric metadata: fixed library download (new API format). Launch states: errors now visible, started/closed separated. VK auth: rewritten using code flow (response_type=code). Subscription page: added email, promo code, pay button, payment methods."
+    "ru": "HUD: логотип Excel теперь текст вместо текстуры. VK Музыка заменена на Яндекс Музыку: новые классы YandexTrack, YandexMusicApi, YandexMusicPlayer. Лаунчер: VK OAuth → Яндекс Музыка (логин/пароль, сохранение токена).",
+    "en": "HUD: Excel logo now rendered as text instead of texture. VK Music replaced with Yandex Music: new YandexTrack, YandexMusicApi, YandexMusicPlayer classes. Launcher: VK OAuth → Yandex Music (login/password auth, token saved)."
   },
   "required": false,
-  "releaseDate": "2026-07-28"
+  "releaseDate": "2026-07-29"
 }
