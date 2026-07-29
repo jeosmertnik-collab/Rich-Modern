@@ -1442,89 +1442,127 @@ document.addEventListener('DOMContentLoaded', () => {
     // Check sub expiry notification
     checkSubExpiryNotification();
 
-    // --- DAILY BONUS SYSTEM ---
-    const dailyBonusCard = document.getElementById('dailyBonusCard');
-    const dailyBonusTitle = document.getElementById('dailyBonusTitle');
-    const dailyBonusDesc = document.getElementById('dailyBonusDesc');
-    const dailyBonusStreak = document.getElementById('dailyBonusStreak');
-    const dailyClaimBtn = document.getElementById('dailyClaimBtn');
+    // --- ROULETTE SYSTEM ---
+    const rouletteSection = document.getElementById('rouletteSection');
+    const rouletteWheel = document.getElementById('rouletteWheel');
+    const spinBtn = document.getElementById('spinBtn');
+    const rouletteTimer = document.getElementById('rouletteTimer');
+    const rouletteResult = document.getElementById('rouletteResult');
 
-    const BONUS_AMOUNTS = [0, 50, 75, 100, 125, 150, 200, 250, 300, 400];
+    const SEGMENTS = ['пусто', '1день', 'пусто', '7дней', 'пусто', '1день'];
+    const SEG_COLORS = ['#ff4a4a', '#22c55e', '#ff4a4a', '#6366f1', '#ff4a4a', '#22c55e'];
+    const SEG_DEG = 60; // 360/6
 
-    function getDailyState() {
-        try { return JSON.parse(localStorage.getItem('launcher_daily')) || {}; } catch (e) { return {}; }
+    function getRouletteState() {
+        try { return JSON.parse(localStorage.getItem('launcher_roulette')) || {}; } catch (e) { return {}; }
     }
 
-    function saveDailyState(s) {
-        localStorage.setItem('launcher_daily', JSON.stringify(s));
+    function saveRouletteState(s) {
+        localStorage.setItem('launcher_roulette', JSON.stringify(s));
     }
 
-    function updateDailyBonusUI() {
-        if (!dailyBonusCard || !dailyClaimBtn) return;
-        const state = getDailyState();
-        const now = new Date();
-        const today = now.toDateString();
-
-        const lastDate = state.lastClaimDate || '';
-        const yesterday = new Date(now);
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayStr = yesterday.toDateString();
-
-        if (lastDate !== today && lastDate !== yesterdayStr) {
-            state.streak = 0;
-            saveDailyState(state);
-        }
-
-        if (state.lastClaimDate === today) {
-            dailyClaimBtn.disabled = true;
-            dailyClaimBtn.textContent = '📅 ПОЛУЧЕНО';
-            dailyBonusTitle.textContent = 'Ежедневный бонус';
-            const claimed = state.lastAmount || 0;
-            dailyBonusDesc.textContent = 'Сегодня получено ' + claimed + ' монет';
-        } else {
-            dailyClaimBtn.disabled = false;
-            const nextStreak = (state.streak || 0) + 1;
-            const amount = BONUS_AMOUNTS[Math.min(nextStreak, BONUS_AMOUNTS.length - 1)];
-            dailyClaimBtn.textContent = 'ЗАБРАТЬ ' + amount;
-            dailyBonusTitle.textContent = 'Ежедневный бонус';
-            dailyBonusDesc.textContent = 'Забери ' + amount + ' монет за вход!';
-        }
-
-        const streak = state.lastClaimDate === today ? (state.streak || 0) : (state.streak || 0);
-        dailyBonusStreak.textContent = '🔥 Дней подряд: ' + streak;
-
-        if (dailyBonusCard.style.display === 'none' || !dailyBonusCard.style.display) {
-            dailyBonusCard.style.display = 'flex';
-        }
+    function canSpin() {
+        const state = getRouletteState();
+        if (!state.lastSpin) return true;
+        return Date.now() - state.lastSpin >= 86400000;
     }
 
-    if (dailyClaimBtn) {
-        dailyClaimBtn.addEventListener('click', () => {
-            const state = getDailyState();
-            const now = new Date();
-            const today = now.toDateString();
-            if (state.lastClaimDate === today) return;
+    function msUntilNextSpin() {
+        const state = getRouletteState();
+        if (!state.lastSpin) return 0;
+        return Math.max(0, 86400000 - (Date.now() - state.lastSpin));
+    }
 
-            const yesterday = new Date(now);
-            yesterday.setDate(yesterday.getDate() - 1);
+    function updateRouletteUI() {
+        if (!rouletteSection || !spinBtn || !rouletteTimer) return;
+        rouletteSection.style.display = 'block';
 
-            if (state.lastClaimDate === yesterday.toDateString()) {
-                state.streak = (state.streak || 0) + 1;
-            } else {
-                state.streak = 1;
+        if (!canSpin()) {
+            spinBtn.disabled = true;
+            spinBtn.textContent = '⏳ ПОДОЖДИ';
+            const ms = msUntilNextSpin();
+            const h = Math.floor(ms / 3600000);
+            const m = Math.floor((ms % 3600000) / 60000);
+            const s = Math.floor((ms % 60000) / 1000);
+            rouletteTimer.textContent = 'Следующий круг через ' + h + 'ч ' + m + 'м ' + s + 'с';
+            // Update timer every second
+            if (!rouletteSection._timer) {
+                rouletteSection._timer = setInterval(() => {
+                    if (canSpin()) {
+                        spinBtn.disabled = false;
+                        spinBtn.textContent = 'КРУТИТЬ';
+                        rouletteTimer.textContent = 'Крути раз в 24 часа!';
+                        if (rouletteSection._timer) { clearInterval(rouletteSection._timer); rouletteSection._timer = null; }
+                    } else {
+                        const ms2 = msUntilNextSpin();
+                        const h2 = Math.floor(ms2 / 3600000);
+                        const m2 = Math.floor((ms2 % 3600000) / 60000);
+                        const s2 = Math.floor((ms2 % 60000) / 1000);
+                        rouletteTimer.textContent = 'Следующий круг через ' + h2 + 'ч ' + m2 + 'м ' + s2 + 'с';
+                    }
+                }, 1000);
             }
+        } else {
+            spinBtn.disabled = false;
+            spinBtn.textContent = 'КРУТИТЬ';
+            rouletteTimer.textContent = 'Крути раз в 24 часа!';
+            if (rouletteSection._timer) { clearInterval(rouletteSection._timer); rouletteSection._timer = null; }
+        }
+    }
 
-            const amount = BONUS_AMOUNTS[Math.min(state.streak, BONUS_AMOUNTS.length - 1)];
-            state.coins = (state.coins || 0) + amount;
-            state.lastClaimDate = today;
-            state.lastAmount = amount;
-            saveDailyState(state);
-            updateDailyBonusUI();
-            showToast('🎁', 'Бонус получен!', '+' + amount + ' монет (стрик: ' + state.streak + ' дней)', 3000);
+    function getPrize() {
+        const r = Math.random();
+        if (r < 0.17) return { segment: 3, prize: '7дней', label: '🎉 7 дней подписки!', days: 7 };
+        if (r < 0.50) return { segment: 1, prize: '1день', label: '🎉 1 день подписки!', days: 1 };
+        // 50% chance пусто
+        if (r < 0.67) return { segment: 0, prize: 'пусто', label: '😔 Повезёт в следующий раз!', days: 0 };
+        if (r < 0.84) return { segment: 2, prize: 'пусто', label: '😔 Повезёт в следующий раз!', days: 0 };
+        return { segment: 4, prize: 'пусто', label: '😔 Повезёт в следующий раз!', days: 0 };
+    }
+
+    if (spinBtn && rouletteWheel) {
+        spinBtn.addEventListener('click', async () => {
+            if (!canSpin() || spinBtn.disabled) return;
+
+            const prize = getPrize();
+            const targetAngle = prize.segment * SEG_DEG + SEG_DEG / 2;
+            const totalRotation = 360 * 5 + (360 - targetAngle); // 5 full spins + land on segment
+
+            rouletteWheel.style.transition = 'transform 3s cubic-bezier(0.17, 0.67, 0.12, 0.99)';
+            rouletteWheel.style.transform = 'rotate(' + totalRotation + 'deg)';
+
+            spinBtn.disabled = true;
+            spinBtn.textContent = '⏳ КРУТИТСЯ...';
+            if (rouletteResult) rouletteResult.textContent = '';
+            if (rouletteResult) rouletteResult.className = 'roulette-result';
+
+            setTimeout(async () => {
+                const state = getRouletteState();
+                state.lastSpin = Date.now();
+                saveRouletteState(state);
+
+                if (prize.days > 0) {
+                    const result = await ipcRenderer.invoke('license:generate', { plan: 'beta', days: prize.days });
+                    if (result && result.key) {
+                        if (rouletteResult) {
+                            rouletteResult.textContent = prize.label + ' Ключ: ' + result.key;
+                            rouletteResult.className = 'roulette-result win';
+                        }
+                        showToast('🎉', 'Выигрыш в рулетке!', prize.label + ' Ключ: ' + result.key, 8000);
+                    }
+                } else {
+                    if (rouletteResult) {
+                        rouletteResult.textContent = prize.label;
+                        rouletteResult.className = 'roulette-result lose';
+                    }
+                }
+
+                updateRouletteUI();
+            }, 3200);
         });
     }
 
-    updateDailyBonusUI();
+    updateRouletteUI();
 
     loadSubscriptionStatus();
     updateLaunchState();

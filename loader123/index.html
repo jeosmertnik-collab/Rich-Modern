@@ -165,13 +165,19 @@
         .toast-content { flex: 1; }
         .toast-title { font-weight: 700; font-size: 13px; }
         .toast-text { font-size: 12px; color: #a2a4b0; margin-top: 2px; }
-        .daily-bonus-card { background: linear-gradient(135deg, rgba(99,102,241,0.12) 0%, rgba(139,92,246,0.06) 100%); border: 1px solid rgba(99,102,241,0.2); border-radius: 14px; padding: 16px 20px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-        .daily-bonus-info { display: flex; align-items: center; gap: 14px; }
-        .daily-bonus-icon { width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg,#6366f1,#8b5cf6); display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
-        .daily-bonus-streak { font-size: 12px; color: #a78bfa; font-weight: 600; }
-        .btn-claim { background: linear-gradient(135deg,#6366f1,#8b5cf6); border: none; color: #fff; padding: 10px 24px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px; transition: all 0.3s ease; flex-shrink: 0; }
-        .btn-claim:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(99,102,241,0.3); }
-        .btn-claim:disabled { opacity: 0.4; cursor: default; transform: none; }
+        .roulette-section { margin-bottom: 20px; text-align: center; }
+        .roulette-wheel-wrap { position: relative; width: 200px; height: 200px; margin: 0 auto 16px; }
+        .roulette-pointer { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); z-index: 10; font-size: 28px; color: #fff; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5)); }
+        .roulette-wheel { width: 200px; height: 200px; border-radius: 50%; background: conic-gradient(#ff4a4a 0deg 60deg, #22c55e 60deg 120deg, #ff4a4a 120deg 180deg, #6366f1 180deg 240deg, #ff4a4a 240deg 300deg, #22c55e 300deg 360deg); border: 3px solid rgba(255,255,255,0.15); box-shadow: 0 0 30px rgba(0,0,0,0.3), inset 0 0 20px rgba(0,0,0,0.2); position: relative; transition: transform 3s cubic-bezier(0.17, 0.67, 0.12, 0.99); }
+        .wheel-label { position: absolute; width: 60px; text-align: center; font-size: 9px; font-weight: 700; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.5); pointer-events: none; }
+        .btn-spin { background: linear-gradient(135deg,#6366f1,#8b5cf6); border: none; color: #fff; padding: 12px 40px; border-radius: 12px; font-size: 14px; font-weight: 700; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; transition: all 0.3s ease; }
+        .btn-spin:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(99,102,241,0.4); }
+        .btn-spin:disabled { opacity: 0.4; cursor: default; }
+        .roulette-timer { font-size: 12px; color: var(--text-muted); margin-top: 8px; }
+        .roulette-result { margin-top: 12px; font-size: 14px; font-weight: 700; min-height: 28px; animation: fadeIn 0.3s ease; }
+        .roulette-result.win { color: #22c55e; }
+        .roulette-result.lose { color: #ff4a4a; }
+        @keyframes fadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
     </style>
 </head>
 <body>
@@ -257,16 +263,21 @@
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                         </div>
                     </div>
-                    <div class="daily-bonus-card" id="dailyBonusCard" style="display:none;">
-                        <div class="daily-bonus-info">
-                            <div class="daily-bonus-icon">🎁</div>
-                            <div>
-                                <div id="dailyBonusTitle" style="font-weight:700;font-size:14px;">Ежедневный бонус</div>
-                                <div id="dailyBonusDesc" style="font-size:12px;color:#a2a4b0;margin-top:2px;">Забери награду за вход!</div>
-                                <div class="daily-bonus-streak" id="dailyBonusStreak">🔥 Дней подряд: 0</div>
+                    <div class="roulette-section" id="rouletteSection" style="display:none;">
+                        <div class="roulette-wheel-wrap">
+                            <div class="roulette-pointer">▼</div>
+                            <div class="roulette-wheel" id="rouletteWheel">
+                                <div class="wheel-label" style="top:12px;left:70px;">ПУСТО</div>
+                                <div class="wheel-label" style="top:40px;right:14px;">1 ДЕНЬ</div>
+                                <div class="wheel-label" style="bottom:52px;right:10px;">ПУСТО</div>
+                                <div class="wheel-label" style="bottom:10px;left:76px;">7 ДНЕЙ</div>
+                                <div class="wheel-label" style="bottom:52px;left:10px;">ПУСТО</div>
+                                <div class="wheel-label" style="top:40px;left:14px;">1 ДЕНЬ</div>
                             </div>
                         </div>
-                        <button class="btn-claim" id="dailyClaimBtn">ЗАБРАТЬ</button>
+                        <button class="btn-spin" id="spinBtn">КРУТИТЬ</button>
+                        <div class="roulette-timer" id="rouletteTimer"></div>
+                        <div class="roulette-result" id="rouletteResult"></div>
                     </div>
                     <div style="margin-top:20px;display:flex;gap:12px;">
                         <button class="quick-join-btn" data-server="play.funtime.ru" style="flex:1;background:rgba(100,150,255,0.08);border:1px solid rgba(100,150,255,0.2);border-radius:12px;padding:14px 16px;cursor:pointer;color:var(--text-main);transition:all 0.3s ease;display:flex;align-items:center;gap:12px;">
