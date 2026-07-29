@@ -104,6 +104,17 @@ function saveLicenseDB(db) {
     try { const dir = path.dirname(LICENSE_DB_FILE); if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(LICENSE_DB_FILE, JSON.stringify(db, null, 2)); } catch (e) {}
 }
 
+const PRESENCE_DB_FILE = path.join(app.getPath('userData'), 'presence.json');
+
+function loadPresenceDB() {
+    try { if (fs.existsSync(PRESENCE_DB_FILE)) return JSON.parse(fs.readFileSync(PRESENCE_DB_FILE, 'utf8')); } catch (e) {}
+    return {};
+}
+
+function savePresenceDB(db) {
+    try { const dir = path.dirname(PRESENCE_DB_FILE); if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(PRESENCE_DB_FILE, JSON.stringify(db, null, 2)); } catch (e) {}
+}
+
 function startLicenseServer() {
     try {
         const SUB_PAGE = '<!DOCTYPE html>' +
@@ -302,6 +313,52 @@ function startLicenseServer() {
                         res.end(JSON.stringify({ error: 'Invalid request' }));
                     }
                 });
+            } else if (req.url.startsWith('/api/presence/') && req.method === 'PUT') {
+                const username = decodeURIComponent(req.url.split('/').pop());
+                let body = '';
+                req.on('data', c => body += c);
+                req.on('end', () => {
+                    try {
+                        const data = JSON.parse(body);
+                        const presenceDB = loadPresenceDB();
+                        presenceDB[username] = { status: data.status || 'online', lastSeen: Date.now(), game: data.game || 'В игре' };
+                        savePresenceDB(presenceDB);
+                        res.writeHead(200, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ success: true }));
+                    } catch (e) {
+                        res.writeHead(400);
+                        res.end(JSON.stringify({ error: 'Invalid request' }));
+                    }
+                });
+            } else if (req.url.startsWith('/api/presence/') && req.method === 'DELETE') {
+                const username = decodeURIComponent(req.url.split('/').pop());
+                const presenceDB = loadPresenceDB();
+                delete presenceDB[username];
+                savePresenceDB(presenceDB);
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: true }));
+            } else if (req.url.startsWith('/api/presence/') && req.method === 'GET') {
+                const username = decodeURIComponent(req.url.split('/').pop());
+                const presenceDB = loadPresenceDB();
+                const entry = presenceDB[username];
+                if (entry && (Date.now() - entry.lastSeen) < 120000) {
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify(entry));
+                } else {
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ status: 'offline', lastSeen: 0 }));
+                }
+            } else if (req.url === '/api/presence' && req.method === 'GET') {
+                const presenceDB = loadPresenceDB();
+                const now = Date.now();
+                const active = {};
+                for (const [user, data] of Object.entries(presenceDB)) {
+                    if ((now - data.lastSeen) < 120000) {
+                        active[user] = data;
+                    }
+                }
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify(active));
             } else {
                 res.writeHead(404);
                 res.end(JSON.stringify({ error: 'Not found' }));

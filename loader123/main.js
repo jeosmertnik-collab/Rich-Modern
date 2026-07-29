@@ -548,6 +548,7 @@ document.addEventListener('DOMContentLoaded', () => {
             launchGameBtn.style.opacity = '1';
             launchGameBtn.style.pointerEvents = 'all';
             launchGameBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> ${t.btn_launch || 'ЗАПУСТИТЬ'}`;
+            playErrorSound();
             if (data.message && data.message.includes('Java')) {
                 if (selectMinecraftBtn) {
                     selectMinecraftBtn.style.display = 'block';
@@ -563,9 +564,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (launchProgressText) launchProgressText.textContent = t.launch_preparing || 'Подготовка...';
             if (launchProgressStep) launchProgressStep.textContent = t.launch_build || 'Сборка';
             launchGameBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="animation: spin 1s linear infinite;"><circle cx="12" cy="12" r="10"></circle></svg> ${t.btn_launching || 'ЗАПУСК...'}`;
+            playLaunchSound();
         } else if (data.status === 'started') {
             if (launchProgress) launchProgress.style.display = 'none';
             launchGameBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"></circle><polyline points="8 12 11 15 16 9"></polyline></svg> ${t.status_started || 'ИГРА ЗАПУЩЕНА'}`;
+            playSuccessSound();
+            updateOwnPresence();
         } else if (data.status === 'closed') {
             if (launchProgress) launchProgress.style.display = 'none';
             launchGameBtn.disabled = false;
@@ -573,6 +577,7 @@ document.addEventListener('DOMContentLoaded', () => {
             launchGameBtn.style.pointerEvents = 'all';
             launchGameBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> ${t.btn_launch || 'ЗАПУСТИТЬ'}`;
             if (launchStatus) launchStatus.style.display = 'none';
+            removeOwnPresence();
             updateLaunchState();
         }
     });
@@ -652,6 +657,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateBanner.style.display = 'block';
                 updateBanner.classList.remove('error', 'success');
             }
+            playNotificationSound();
 
             if (btnUpdate) {
                 btnUpdate.disabled = false;
@@ -852,6 +858,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 if (licenseError) licenseError.style.display = 'none';
                 if (licenseKeyInput) licenseKeyInput.value = '';
+                playSuccessSound();
                 loadSubscriptionStatus();
                 updateLaunchState();
             } else {
@@ -1082,6 +1089,81 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // --- SOUND SYSTEM ---
+    let soundEnabled = localStorage.getItem('launcher_sound') !== 'false';
+    let audioCtx = null;
+
+    function getAudioCtx() {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        return audioCtx;
+    }
+
+    function playTone(freq, duration, type, volume) {
+        if (!soundEnabled) return;
+        try {
+            const ctx = getAudioCtx();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = type || 'sine';
+            osc.frequency.value = freq;
+            gain.gain.value = volume || 0.08;
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + duration);
+        } catch (e) { /* audio not available */ }
+    }
+
+    function playLaunchSound() {
+        playTone(523, 0.1, 'sine');
+        setTimeout(() => playTone(659, 0.1, 'sine'), 100);
+        setTimeout(() => playTone(784, 0.15, 'sine'), 200);
+    }
+
+    function playErrorSound() {
+        playTone(200, 0.3, 'sawtooth', 0.05);
+        setTimeout(() => playTone(180, 0.4, 'sawtooth', 0.04), 150);
+    }
+
+    function playSuccessSound() {
+        playTone(523, 0.1, 'sine');
+        setTimeout(() => playTone(659, 0.12, 'sine'), 100);
+        setTimeout(() => playTone(784, 0.15, 'sine'), 200);
+        setTimeout(() => playTone(1047, 0.25, 'sine'), 350);
+    }
+
+    function playNotificationSound() {
+        playTone(880, 0.08, 'sine');
+        setTimeout(() => playTone(1109, 0.08, 'sine'), 80);
+    }
+
+    // Sound toggle
+    const soundToggle = document.getElementById('soundToggle');
+    const soundToggleKnob = document.getElementById('soundToggleKnob');
+    const soundToggleLabel = document.getElementById('soundToggleLabel');
+
+    function updateSoundUI() {
+        if (!soundToggle) return;
+        soundToggle.checked = soundEnabled;
+        if (soundToggleKnob) {
+            soundToggleKnob.style.left = soundEnabled ? '22px' : '2px';
+            soundToggleKnob.style.background = soundEnabled ? '#22c55e' : '#626475';
+        }
+        if (soundToggleLabel) soundToggleLabel.textContent = soundEnabled ? 'Вкл' : 'Выкл';
+    }
+
+    if (soundToggle) {
+        soundToggle.addEventListener('change', () => {
+            soundEnabled = soundToggle.checked;
+            localStorage.setItem('launcher_sound', soundEnabled ? 'true' : 'false');
+            updateSoundUI();
+            if (soundEnabled) playNotificationSound();
+        });
+    }
+    updateSoundUI();
+    // --- END SOUND SYSTEM ---
+
     // --- KEY GENERATOR (admin) ---
     function showKeyGenPanel() {
         const panel = document.getElementById('keyGenPanel');
@@ -1133,6 +1215,153 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
     };
+
+    // --- FRIENDS SYSTEM ---
+    function loadFriends() {
+        try {
+            const raw = localStorage.getItem('launcher_friends');
+            if (raw) return JSON.parse(raw);
+        } catch (e) {}
+        return [];
+    }
+
+    function saveFriends(friends) {
+        localStorage.setItem('launcher_friends', JSON.stringify(friends));
+    }
+
+    const friendAddInput = document.getElementById('friendAddInput');
+    const friendAddBtn = document.getElementById('friendAddBtn');
+    const friendList = document.getElementById('friendList');
+
+    function getPresenceURL() {
+        return localStorage.getItem('launcher_presence_url') || 'http://localhost:3000';
+    }
+
+    async function checkFriendOnline(username) {
+        try {
+            const url = getPresenceURL() + '/api/presence/' + encodeURIComponent(username);
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 3000);
+            const resp = await fetch(url, { signal: controller.signal });
+            clearTimeout(timer);
+            if (!resp.ok) return null;
+            return await resp.json();
+        } catch (e) {
+            return null;
+        }
+    }
+
+    async function updateOwnPresence() {
+        const user = currentUser;
+        if (!user) return;
+        try {
+            const url = getPresenceURL() + '/api/presence/' + encodeURIComponent(user);
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 3000);
+            await fetch(url, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'online', user }),
+                signal: controller.signal
+            });
+            clearTimeout(timer);
+        } catch (e) { /* presence server not available */ }
+    }
+
+    function removeOwnPresence() {
+        const user = currentUser;
+        if (!user) return;
+        try {
+            const controller = new AbortController();
+            setTimeout(() => controller.abort(), 2000);
+            fetch(getPresenceURL() + '/api/presence/' + encodeURIComponent(user), { method: 'DELETE', signal: controller.signal }).catch(() => {});
+        } catch (e) {}
+    }
+
+    function renderFriendList() {
+        if (!friendList) return;
+        const friends = loadFriends();
+        friendList.innerHTML = '';
+        if (friends.length === 0) {
+            friendList.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px;" data-i18n="friends_empty">Список друзей пуст. Добавь друга по нику.</div>';
+            return;
+        }
+        friends.forEach(f => {
+            const row = document.createElement('div');
+            row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-radius:12px;background:var(--bg-card);border:1px solid var(--border-color);backdrop-filter:blur(16px);';
+            row.innerHTML = `
+                <div style="display:flex;align-items:center;gap:14px;">
+                    <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;">${f.username.charAt(0).toUpperCase()}</div>
+                    <div>
+                        <div style="font-weight:600;font-size:14px;">${f.username}</div>
+                        <div style="font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:6px;">
+                            <span class="friend-status-dot" style="width:7px;height:7px;border-radius:50%;background:#626475;display:inline-block;"></span>
+                            <span class="friend-status-text">...</span>
+                        </div>
+                    </div>
+                </div>
+                <button class="friend-remove-btn" style="background:rgba(255,74,74,0.1);border:none;color:#ff4a4a;padding:6px 10px;border-radius:6px;font-size:11px;cursor:pointer;transition:all 0.2s;">✕</button>
+            `;
+            const removeBtn = row.querySelector('.friend-remove-btn');
+            removeBtn.addEventListener('click', () => {
+                let friends = loadFriends();
+                friends = friends.filter(x => x.username !== f.username);
+                saveFriends(friends);
+                renderFriendList();
+                playNotificationSound();
+            });
+            friendList.appendChild(row);
+            checkFriendOnline(f.username).then(data => {
+                const dot = row.querySelector('.friend-status-dot');
+                const text = row.querySelector('.friend-status-text');
+                if (data && data.status === 'online' && (Date.now() - data.lastSeen) < 120000) {
+                    if (dot) dot.style.background = '#22c55e';
+                    if (text) text.textContent = data.game || 'В игре';
+                    if (text) text.style.color = '#22c55e';
+                } else {
+                    if (dot) dot.style.background = '#626475';
+                    if (text) text.textContent = 'Оффлайн';
+                    if (text) text.style.color = '#626475';
+                }
+            });
+        });
+    }
+
+    if (friendAddBtn && friendAddInput) {
+        friendAddBtn.addEventListener('click', () => {
+            const name = friendAddInput.value.trim().toLowerCase();
+            if (!name || name.length < 3) return;
+            const friends = loadFriends();
+            if (friends.find(f => f.username === name)) return;
+            friends.push({ username: name, addedAt: Date.now() });
+            saveFriends(friends);
+            friendAddInput.value = '';
+            renderFriendList();
+            playSuccessSound();
+        });
+        friendAddInput.addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') friendAddBtn.click();
+        });
+    }
+
+    // Auto-refresh friends presence every 15 seconds
+    let friendsRefreshTimer = null;
+    function startFriendsRefresh() {
+        if (friendsRefreshTimer) clearInterval(friendsRefreshTimer);
+        friendsRefreshTimer = setInterval(() => renderFriendList(), 15000);
+    }
+    startFriendsRefresh();
+
+    // Update own presence on game launch (hooks into game:launch-status via IPC)
+    // The presence update is handled alongside the UI updates in the existing game:launch-status handler
+
+    // Also update presence when launcher opens
+    updateOwnPresence();
+
+    // Clean up presence on window close
+    window.addEventListener('beforeunload', () => {
+        removeOwnPresence();
+    });
 
     loadSubscriptionStatus();
     updateLaunchState();

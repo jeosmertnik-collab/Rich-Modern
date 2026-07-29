@@ -87,5 +87,12 @@
   "launch_as": "Launch as:",
   "theme_title": "Theme",
   "theme_desc": "Launcher accent color.",
-  "theme_reset": "RESET"
+  "theme_reset": "RESET",
+  "sound_title": "Sounds",
+  "sound_desc": "Launcher sound effects.",
+  "tab_social": "Friends",
+  "friends_title": "Friends",
+  "friends_desc": "Add friends and see who's in game.",
+  "friends_add": "ADD",
+  "friends_empty": "Your friends list is empty. Add a friend by nickname."
 }
