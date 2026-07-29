@@ -881,12 +881,55 @@ function selfUpdate() {
 
 
 
+let botProcess = null;
+
+function startBot() {
+    if (botProcess) return;
+    const botPath = path.join(__dirname, 'bot.js');
+    if (!fs.existsSync(botPath)) return;
+    try {
+        botProcess = spawn(process.execPath, [botPath], {
+            stdio: 'pipe',
+            env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', LAUNCHER_DATA_DIR: app.getPath('userData') }
+        });
+        botProcess.stdout.on('data', d => console.log('[bot]', d.toString().trim()));
+        botProcess.stderr.on('data', d => console.error('[bot]', d.toString().trim()));
+        botProcess.on('exit', (code) => { console.log('[bot] exited:', code); botProcess = null; });
+        console.log('[bot] started');
+    } catch (e) {
+        console.error('[bot] failed:', e.message);
+    }
+}
+
+function stopBot() {
+    if (botProcess) {
+        botProcess.kill();
+        botProcess = null;
+        console.log('[bot] stopped');
+    }
+}
+
+ipcMain.handle('bot:toggle', async (event, enable) => {
+    if (enable) startBot();
+    else stopBot();
+    return true;
+});
+
+ipcMain.handle('bot:status', () => {
+    return botProcess !== null;
+});
+
 app.whenReady().then(() => {
     startLicenseServer();
     createWindow();
+    startBot(); // auto-start bot with launcher
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) createWindow();
     });
+});
+
+app.on('before-quit', () => {
+    stopBot();
 });
 
 app.on('window-all-closed', () => {

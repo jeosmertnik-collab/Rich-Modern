@@ -1162,6 +1162,29 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     updateSoundUI();
+
+    // --- BOT TOGGLE ---
+    const botToggle = document.getElementById('botToggle');
+    const botToggleKnob = document.getElementById('botToggleKnob');
+    const botToggleLabel = document.getElementById('botToggleLabel');
+
+    async function updateBotUI() {
+        const running = await ipcRenderer.invoke('bot:status');
+        if (botToggle) botToggle.checked = running;
+        if (botToggleKnob) {
+            botToggleKnob.style.left = running ? '22px' : '2px';
+            botToggleKnob.style.background = running ? '#22c55e' : '#626475';
+        }
+        if (botToggleLabel) botToggleLabel.textContent = running ? 'Запущен' : 'Остановлен';
+    }
+
+    if (botToggle) {
+        botToggle.addEventListener('change', async () => {
+            await ipcRenderer.invoke('bot:toggle', botToggle.checked);
+            updateBotUI();
+        });
+    }
+    updateBotUI();
     // --- END SOUND SYSTEM ---
 
     // --- NOTIFICATION TOAST SYSTEM ---
