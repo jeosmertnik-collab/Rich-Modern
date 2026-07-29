@@ -448,22 +448,27 @@ class MinecraftLauncher {
             fabricClasspath.push(dest);
         }
 
-        // The fabric-loader JAR itself is not included in launcherMeta.libraries;
-        // it must be added manually from entry.loader.maven
-        if (entry.loader && entry.loader.maven) {
-            const lparts = entry.loader.maven.split(':');
-            const lGroup = lparts[0].replace(/\./g, '/');
-            const lArtifact = lparts[1];
-            const lVersion = lparts[2];
-            const lMavenPath = lGroup + '/' + lArtifact + '/' + lVersion + '/' + lArtifact + '-' + lVersion + '.jar';
-            const lUrl = 'https://maven.fabricmc.net/' + lMavenPath;
-            const lDest = path.join(this.libsDir, lMavenPath);
-            if (!fileExists(lDest)) {
-                ensureDir(path.dirname(lDest));
-                await this.downloadWithRetry(lUrl, lDest, entry.loader.maven);
+        // Helper to download a Maven artifact and add it to the classpath
+        const addMavenArtifact = async (mavenCoord, mavenRepo) => {
+            if (!mavenCoord) return;
+            const parts = mavenCoord.split(':');
+            const groupPath = parts[0].replace(/\./g, '/');
+            const artifactId = parts[1];
+            const version = parts[2];
+            const mavenPath = groupPath + '/' + artifactId + '/' + version + '/' + artifactId + '-' + version + '.jar';
+            const url = (mavenRepo || 'https://maven.fabricmc.net/') + mavenPath;
+            const dest = path.join(this.libsDir, mavenPath);
+            if (!fileExists(dest)) {
+                ensureDir(path.dirname(dest));
+                await this.downloadWithRetry(url, dest, mavenCoord);
             }
-            fabricClasspath.push(lDest);
-        }
+            fabricClasspath.push(dest);
+        };
+
+        // The fabric-loader and intermediary JARs are not in launcherMeta.libraries;
+        // they must be added manually
+        await addMavenArtifact(entry.loader && entry.loader.maven);
+        await addMavenArtifact(entry.intermediary && entry.intermediary.maven);
 
         return fabricClasspath;
     }
@@ -486,9 +491,12 @@ class MinecraftLauncher {
             return obj;
         });
 
-        // Include the Fabric Loader itself (not present in launcherMeta.libraries)
+        // Include the Fabric Loader and intermediary (not present in launcherMeta.libraries)
         if (entry.loader && entry.loader.maven) {
             libraries.push({ name: entry.loader.maven, url: 'https://maven.fabricmc.net/' });
+        }
+        if (entry.intermediary && entry.intermediary.maven) {
+            libraries.push({ name: entry.intermediary.maven, url: 'https://maven.fabricmc.net/' });
         }
 
         const fabricJson = {
