@@ -9,6 +9,8 @@ import excel.modules.module.*;
 import excel.screens.clickgui.ClickGui;
 import excel.util.config.ConfigSystem;
 import excel.util.config.impl.bind.BindConfig;
+import excel.util.config.impl.background.BackgroundConfig;
+import excel.util.config.impl.cosmetics.CosmeticsManager;
 import excel.util.config.impl.blockesp.BlockESPConfig;
 import excel.util.config.impl.drag.DragConfig;
 import excel.util.config.impl.friend.FriendConfig;
@@ -51,6 +53,8 @@ public class Manager {
         WayRepository.getInstance().init();
         BlockESPConfig.getInstance().load();
         FriendConfig.getInstance().load();
+        BackgroundConfig.getInstance().load();
+        CosmeticsManager.getInstance().init();
         PrefixConfig.getInstance().load();
         StaffConfig.getInstance().load();
         ProxyConfig.getInstance().load();

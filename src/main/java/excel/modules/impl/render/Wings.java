@@ -23,6 +23,7 @@ import excel.modules.module.setting.implement.ColorSetting;
 import excel.modules.module.setting.implement.MultiSelectSetting;
 import excel.modules.module.setting.implement.SelectSetting;
 import excel.modules.module.setting.implement.SliderSettings;
+import excel.util.config.impl.cosmetics.CosmeticsManager;
 import excel.util.render.Render3D;
 import excel.util.render.сliemtpipeline.ClientPipelines;
 import excel.util.render.wings.WingsShaderRenderer;
@@ -221,6 +222,19 @@ public class Wings extends ModuleStructure implements IMinecraft {
     }
 
     private WingPoint[] getCurrentShape() {
+        String cosWing = CosmeticsManager.getInstance().getSelectedWing();
+        if (!"none".equals(cosWing)) {
+            return switch (cosWing) {
+                case "DRAGON" -> SHAPES[DRAGON];
+                case "BUTTERFLY" -> SHAPES[BUTTERFLY];
+                case "PHOENIX" -> SHAPES[PHOENIX];
+                case "CRYSTAL" -> SHAPES[CRYSTAL];
+                case "MECHANICAL" -> SHAPES[MECHANICAL];
+                case "FAIRY" -> SHAPES[FAIRY];
+                case "DEMON" -> SHAPES[DEMON];
+                default -> SHAPES[ANGELIC];
+            };
+        }
         return switch (wingType.getSelected()) {
             case "Dragon" -> SHAPES[DRAGON];
             case "Butterfly" -> SHAPES[BUTTERFLY];

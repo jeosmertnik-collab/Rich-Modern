@@ -293,52 +293,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    const ymLoginBtn = document.getElementById('ymLoginBtn');
-    const ymLogoutBtn = document.getElementById('ymLogoutBtn');
-    const ymStatus = document.getElementById('ymStatus');
-
-    async function updateYmStatus() {
-        const token = await ipcRenderer.invoke('ym:getToken');
-        if (ymStatus) {
-            ymStatus.textContent = token ? 'Яндекс Музыка подключена (токен есть)' : 'Не подключено';
-            ymStatus.style.color = token ? '#22c55e' : 'var(--text-muted)';
-        }
-    }
-
-    if (ymLoginBtn) {
-        ymLoginBtn.addEventListener('click', async () => {
-            try {
-                ymLoginBtn.disabled = true;
-                ymLoginBtn.textContent = 'Авторизация...';
-                const result = await ipcRenderer.invoke('ym:login');
-                ymLoginBtn.disabled = false;
-                ymLoginBtn.textContent = 'ВОЙТИ ЯНДЕКС';
-                if (typeof result === 'string' && result.startsWith('Ошибка')) {
-                    if (ymStatus) { ymStatus.textContent = result; ymStatus.style.color = '#ef4444'; }
-                } else {
-                    updateYmStatus();
-                }
-            } catch (e) {
-                ymLoginBtn.disabled = false;
-                ymLoginBtn.textContent = 'ВОЙТИ ЯНДЕКС';
-                if (ymStatus) { ymStatus.textContent = 'Ошибка: ' + e.message; ymStatus.style.color = '#ef4444'; }
-            }
-        });
-    }
-
-    if (ymLogoutBtn) {
-        ymLogoutBtn.addEventListener('click', async () => {
-            try {
-                await ipcRenderer.invoke('ym:removeToken');
-                updateYmStatus();
-            } catch (e) {
-                if (ymStatus) { ymStatus.textContent = 'Ошибка: ' + e.message; ymStatus.style.color = '#ef4444'; }
-            }
-        });
-    }
-
-    try { updateYmStatus(); } catch (e) { console.error('YM init error:', e); }
-
     const syncBtn = document.getElementById('syncAccountsBtn');
     const syncStatus = document.getElementById('syncStatus');
     if (syncBtn) {
@@ -530,18 +484,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (launchProgress) launchProgress.style.display = 'block';
 
-        if (data.status === 'building') {
-            if (launchProgressText) launchProgressText.textContent = data.message || 'Building...';
-            if (launchProgressStep) launchProgressStep.textContent = '#' + (data.taskNumber || '');
-            if (data.taskNumber) {
-                const pct = Math.min(95, Math.round((data.taskNumber / 30) * 100));
-                if (launchProgressFill) launchProgressFill.style.width = pct + '%';
-            }
-        } else if (data.status === 'downloading') {
-            if (launchProgressText) launchProgressText.textContent = data.message || 'Downloading...';
-            if (data.percent && launchProgressFill) {
-                launchProgressFill.style.width = data.percent + '%';
-            }
+        if (launchProgressText) launchProgressText.textContent = data.message || 'Загрузка...';
+        if (data.taskNumber) {
+            if (launchProgressStep) launchProgressStep.textContent = '#' + data.taskNumber;
+            const pct = Math.min(95, Math.round((data.taskNumber / 40) * 100));
+            if (launchProgressFill) launchProgressFill.style.width = pct + '%';
+        }
+        if (data.percent >= 0 && launchProgressFill) {
+            launchProgressFill.style.width = data.percent + '%';
         }
     });
 
@@ -562,6 +512,88 @@ document.addEventListener('DOMContentLoaded', () => {
     if (ramSlider) {
         ramSlider.addEventListener('input', (e) => { if (ramValue) ramValue.textContent = e.target.value; });
     }
+
+    // --- COSMETICS ---
+    const COSMETIC_CHARS = [
+        { id: 'default', name: 'Обычный', icon: '🧑' },
+        { id: 'steve', name: 'Steve', icon: '👨' },
+        { id: 'alex', name: 'Alex', icon: '👩' },
+        { id: 'noor', name: 'Noor', icon: '🧕' },
+        { id: 'sunny', name: 'Sunny', icon: '👦' },
+        { id: 'ari', name: 'Ari', icon: '👧' },
+        { id: 'zuri', name: 'Zuri', icon: '🧒' },
+        { id: 'efe', name: 'Efe', icon: '👶' },
+        { id: 'kay', name: 'Kay', icon: '🧑‍🦰' },
+        { id: 'makena', name: 'Makena', icon: '👱' },
+    ];
+    const COSMETIC_WINGS = [
+        { id: 'none', name: 'Выкл', icon: '❌' },
+        { id: 'ANGELIC', name: 'Ангельские', icon: '🪽' },
+        { id: 'DRAGON', name: 'Драконьи', icon: '🐉' },
+        { id: 'BUTTERFLY', name: 'Бабочка', icon: '🦋' },
+        { id: 'PHOENIX', name: 'Феникс', icon: '🔥' },
+        { id: 'CRYSTAL', name: 'Кристальные', icon: '💎' },
+        { id: 'MECHANICAL', name: 'Механические', icon: '⚙️' },
+        { id: 'FAIRY', name: 'Феи', icon: '✨' },
+        { id: 'DEMON', name: 'Демонические', icon: '😈' },
+    ];
+    const COSMETIC_MASKS = [
+        { id: 'none', name: 'Выкл', icon: '❌' },
+        { id: 'clown', name: 'Клоун', icon: '🤡' },
+        { id: 'ninja', name: 'Ниндзя', icon: '🥷' },
+        { id: 'skull', name: 'Череп', icon: '💀' },
+        { id: 'cat', name: 'Кошка', icon: '🐱' },
+        { id: 'fox', name: 'Лиса', icon: '🦊' },
+        { id: 'gas', name: 'Противогаз', icon: '🧪' },
+        { id: 'bandit', name: 'Бандит', icon: '😎' },
+        { id: 'oni', name: 'Они', icon: '👹' },
+    ];
+
+    let cosmeticsData = { character: 'default', wing: 'none', mask: 'none' };
+
+    async function loadCosmetics() {
+        try {
+            const data = await ipcRenderer.invoke('cosmetics:load');
+            if (data) cosmeticsData = data;
+        } catch (e) {
+            console.error('Failed to load cosmetics:', e);
+        }
+    }
+
+    async function saveCosmetics() {
+        try {
+            await ipcRenderer.invoke('cosmetics:save', cosmeticsData);
+        } catch (e) {
+            console.error('Failed to save cosmetics:', e);
+        }
+    }
+
+    function buildCosmeticGrid(containerId, items, category, currentId) {
+        const grid = document.getElementById(containerId);
+        if (!grid) return;
+        grid.innerHTML = '';
+        items.forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'cosmetic-card' + (item.id === currentId ? ' selected' : '');
+            card.innerHTML = `<div class="preview">${item.icon}</div><div class="name">${item.name}</div>`;
+            card.addEventListener('click', () => {
+                grid.querySelectorAll('.cosmetic-card').forEach(c => c.classList.remove('selected'));
+                card.classList.add('selected');
+                cosmeticsData[category] = item.id;
+                saveCosmetics();
+            });
+            grid.appendChild(card);
+        });
+    }
+
+    async function initCosmetics() {
+        await loadCosmetics();
+        buildCosmeticGrid('charGrid', COSMETIC_CHARS, 'character', cosmeticsData.character);
+        buildCosmeticGrid('wingGrid', COSMETIC_WINGS, 'wing', cosmeticsData.wing);
+        buildCosmeticGrid('maskGrid', COSMETIC_MASKS, 'mask', cosmeticsData.mask);
+    }
+
+    initCosmetics();
 
     // --- ONLINE UPDATE SYSTEM ---
     const updateBanner = document.getElementById('updateBanner');
@@ -772,7 +804,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (activateKeyBtn) {
         activateKeyBtn.addEventListener('click', async () => {
             const key = (licenseKeyInput ? licenseKeyInput.value.trim() : '').toUpperCase();
-            if (!key || key.length < 18) {
+            if (!key || key.length < 28) {
                 if (licenseError) {
                     licenseError.textContent = currentLanguage === 'ru' ? 'Неверный формат ключа' : 'Invalid key format';
                     licenseError.style.display = 'block';
@@ -829,6 +861,145 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
         });
+    }
+
+    // --- SERVER MONITOR ---
+    const refreshServersBtn = document.getElementById('refreshServersBtn');
+    const serverList = document.getElementById('serverList');
+
+    const SERVERS = [
+        { name: 'FunTime', host: 'play.funtime.ru', port: 25565 },
+        { name: 'Hypixel', host: 'mc.hypixel.net', port: 25565 },
+        { name: 'Minecraft Central', host: 'mccentral.org', port: 25565 },
+        { name: 'CubeCraft', host: 'cubecraft.net', port: 25565 },
+        { name: '2b2t', host: '2b2t.org', port: 25565 },
+        { name: 'Mindustry', host: 'mindustry.ga', port: 25565 },
+    ];
+
+    function pingServer(host, port, timeout) {
+        return new Promise((resolve) => {
+            const net = require('net');
+            const start = Date.now();
+            const socket = new net.Socket();
+            socket.setTimeout(timeout || 5000);
+            socket.on('connect', () => {
+                const latency = Date.now() - start;
+                socket.destroy();
+                resolve({ status: 'online', latency });
+            });
+            socket.on('error', () => { socket.destroy(); resolve({ status: 'offline', latency: null }); });
+            socket.on('timeout', () => { socket.destroy(); resolve({ status: 'offline', latency: null }); });
+            socket.connect(port, host);
+        });
+    }
+
+    async function refreshServers() {
+        if (!serverList) return;
+        serverList.innerHTML = '';
+        for (const srv of SERVERS) {
+            const card = document.createElement('div');
+            card.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:14px 18px;background:rgba(14,15,20,0.4);border:1px solid var(--border-color);border-radius:12px;';
+            card.innerHTML = `
+                <div>
+                    <div style="font-weight:600;font-size:14px;">${srv.name}</div>
+                    <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">${srv.host}:${srv.port}</div>
+                </div>
+                <div id="status-${srv.host.replace(/[^a-z0-9]/gi, '_')}" style="font-size:11px;font-weight:600;letter-spacing:0.5px;color:var(--text-muted);">Checking...</div>
+            `;
+            serverList.appendChild(card);
+        }
+        const t = await loadTranslations(currentLanguage);
+        for (const srv of SERVERS) {
+            const result = await pingServer(srv.host, srv.port, 3000);
+            const el = document.getElementById(`status-${srv.host.replace(/[^a-z0-9]/gi, '_')}`);
+            if (el) {
+                if (result.status === 'online') {
+                    el.textContent = (t.monitor_online || 'ONLINE') + ` (${result.latency}ms)`;
+                    el.style.color = '#22c55e';
+                } else {
+                    el.textContent = t.monitor_offline || 'OFFLINE';
+                    el.style.color = '#ff4a4a';
+                }
+            }
+        }
+    }
+
+    if (refreshServersBtn) {
+        refreshServersBtn.addEventListener('click', refreshServers);
+    }
+
+    // --- RESOURCE PACKS ---
+    const rpSearch = document.getElementById('rpSearch');
+    const rpSearchBtn = document.getElementById('rpSearchBtn');
+    const rpGrid = document.getElementById('rpGrid');
+
+    const PACK_CATALOG = [
+        { name: 'Faithful 32x', url: 'https://mediafilez.com/download/8AFD4/f32', desc: 'Classic pixel-perfect textures at 32x resolution.', author: 'Faithful Team' },
+        { name: 'Sphax PureBDcraft 64x', url: 'https://mediafilez.com/download/saGAr/Sp64', desc: 'Comic-style smooth textures, 64x resolution.', author: 'Sphax' },
+        { name: 'ModernArch 128x', url: 'https://mediafilez.com/download/5MrL2/mA128', desc: 'Realistic modern architecture style textures.', author: 'ModernArch' },
+        { name: 'Stay True', url: 'https://mediafilez.com/download/FTr0T/StTr', desc: 'Faithful enhancement with vibrant colors.', author: 'Stay True Team' },
+    ];
+
+    async function renderResourcePacks(filter) {
+        if (!rpGrid) return;
+        const result = await ipcRenderer.invoke('resourcepacks:list');
+        const installed = result.packs || [];
+        const t = await loadTranslations(currentLanguage);
+
+        rpGrid.innerHTML = '';
+        const filtered = PACK_CATALOG.filter(p =>
+            !filter || p.name.toLowerCase().includes(filter.toLowerCase())
+        );
+
+        if (filtered.length === 0) {
+            rpGrid.innerHTML = '<div class="card" style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted);">' + (t.rp_search_placeholder || 'No packs found') + '</div>';
+            return;
+        }
+
+        for (const pack of filtered) {
+            const isInstalled = installed.some(p => p.startsWith(pack.name));
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.style.cssText = 'display:flex;flex-direction:column;';
+
+            const statusText = isInstalled ? (t.rp_installed || 'INSTALLED') : (t.rp_install || 'INSTALL');
+
+            card.innerHTML = `
+                <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;">
+                    <div style="width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#fff;flex-shrink:0;">${pack.name[0]}</div>
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-weight:600;font-size:14px;">${pack.name}</div>
+                        <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${pack.author}</div>
+                    </div>
+                </div>
+                <div style="font-size:12px;color:#a2a4b0;line-height:1.5;margin-bottom:16px;flex:1;">${pack.desc}</div>
+                <button class="btn-monochrome-sub rp-install-btn" style="width:100%;text-align:center;padding:12px;${isInstalled ? 'opacity:0.5;' : ''}" data-url="${pack.url}" data-name="${pack.name}" ${isInstalled ? 'disabled' : ''}>${statusText}</button>
+            `;
+            rpGrid.appendChild(card);
+        }
+
+        document.querySelectorAll('.rp-install-btn:not([disabled])').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const url = btn.dataset.url;
+                const name = btn.dataset.name + '.zip';
+                const t2 = await loadTranslations(currentLanguage);
+                btn.textContent = t2.rp_downloading || 'DOWNLOADING...';
+                btn.disabled = true;
+                const res = await ipcRenderer.invoke('resourcepacks:install', { url, name });
+                if (res.success) {
+                    btn.textContent = t2.rp_installed || 'INSTALLED';
+                    btn.style.opacity = '0.5';
+                } else {
+                    btn.textContent = (t2.rp_install || 'INSTALL') + ' ✕';
+                    btn.disabled = false;
+                }
+            });
+        });
+    }
+
+    if (rpSearchBtn && rpSearch) {
+        rpSearchBtn.addEventListener('click', () => renderResourcePacks(rpSearch.value));
+        rpSearch.addEventListener('keyup', (e) => { if (e.key === 'Enter') renderResourcePacks(rpSearch.value); });
     }
 
     loadSubscriptionStatus();

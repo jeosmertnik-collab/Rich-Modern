@@ -193,8 +193,17 @@
                     <div class="nav-item" data-target="screen-settings">
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2 2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                     </div>
+                    <div class="nav-item" data-target="screen-monitor">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    </div>
+                    <div class="nav-item" data-target="screen-resourcepacks">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                    </div>
                     <div class="nav-item" data-target="screen-subscription">
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg>
+                    </div>
+                    <div class="nav-item" data-target="screen-cosmetics">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>
                     </div>
                 </div>
                 <div class="logout-btn" id="logoutBtn">
@@ -337,15 +346,7 @@
                                 <div class="value-box"><span id="ramValue">2048</span> MB</div>
                             </div>
                         </div>
-                        <div class="card">
-                            <div class="card-title">Яндекс Музыка</div>
-                            <div class="card-desc">Подключи Яндекс Музыку, чтобы слушать треки в игре.</div>
-                            <div style="display: flex; gap: 8px; margin-top: 12px;">
-                                <button class="btn-monochrome-sub" id="ymLoginBtn" style="flex:1;">ВОЙТИ ЯНДЕКС</button>
-                                <button class="btn-monochrome-sub" id="ymLogoutBtn" style="flex:0.5;">✕</button>
-                            </div>
-                            <div id="ymStatus" style="margin-top: 8px; font-size: 12px; color: var(--text-muted);">Не подключено</div>
-                        </div>
+
                     </div>
                     <div style="margin-top: 20px;">
                         <div class="card">
@@ -354,6 +355,61 @@
                             <div id="syncStatus" style="font-size:12px; color:var(--text-muted); margin-bottom:8px;"></div>
                             <button class="btn-monochrome-sub" id="syncAccountsBtn">СИНХРОНИЗИРОВАТЬ</button>
                         </div>
+                    </div>
+                </div>
+
+                <div class="screen" id="screen-monitor">
+                    <div class="card">
+                        <div class="card-title" data-i18n="monitor_title">Server Monitor</div>
+                        <div class="card-desc" data-i18n="monitor_desc">Check Minecraft server status and latency.</div>
+                        <div id="serverList" style="display:flex;flex-direction:column;gap:10px;margin-top:16px;"></div>
+                        <button class="btn-monochrome-sub" id="refreshServersBtn" style="width:100%;margin-top:16px;padding:14px;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:middle;margin-right:8px;"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                            <span data-i18n="monitor_refresh">REFRESH</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="screen" id="screen-resourcepacks">
+                    <div class="card" style="margin-bottom:20px;">
+                        <div class="card-title" data-i18n="rp_title">Resource Packs</div>
+                        <div class="card-desc" data-i18n="rp_desc">Browse and install resource packs.</div>
+                        <div style="display:flex;gap:12px;margin-top:16px;">
+                            <input type="text" id="rpSearch" data-i18n-placeholder="rp_search_placeholder" placeholder="Search packs..." 
+                                   style="flex:1;background:var(--bg-input);border:1px solid var(--border-color);padding:12px 16px;border-radius:10px;color:var(--text-main);font-size:14px;outline:none;">
+                            <button class="btn-monochrome-sub" id="rpSearchBtn" style="padding:12px 24px;width:auto;">SEARCH</button>
+                        </div>
+                    </div>
+                    <div class="grid-2x2" id="rpGrid">
+                    </div>
+                </div>
+
+                <div class="screen" id="screen-cosmetics">
+                    <style>
+                        .cosmetics-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; }
+                        .cosmetic-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px; text-align: center; cursor: pointer; transition: all 0.3s ease; }
+                        .cosmetic-card:hover { border-color: rgba(255,255,255,0.15); transform: translateY(-2px); }
+                        .cosmetic-card.selected { border-color: #6496FF; background: rgba(100,150,255,0.08); box-shadow: 0 0 15px rgba(100,150,255,0.1); }
+                        .cosmetic-card .preview { width: 64px; height: 64px; margin: 0 auto 8px; border-radius: 8px; background: #0a0b10; display: flex; align-items: center; justify-content: center; font-size: 28px; }
+                        .cosmetic-card .name { font-size: 12px; font-weight: 600; }
+                        .cosmetics-section { margin-bottom: 24px; }
+                        .cosmetics-section h3 { font-size: 15px; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+                        .cosmetics-section .desc { font-size: 12px; color: var(--text-muted); margin-bottom: 10px; }
+                    </style>
+                    <div class="cosmetics-section">
+                        <h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> Персонаж</h3>
+                        <div class="desc">Выбери модель персонажа</div>
+                        <div class="cosmetics-grid" id="charGrid"></div>
+                    </div>
+                    <div class="cosmetics-section">
+                        <h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg> Крылья</h3>
+                        <div class="desc">Выбери тип крыльев (потребуется модуль Wings в игре)</div>
+                        <div class="cosmetics-grid" id="wingGrid"></div>
+                    </div>
+                    <div class="cosmetics-section">
+                        <h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="12" rx="3" ry="2"></ellipse><path d="M12 2C7 2 2 7 2 12s5 10 10 10 10-5 10-10S17 2 12 2z"></path></svg> Маски</h3>
+                        <div class="desc">Выбери маску для лица</div>
+                        <div class="cosmetics-grid" id="maskGrid"></div>
                     </div>
                 </div>
 

@@ -1,6 +1,6 @@
 {
   "name": "excel-client-launcher",
-  "version": "1.0.17",
+  "version": "1.0.20",
   "description": "Excel Client Launcher",
   "main": "app.js",
   "scripts": {

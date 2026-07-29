@@ -12,6 +12,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import excel.modules.impl.render.Esp;
+import excel.modules.impl.render.MaskFeatureRenderer;
 import excel.modules.impl.render.chinahat.ChinaHatFeatureRenderer;
 
 @Mixin(PlayerEntityRenderer.class)
@@ -22,6 +23,7 @@ public class MixinPlayerEntityRenderer {
     private void onInit(EntityRendererFactory.Context ctx, boolean slim, CallbackInfo ci) {
         PlayerEntityRenderer renderer = (PlayerEntityRenderer) (Object) this;
         renderer.addFeature(new ChinaHatFeatureRenderer(renderer));
+        renderer.addFeature(new MaskFeatureRenderer(renderer));
     }
 
     @Inject(method = "renderLabelIfPresent(Lnet/minecraft/client/render/entity/state/PlayerEntityRenderState;Lnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/client/render/command/OrderedRenderCommandQueue;Lnet/minecraft/client/render/state/CameraRenderState;)V", at = @At("HEAD"), cancellable = true)
