@@ -887,10 +887,28 @@ function startBot() {
     if (botProcess) return;
     const botPath = path.join(__dirname, 'bot.js');
     if (!fs.existsSync(botPath)) return;
+
+    // Ensure bot config exists in userData
+    const ud = app.getPath('userData');
+    const userBotCfg = path.join(ud, 'bot.config.json');
+    const devBotCfg = path.join(__dirname, 'bot.config.json');
+
+    if (!fs.existsSync(userBotCfg) && fs.existsSync(devBotCfg)) {
+        try {
+            fs.mkdirSync(ud, { recursive: true });
+            fs.copyFileSync(devBotCfg, userBotCfg);
+        } catch (e) {}
+    }
+
+    if (!fs.existsSync(userBotCfg)) {
+        console.log('[bot] no config found');
+        return;
+    }
+
     try {
         botProcess = spawn(process.execPath, [botPath], {
             stdio: 'pipe',
-            env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', LAUNCHER_DATA_DIR: app.getPath('userData') }
+            env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', LAUNCHER_DATA_DIR: ud, BOT_CONFIG_DIR: ud }
         });
         botProcess.stdout.on('data', d => console.log('[bot]', d.toString().trim()));
         botProcess.stderr.on('data', d => console.error('[bot]', d.toString().trim()));

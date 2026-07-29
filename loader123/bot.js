@@ -4,13 +4,14 @@ const path = require('path');
 const crypto = require('crypto');
 
 // --- CONFIG ---
-const CONFIG_FILE = path.join(__dirname, 'bot.config.json');
+const CONFIG_DIR = process.env.BOT_CONFIG_DIR || __dirname;
+const CONFIG_FILE = path.join(CONFIG_DIR, 'bot.config.json');
 let config = {};
 try { config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8')); } catch (e) {}
 
 const TOKEN = process.env.BOT_TOKEN || config.token || '';
 const ADMINS = config.admins || [];
-const DATA_DIR = process.env.LAUNCHER_DATA_DIR || config.dataDir || path.join(process.env.APPDATA || '.', 'excel-client-launcher');
+const DATA_DIR = process.env.LAUNCHER_DATA_DIR || config.dataDir || (process.env.APPDATA ? path.join(process.env.APPDATA, 'excel-client-launcher') : path.join(__dirname, 'data'));
 
 if (!TOKEN) { console.error('No BOT_TOKEN set. Create bot.config.json with {"token":"..."} or set env.'); process.exit(1); }
 
