@@ -127,17 +127,6 @@ function saveLicenseDB(db) {
     try { const dir = path.dirname(LICENSE_DB_FILE); if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(LICENSE_DB_FILE, JSON.stringify(db, null, 2)); } catch (e) {}
 }
 
-const PRESENCE_DB_FILE = path.join(app.getPath('userData'), 'presence.json');
-
-function loadPresenceDB() {
-    try { if (fs.existsSync(PRESENCE_DB_FILE)) return JSON.parse(fs.readFileSync(PRESENCE_DB_FILE, 'utf8')); } catch (e) {}
-    return {};
-}
-
-function savePresenceDB(db) {
-    try { const dir = path.dirname(PRESENCE_DB_FILE); if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(PRESENCE_DB_FILE, JSON.stringify(db, null, 2)); } catch (e) {}
-}
-
 function startLicenseServer() {
     try {
         const SUB_PAGE = '<!DOCTYPE html>' +
@@ -355,52 +344,6 @@ function startLicenseServer() {
                         res.end(JSON.stringify({ error: 'Invalid request' }));
                     }
                 });
-            } else if (req.url.startsWith('/api/presence/') && req.method === 'PUT') {
-                const username = decodeURIComponent(req.url.split('/').pop());
-                let body = '';
-                req.on('data', c => body += c);
-                req.on('end', () => {
-                    try {
-                        const data = JSON.parse(body);
-                        const presenceDB = loadPresenceDB();
-                        presenceDB[username] = { status: data.status || 'online', lastSeen: Date.now(), game: data.game || 'В игре' };
-                        savePresenceDB(presenceDB);
-                        res.writeHead(200, { 'Content-Type': 'application/json' });
-                        res.end(JSON.stringify({ success: true }));
-                    } catch (e) {
-                        res.writeHead(400);
-                        res.end(JSON.stringify({ error: 'Invalid request' }));
-                    }
-                });
-            } else if (req.url.startsWith('/api/presence/') && req.method === 'DELETE') {
-                const username = decodeURIComponent(req.url.split('/').pop());
-                const presenceDB = loadPresenceDB();
-                delete presenceDB[username];
-                savePresenceDB(presenceDB);
-                res.writeHead(200, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ success: true }));
-            } else if (req.url.startsWith('/api/presence/') && req.method === 'GET') {
-                const username = decodeURIComponent(req.url.split('/').pop());
-                const presenceDB = loadPresenceDB();
-                const entry = presenceDB[username];
-                if (entry && (Date.now() - entry.lastSeen) < 120000) {
-                    res.writeHead(200, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify(entry));
-                } else {
-                    res.writeHead(200, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ status: 'offline', lastSeen: 0 }));
-                }
-            } else if (req.url === '/api/presence' && req.method === 'GET') {
-                const presenceDB = loadPresenceDB();
-                const now = Date.now();
-                const active = {};
-                for (const [user, data] of Object.entries(presenceDB)) {
-                    if ((now - data.lastSeen) < 120000) {
-                        active[user] = data;
-                    }
-                }
-                res.writeHead(200, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify(active));
             // --- Admin panel static ---
             } else if (req.url === '/admin' || req.url === '/admin/' || req.url.startsWith('/admin/')) {
                 const filePath = req.url === '/admin' || req.url === '/admin/' ? '/index.html' : req.url.replace('/admin', '');
@@ -521,9 +464,7 @@ function startLicenseServer() {
                 if (subUrl === '/stats') {
                     const db = loadLicenseDB();
                     const keys = Object.values(db);
-                    const presenceDB = loadPresenceDB();
                     const now = Date.now();
-                    const online = Object.keys(presenceDB).filter(u => (now - presenceDB[u].lastSeen) < 120000).length;
                     const linksPath = path.join(app.getPath('userData'), 'bot_links.json');
                     let linked = 0;
                     try { if (fs.existsSync(linksPath)) linked = Object.keys(JSON.parse(fs.readFileSync(linksPath, 'utf8'))).length; } catch (e) {}
@@ -532,7 +473,7 @@ function startLicenseServer() {
                         active: keys.filter(k => !k.banned && now < k.expiresAt).length,
                         expired: keys.filter(k => now > k.expiresAt).length,
                         banned: keys.filter(k => k.banned).length,
-                        linked, online
+                        linked
                     })); return;
                 }
                 if (subUrl === '/users') {
@@ -858,7 +799,7 @@ function loadLocalVersion() {
             return JSON.parse(fs.readFileSync(LOCAL_VERSION_FILE, 'utf8'));
         }
     } catch (e) {}
-    return { version: '0.0.0', clientVersion: '0.0.0' };
+    return { version: '0.0.0', clientVersion: '0.0.0', launcherVersion: '0.0.0' };
 }
 
 function saveLocalVersion(data) {
@@ -908,9 +849,25 @@ ipcMain.handle('update:check', async () => {
             if (r < l) break;
         }
 
+        const remoteLauncherVer = remote.launcherVersion || '0.0.0';
+        const localLauncherVer = local.launcherVersion || '0.0.0';
+
+        const rlParts = remoteLauncherVer.split('.').map(Number);
+        const llParts = localLauncherVer.split('.').map(Number);
+
+        let hasLauncherUpdate = false;
+        for (let i = 0; i < 3; i++) {
+            const r = rlParts[i] || 0;
+            const l = llParts[i] || 0;
+            if (r > l) { hasLauncherUpdate = true; break; }
+            if (r < l) break;
+        }
+
         return {
             hasUpdate,
+            hasLauncherUpdate,
             version: remoteVersion,
+            launcherVersion: remoteLauncherVer,
             clientVersion: remote.clientVersion || '',
             downloadUrl: remote.downloadUrl || '',
             launcherUrl: remote.launcherUrl || '',
@@ -999,10 +956,11 @@ ipcMain.on('update:download', (event, { url, targetPath }) => {
     doDownload(url);
 });
 
-ipcMain.handle('update:setVersion', (event, { version, clientVersion }) => {
+ipcMain.handle('update:setVersion', (event, { version, clientVersion, launcherVersion }) => {
     const local = loadLocalVersion();
     if (version) local.version = version;
     if (clientVersion) local.clientVersion = clientVersion;
+    if (launcherVersion) local.launcherVersion = launcherVersion;
     local.lastUpdated = Date.now();
     saveLocalVersion(local);
     return true;
@@ -1010,6 +968,86 @@ ipcMain.handle('update:setVersion', (event, { version, clientVersion }) => {
 
 ipcMain.handle('update:getLocalVersion', () => {
     return loadLocalVersion();
+});
+
+// --- Launcher self-update ---
+function downloadFileWithProgress(url, dest, onProgress) {
+    return new Promise((resolve, reject) => {
+        const client = url.startsWith('https') ? https : http;
+        client.get(url, { timeout: 120000 }, (res) => {
+            if (res.statusCode === 301 || res.statusCode === 302) {
+                return downloadFileWithProgress(res.headers.location, dest, onProgress).then(resolve).catch(reject);
+            }
+            if (res.statusCode !== 200) return reject(new Error('HTTP ' + res.statusCode));
+
+            const totalBytes = parseInt(res.headers['content-length'], 10) || 0;
+            let receivedBytes = 0;
+            const fileStream = fs.createWriteStream(dest);
+
+            res.on('data', (chunk) => {
+                receivedBytes += chunk.length;
+                fileStream.write(chunk);
+                if (onProgress) onProgress(receivedBytes, totalBytes);
+            });
+
+            res.on('end', () => {
+                fileStream.end(() => {
+                    fileStream.close();
+                    resolve();
+                });
+            });
+
+            res.on('error', (e) => {
+                fileStream.close();
+                reject(e);
+            });
+        }).on('error', reject);
+    });
+}
+
+ipcMain.on('update:launcher-download', async (event) => {
+    try {
+        const remoteJson = await fetchUrl(VERSION_URL);
+        const remote = JSON.parse(remoteJson);
+
+        if (!remote.launcherUrl) {
+            event.reply('update:download-status', { status: 'error', message: 'Нет ссылки для скачивания' });
+            return;
+        }
+
+        const tempPath = path.join(app.getPath('temp'), 'ExcelClient-update.exe');
+
+        await downloadFileWithProgress(remote.launcherUrl, tempPath, (received, total) => {
+            const percent = total > 0 ? Math.round((received / total) * 100) : -1;
+            event.reply('update:download-status', {
+                status: 'downloading',
+                percent,
+                receivedBytes: received,
+                totalBytes: total
+            });
+        });
+
+        const originalDir = process.env.PORTABLE_EXECUTABLE_DIR || '';
+        if (originalDir && fs.existsSync(path.join(originalDir, 'ExcelClient.exe'))) {
+            try {
+                fs.copyFileSync(tempPath, path.join(originalDir, 'ExcelClient.exe'));
+                fs.unlinkSync(tempPath);
+            } catch (e) {
+                event.reply('update:download-status', { status: 'error', message: 'Не удалось заменить файл: ' + e.message });
+                return;
+            }
+        }
+
+        const local = loadLocalVersion();
+        local.launcherVersion = remote.launcherVersion;
+        saveLocalVersion(local);
+
+        event.reply('update:download-status', { status: 'done', message: 'Launcher updated' });
+
+        setTimeout(() => { app.quit(); }, 1500);
+    } catch (e) {
+        event.reply('update:download-status', { status: 'error', message: e.message });
+    }
 });
 
 // === SUBSCRIPTION HANDLERS ===
@@ -1046,10 +1084,7 @@ ipcMain.handle('license:activate', async (event, { key, username }) => {
         }
         saveLicenseDB(db);
         saveLicense({ key, plan: result.plan, expiresAt: result.expiresAt, activatedAt: Date.now(), hwid });
-        const chatId = getPresenceChatId();
-        if (chatId && username) {
-            botSend(chatId, '🟢 Активация: `' + username + '`\nКлюч: `' + key + '`\nПлан: ' + result.plan);
-        } else if (username) {
+        if (username) {
             const linksPath = path.join(app.getPath('userData'), 'bot_links.json');
             try {
                 if (fs.existsSync(linksPath)) {
@@ -1296,10 +1331,6 @@ async function botHandle(cmd, chatId, username) {
     const parts = cmd.split(' ');
     const c = parts[0].toLowerCase();
 
-    if (!getPresenceChatId() && c.startsWith('/')) {
-        setPresenceChatId(chatId);
-    }
-
     const cfg = loadBotConfig();
     const admins = (cfg && cfg.admins) || [];
     const isAdmin = admins.includes(username) || admins.includes(String(chatId));
@@ -1326,7 +1357,7 @@ async function botHandle(cmd, chatId, username) {
             + 'Привяжи аккаунт: `/start твой_логин`\n\n'
             + '*/key* — получить ключ\n'
             + '*/status* — статус подписки\n'
-            + '*/online* — кто в игре\n\n'
+
             + (isAdmin ? '_Админ:_ `/genkey`, `/ban`, `/unban`, `/stats`, `/broadcast`, `/notify`\n' : '')
         );
     }
@@ -1402,20 +1433,6 @@ async function botHandle(cmd, chatId, username) {
         userKeys.forEach(([key, data]) => {
             const ok = Date.now() < data.expiresAt;
             msg += '\n' + (ok ? '✅' : '❌') + ' `' + key + '` (' + data.plan + ') до ' + new Date(data.expiresAt).toLocaleDateString('ru-RU');
-        });
-        return botSend(chatId, msg);
-    }
-
-    if (c === '/online') {
-        const pPath = path.join(app.getPath('userData'), 'presence.json');
-        let presence = {};
-        try { if (fs.existsSync(pPath)) presence = JSON.parse(fs.readFileSync(pPath, 'utf8')); } catch (e) {}
-        const now = Date.now();
-        const active = Object.entries(presence).filter(([k, v]) => (now - v.lastSeen) < 120000);
-        if (active.length === 0) return botSend(chatId, '💤 Никого нет в игре.');
-        let msg = '*Сейчас в игре:*\n';
-        active.forEach(([user, data]) => {
-            msg += '\n🟢 `' + user + '` — ' + (data.game || 'в игре') + ' (' + new Date(data.lastSeen).toLocaleTimeString('ru-RU') + ')';
         });
         return botSend(chatId, msg);
     }
@@ -1531,16 +1548,6 @@ function startBot() {
     const cfg = loadBotConfig();
     if (!cfg || !cfg.token) { console.log('[bot] no token, disabled'); return; }
     botEnabled = true;
-    if (!_presenceChatId) {
-        const linksPath = path.join(app.getPath('userData'), 'bot_links.json');
-        try {
-            if (fs.existsSync(linksPath)) {
-                const links = JSON.parse(fs.readFileSync(linksPath, 'utf8'));
-                const first = Object.values(links).find(c => c);
-                if (first) setPresenceChatId(first);
-            }
-        } catch (e) {}
-    }
     botInterval = setInterval(botPoll, 1500);
     botPoll();
     console.log('[bot] inline polling started');
@@ -1559,89 +1566,6 @@ ipcMain.handle('bot:toggle', async (event, enable) => {
 });
 
 ipcMain.handle('bot:status', () => botInterval !== null);
-
-// --- PRESENCE VIA TELEGRAM ---
-let _presenceChatId = null;
-
-function getPresenceChatId() {
-    if (_presenceChatId) return _presenceChatId;
-    const cfg = loadBotConfig();
-    if (cfg && cfg.presenceChatId) { _presenceChatId = cfg.presenceChatId; return _presenceChatId; }
-    return null;
-}
-
-function setPresenceChatId(id) {
-    _presenceChatId = id;
-    const cfgPath = path.join(app.getPath('userData'), 'bot.config.json');
-    try {
-        const raw = fs.readFileSync(cfgPath, 'utf8');
-        const cfg = JSON.parse(raw);
-        cfg.presenceChatId = id;
-        fs.writeFileSync(cfgPath, JSON.stringify(cfg, null, 2));
-        _botCfg = null;
-    } catch (e) { console.error('[presence] save chat id error:', e.message); }
-}
-
-async function botBroadcastPresence(user, status, game) {
-    const chatId = getPresenceChatId();
-    if (!chatId) return;
-    try {
-        await botApi('sendMessage', {
-            chat_id: chatId,
-            text: '/presence ' + user + ' ' + status + (game ? ' ' + game : ''),
-            disable_notification: true
-        });
-    } catch (e) { /* silent */ }
-}
-
-async function botPeekPresence(username) {
-    try {
-        const res = await botApi('getUpdates', { offset: -200, limit: 200 });
-        if (!res.ok || !res.result) return null;
-        const chatId = getPresenceChatId();
-        if (!chatId) return null;
-        const now = Date.now();
-        for (const upd of res.result) {
-            const msg = upd.message;
-            if (!msg || !msg.text || msg.chat.id !== chatId) continue;
-            const parts = msg.text.split(' ');
-            if (parts[0] !== '/presence' || parts.length < 3) continue;
-            if (parts[1] !== username) continue;
-            const msgTime = (msg.date || 0) * 1000;
-            if ((now - msgTime) > 120000) continue;
-            if (parts[2] === 'online') {
-                return { status: 'online', lastSeen: msgTime, game: parts.slice(3).join(' ') || 'В игре' };
-            } else {
-                return { status: 'offline', lastSeen: msgTime };
-            }
-        }
-        return { status: 'offline', lastSeen: 0 };
-    } catch (e) {
-        console.error('[presence] peek error:', e.message);
-        return null;
-    }
-}
-
-ipcMain.handle('presence:check', async (event, username) => {
-    const result = await botPeekPresence(username);
-    if (result) return result;
-    const localDB = loadPresenceDB();
-    const entry = localDB[username];
-    if (entry && (Date.now() - entry.lastSeen) < 120000) return entry;
-    return null;
-});
-
-ipcMain.handle('presence:update', async (event, { user, status, game }) => {
-    const presenceDB = loadPresenceDB();
-    if (status === 'online') {
-        presenceDB[user] = { status: 'online', lastSeen: Date.now(), game: game || 'В игре' };
-    } else {
-        delete presenceDB[user];
-    }
-    savePresenceDB(presenceDB);
-    await botBroadcastPresence(user, status, game);
-    return true;
-});
 
 // --- CHAT WebSocket Server ---
 let g_chatWss = null;
@@ -1670,11 +1594,6 @@ function startChatServer() {
                     if (msg.type === 'message' && username) {
                         const payload = { type: 'message', username, text: msg.text, time: Date.now(), id: g_chatInstanceId + '_' + Date.now() };
                         broadcastChat(payload, null);
-                        // Relay via Telegram for cross-instance
-                        const chatId = getPresenceChatId();
-                        if (chatId) {
-                            botApi('sendMessage', { chat_id: chatId, text: '/chat ' + JSON.stringify(payload), disable_notification: true }).catch(() => {});
-                        }
                     }
                 } catch (e) {}
             });

@@ -7,7 +7,6 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.render.GuiRenderer;
 import net.minecraft.client.gui.render.state.GuiRenderState;
-import net.minecraft.client.gui.screen.ChatScreen;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.GameRenderer;
@@ -188,16 +187,6 @@ public abstract class GameRendererMixin {
         Hud hud = Hud.getInstance();
         boolean hudEnabled = hud != null && hud.isState();
 
-        if (screen instanceof ChatScreen) {
-            if (hudEnabled) {
-                Drag.onDraw(context, mouseX, mouseY, tickDelta, true);
-            }
-        } else if (screen == null) {
-            if (hudEnabled) {
-                Drag.onDrawCleanup();
-            }
-        }
-
         if (screen instanceof ClickGui clickGui) {
             if (hudEnabled) {
                 HudManager hudManager = Drag.getHudManager();
@@ -216,7 +205,6 @@ public abstract class GameRendererMixin {
     private boolean shouldRenderOnTop(Screen screen) {
         if (screen == null) return true;
         if (screen instanceof ClickGui) return true;
-        if (screen instanceof ChatScreen) return true;
         return false;
     }
 

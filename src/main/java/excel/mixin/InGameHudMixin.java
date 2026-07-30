@@ -5,7 +5,6 @@ import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.hud.InGameHud;
-import net.minecraft.client.gui.screen.ChatScreen;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.render.RenderTickCounter;
 import net.minecraft.entity.player.PlayerEntity;
@@ -124,9 +123,8 @@ public abstract class InGameHudMixin implements IMinecraft {
     private boolean shouldRenderHud(Screen screen) {
         if (screen == null) return true;
         if (screen instanceof ClickGui) return false;
-        if (screen instanceof ChatScreen) return false;
         if (isLoadingScreen(screen)) return false;
-        return true;
+        return false;
     }
 
     @Unique

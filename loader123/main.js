@@ -569,7 +569,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (launchProgress) launchProgress.style.display = 'none';
             launchGameBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"></circle><polyline points="8 12 11 15 16 9"></polyline></svg> ${t.status_started || 'ИГРА ЗАПУЩЕНА'}`;
             playSuccessSound();
-            updateOwnPresence(data.server || 'Minecraft');
         } else if (data.status === 'closed') {
             if (launchProgress) launchProgress.style.display = 'none';
             launchGameBtn.disabled = false;
@@ -577,7 +576,6 @@ document.addEventListener('DOMContentLoaded', () => {
             launchGameBtn.style.pointerEvents = 'all';
             launchGameBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> ${t.btn_launch || 'ЗАПУСТИТЬ'}`;
             if (launchStatus) launchStatus.style.display = 'none';
-            removeOwnPresence();
             updateLaunchState();
         }
     });
@@ -643,11 +641,23 @@ document.addEventListener('DOMContentLoaded', () => {
     async function checkForUpdates() {
         try {
             const result = await ipcRenderer.invoke('update:check');
-            if (result.error || !result.hasUpdate) return;
+            if (result.error) return;
+
+            const hasClientUpdate = result.hasUpdate;
+            const hasLauncherUpdate = result.hasLauncherUpdate;
+
+            if (!hasClientUpdate && !hasLauncherUpdate) return;
 
             pendingUpdate = result;
 
-            if (updateVersionText) updateVersionText.textContent = 'v' + result.version;
+            if (hasLauncherUpdate) {
+                pendingUpdate._isLauncherUpdate = true;
+                if (updateVersionText) updateVersionText.textContent = 'Лоадер v' + result.launcherVersion;
+            } else {
+                pendingUpdate._isLauncherUpdate = false;
+                if (updateVersionText) updateVersionText.textContent = 'v' + result.version;
+            }
+
             if (updateChangelog) {
                 const changelog = result.changelog[currentLanguage] || result.changelog.ru || result.changelog.en || '';
                 updateChangelog.textContent = changelog;
@@ -684,7 +694,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (btnUpdate) {
         btnUpdate.addEventListener('click', async () => {
-            if (!pendingUpdate || !pendingUpdate.downloadUrl) return;
+            if (!pendingUpdate) return;
 
             const t = await loadTranslations(currentLanguage);
 
@@ -695,23 +705,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (updateProgressText) updateProgressText.textContent = t.update_downloading || 'Загрузка...';
 
-            const jarName = 'rich-' + pendingUpdate.clientVersion + '.jar';
-            let targetPath;
+            if (pendingUpdate._isLauncherUpdate) {
+                ipcRenderer.send('update:launcher-download');
+            } else if (pendingUpdate.downloadUrl) {
+                const jarName = 'rich-' + pendingUpdate.clientVersion + '.jar';
+                let targetPath;
 
-            const root = await ipcRenderer.invoke('game:findRoot');
-            if (root) {
-                targetPath = require('path').join(root, 'mods', jarName);
-            } else {
-                const gameDataDir = await ipcRenderer.invoke('game:getGameDataDir');
-                targetPath = require('path').join(gameDataDir, jarName);
+                const root = await ipcRenderer.invoke('game:findRoot');
+                if (root) {
+                    targetPath = require('path').join(root, 'mods', jarName);
+                } else {
+                    const gameDataDir = await ipcRenderer.invoke('game:getGameDataDir');
+                    targetPath = require('path').join(gameDataDir, jarName);
+                }
+
+                ipcRenderer.send('update:download', {
+                    url: pendingUpdate.downloadUrl,
+                    targetPath: targetPath,
+                    _updateVersion: pendingUpdate.version,
+                    _updateClientVersion: pendingUpdate.clientVersion
+                });
             }
-
-            ipcRenderer.send('update:download', {
-                url: pendingUpdate.downloadUrl,
-                targetPath: targetPath,
-                _updateVersion: pendingUpdate.version,
-                _updateClientVersion: pendingUpdate.clientVersion
-            });
         });
     }
 
@@ -751,7 +765,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             ipcRenderer.invoke('update:setVersion', {
                 version: pendingUpdate.version,
-                clientVersion: pendingUpdate.clientVersion
+                clientVersion: pendingUpdate.clientVersion,
+                launcherVersion: pendingUpdate.launcherVersion
             });
         } else if (data.status === 'error') {
             if (updateBanner) updateBanner.classList.add('error');
@@ -889,71 +904,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
         });
-    }
-
-    // --- SERVER MONITOR ---
-    const refreshServersBtn = document.getElementById('refreshServersBtn');
-    const serverList = document.getElementById('serverList');
-
-    const SERVERS = [
-        { name: 'FunTime', host: 'play.funtime.ru', port: 25565 },
-        { name: 'Hypixel', host: 'mc.hypixel.net', port: 25565 },
-        { name: 'Minecraft Central', host: 'mccentral.org', port: 25565 },
-        { name: 'CubeCraft', host: 'cubecraft.net', port: 25565 },
-        { name: '2b2t', host: '2b2t.org', port: 25565 },
-        { name: 'Mindustry', host: 'mindustry.ga', port: 25565 },
-    ];
-
-    function pingServer(host, port, timeout) {
-        return new Promise((resolve) => {
-            const net = require('net');
-            const start = Date.now();
-            const socket = new net.Socket();
-            socket.setTimeout(timeout || 5000);
-            socket.on('connect', () => {
-                const latency = Date.now() - start;
-                socket.destroy();
-                resolve({ status: 'online', latency });
-            });
-            socket.on('error', () => { socket.destroy(); resolve({ status: 'offline', latency: null }); });
-            socket.on('timeout', () => { socket.destroy(); resolve({ status: 'offline', latency: null }); });
-            socket.connect(port, host);
-        });
-    }
-
-    async function refreshServers() {
-        if (!serverList) return;
-        serverList.innerHTML = '';
-        for (const srv of SERVERS) {
-            const card = document.createElement('div');
-            card.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:14px 18px;background:rgba(14,15,20,0.4);border:1px solid var(--border-color);border-radius:12px;';
-            card.innerHTML = `
-                <div>
-                    <div style="font-weight:600;font-size:14px;">${srv.name}</div>
-                    <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">${srv.host}:${srv.port}</div>
-                </div>
-                <div id="status-${srv.host.replace(/[^a-z0-9]/gi, '_')}" style="font-size:11px;font-weight:600;letter-spacing:0.5px;color:var(--text-muted);">Checking...</div>
-            `;
-            serverList.appendChild(card);
-        }
-        const t = await loadTranslations(currentLanguage);
-        for (const srv of SERVERS) {
-            const result = await pingServer(srv.host, srv.port, 3000);
-            const el = document.getElementById(`status-${srv.host.replace(/[^a-z0-9]/gi, '_')}`);
-            if (el) {
-                if (result.status === 'online') {
-                    el.textContent = (t.monitor_online || 'ONLINE') + ` (${result.latency}ms)`;
-                    el.style.color = '#22c55e';
-                } else {
-                    el.textContent = t.monitor_offline || 'OFFLINE';
-                    el.style.color = '#ff4a4a';
-                }
-            }
-        }
-    }
-
-    if (refreshServersBtn) {
-        refreshServersBtn.addEventListener('click', refreshServers);
     }
 
     // --- RESOURCE PACKS ---
@@ -1187,23 +1137,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Friend online notifications (checked in friends section)
-    let prevFriendStatus = {};
-
-    function checkFriendNotifications(friends) {
-        const now = Date.now();
-        friends.forEach(f => {
-            checkFriendOnline(f.username).then(data => {
-                const wasOnline = prevFriendStatus[f.username];
-                const isOnline = data && data.status === 'online' && (now - data.lastSeen) < 120000;
-                if (isOnline && !wasOnline && f.username !== currentUser) {
-                    showToast('🟢', 'Друг в игре', f.username + ' зашёл' + (data.game ? ' на ' + data.game : '') + '!');
-                }
-                prevFriendStatus[f.username] = isOnline;
-            });
-        });
-    }
-
     // --- KEY GENERATOR (admin) ---
     function showKeyGenPanel() {
         const panel = document.getElementById('keyGenPanel');
@@ -1256,140 +1189,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // --- FRIENDS SYSTEM ---
-    function loadFriends() {
-        try {
-            const raw = localStorage.getItem('launcher_friends');
-            if (raw) return JSON.parse(raw);
-        } catch (e) {}
-        return [];
-    }
 
-    function saveFriends(friends) {
-        localStorage.setItem('launcher_friends', JSON.stringify(friends));
-    }
 
-    const friendAddInput = document.getElementById('friendAddInput');
-    const friendAddBtn = document.getElementById('friendAddBtn');
-    const friendList = document.getElementById('friendList');
-
-    async function checkFriendOnline(username) {
-        try {
-            return await ipcRenderer.invoke('presence:check', username);
-        } catch (e) {
-            return null;
-        }
-    }
-
-    async function updateOwnPresence(game) {
-        const user = currentUser;
-        if (!user) return;
-        try {
-            await ipcRenderer.invoke('presence:update', { user, status: 'online', game });
-        } catch (e) { /* presence relay not available */ }
-    }
-
-    async function removeOwnPresence() {
-        const user = currentUser;
-        if (!user) return;
-        try {
-            await ipcRenderer.invoke('presence:update', { user, status: 'offline' });
-        } catch (e) {}
-    }
-
-    function renderFriendList() {
-        if (!friendList) return;
-        const friends = loadFriends();
-        friendList.innerHTML = '';
-        if (friends.length === 0) {
-            friendList.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px;" data-i18n="friends_empty">Список друзей пуст. Добавь друга по нику.</div>';
-            return;
-        }
-        friends.forEach(f => {
-            const row = document.createElement('div');
-            row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-radius:12px;background:var(--bg-card);border:1px solid var(--border-color);backdrop-filter:blur(16px);';
-            row.innerHTML = `
-                <div style="display:flex;align-items:center;gap:14px;">
-                    <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;">${f.username.charAt(0).toUpperCase()}</div>
-                    <div>
-                        <div style="font-weight:600;font-size:14px;">${f.username}</div>
-                        <div style="font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:6px;">
-                            <span class="friend-status-dot" style="width:7px;height:7px;border-radius:50%;background:#626475;display:inline-block;"></span>
-                            <span class="friend-status-text">...</span>
-                        </div>
-                    </div>
-                </div>
-                <button class="friend-remove-btn" style="background:rgba(255,74,74,0.1);border:none;color:#ff4a4a;padding:6px 10px;border-radius:6px;font-size:11px;cursor:pointer;transition:all 0.2s;">✕</button>
-            `;
-            const removeBtn = row.querySelector('.friend-remove-btn');
-            removeBtn.addEventListener('click', () => {
-                let friends = loadFriends();
-                friends = friends.filter(x => x.username !== f.username);
-                saveFriends(friends);
-                renderFriendList();
-                playNotificationSound();
-            });
-            friendList.appendChild(row);
-            checkFriendOnline(f.username).then(data => {
-                const dot = row.querySelector('.friend-status-dot');
-                const text = row.querySelector('.friend-status-text');
-                if (data && data.status === 'online' && (Date.now() - data.lastSeen) < 120000) {
-                    if (dot) dot.style.background = '#22c55e';
-                    if (text) text.textContent = data.game || 'В игре';
-                    if (text) text.style.color = '#22c55e';
-                } else {
-                    if (dot) dot.style.background = '#626475';
-                    if (text) text.textContent = 'Оффлайн';
-                    if (text) text.style.color = '#626475';
-                }
-            });
-        });
-    }
-
-    if (friendAddBtn && friendAddInput) {
-        friendAddBtn.addEventListener('click', () => {
-            const name = friendAddInput.value.trim().toLowerCase();
-            if (!name || name.length < 3) return;
-            const friends = loadFriends();
-            if (friends.find(f => f.username === name)) return;
-            friends.push({ username: name, addedAt: Date.now() });
-            saveFriends(friends);
-            friendAddInput.value = '';
-            renderFriendList();
-            playSuccessSound();
-        });
-        friendAddInput.addEventListener('keyup', (e) => {
-            if (e.key === 'Enter') friendAddBtn.click();
-        });
-    }
-
-    // Auto-refresh friends presence every 15 seconds
-    let friendsRefreshTimer = null;
-    function startFriendsRefresh() {
-        if (friendsRefreshTimer) clearInterval(friendsRefreshTimer);
-        friendsRefreshTimer = setInterval(() => {
-            const friends = loadFriends();
-            renderFriendList();
-            checkFriendNotifications(friends);
-        }, 15000);
-    }
-    startFriendsRefresh();
-
-    // Initial notification check
-    setTimeout(() => {
-        const friends = loadFriends();
-        if (friends.length > 0) checkFriendNotifications(friends);
-    }, 5000);
-
-    // Update own presence on game launch (hooks into game:launch-status via IPC)
-    // The presence update is handled alongside the UI updates in the existing game:launch-status handler
-
-    // Also update presence when launcher opens
-    updateOwnPresence();
-
-    // Clean up presence on window close
     window.addEventListener('beforeunload', () => {
-        removeOwnPresence();
     });
 
     // Check sub expiry notification

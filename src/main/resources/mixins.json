@@ -7,7 +7,7 @@
     "BlockOutlineMixin",
     "CameraMixin",
     "ChatInputSuggestorMixin",
-    "ChatScreenMixin",
+    "ScreenDragMixin",
     "ChunkOcclusionDataBuilderMixin",
     "ClientPlayerEntityMixin",
     "ClientPlayerInteractionManagerMixin",

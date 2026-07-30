@@ -117,6 +117,8 @@ public class ModuleRepository {
                 .add(new ChatSpammer())
                 .add(new ChatMod())
                 .add(new LeafFarmer())
+                .add(new AntiAFK())
+                .add(new AutoFarmer())
                 .hidden(new AutoParser());
     }
 

@@ -19,7 +19,6 @@ const API = 'https://api.telegram.org/bot' + TOKEN;
 
 const LINKS_FILE = path.join(DATA_DIR, 'bot_links.json');
 const LICENSES_FILE = path.join(DATA_DIR, '.minecraft', 'licenses.json');
-const PRESENCE_FILE = path.join(DATA_DIR, 'presence.json');
 const BANNED_FILE = path.join(DATA_DIR, 'banned.json');
 
 function loadJSON(p, def) { try { if (fs.existsSync(p)) return JSON.parse(fs.readFileSync(p, 'utf8')); } catch (e) {} return def || {}; }
@@ -73,7 +72,7 @@ async function handleCommand(chatId, text, userId, username) {
             + 'Привяжи аккаунт: `/start твой_логин`\n\n'
             + '*/key* — получить ключ\n'
             + '*/status* — статус подписки\n'
-            + '*/online* — кто в игре\n\n'
+
             + '_Админ-команды:_ `/genkey`, `/ban`, `/unban`, `/stats`'
         );
     }
@@ -124,20 +123,6 @@ async function handleCommand(chatId, text, userId, username) {
             msg += '\n';
         });
 
-        return sendMsg(chatId, msg);
-    }
-
-    if (cmd === '/online') {
-        const presence = loadJSON(PRESENCE_FILE);
-        const now = Date.now();
-        const active = Object.entries(presence).filter(([k, v]) => (now - v.lastSeen) < 120000);
-        if (active.length === 0) return sendMsg(chatId, '💤 Никого нет в игре.');
-
-        let msg = '*Сейчас в игре:*\n';
-        active.forEach(([user, data]) => {
-            const d = new Date(data.lastSeen);
-            msg += '\n🟢 `' + user + '` — ' + (data.game || 'в игре') + ' (' + d.toLocaleTimeString('ru-RU') + ')';
-        });
         return sendMsg(chatId, msg);
     }
 

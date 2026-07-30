@@ -26,8 +26,9 @@ public class ClickFriend extends ModuleStructure {
     @Native(type = Native.Type.VMProtectBeginMutation)
     public void onKey(KeyEvent e) {
         if (e.isKeyDown(friendBind.getKey()) && mc.crosshairTarget instanceof EntityHitResult result && result.getEntity() instanceof PlayerEntity player) {
-            if (FriendUtils.isFriend(player)) FriendUtils.removeFriend(player);
-            else FriendUtils.addFriend(player);
+            String name = player.getName().getString();
+            if (FriendUtils.isFriend(name)) FriendUtils.removeFriendAndSave(name);
+            else FriendUtils.addFriendAndSave(name);
         }
     }
 }

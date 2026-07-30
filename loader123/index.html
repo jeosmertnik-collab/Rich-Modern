@@ -214,17 +214,11 @@
                     <div class="nav-item" data-target="screen-settings">
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2 2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                     </div>
-                    <div class="nav-item" data-target="screen-monitor">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                    </div>
                     <div class="nav-item" data-target="screen-resourcepacks">
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
                     </div>
                     <div class="nav-item" data-target="screen-subscription">
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg>
-                    </div>
-                    <div class="nav-item" data-target="screen-social">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                     </div>
                 </div>
                 <div class="logout-btn" id="logoutBtn">
@@ -451,18 +445,6 @@
                     </div>
                 </div>
 
-                <div class="screen" id="screen-monitor">
-                    <div class="card">
-                        <div class="card-title" data-i18n="monitor_title">Server Monitor</div>
-                        <div class="card-desc" data-i18n="monitor_desc">Check Minecraft server status and latency.</div>
-                        <div id="serverList" style="display:flex;flex-direction:column;gap:10px;margin-top:16px;"></div>
-                        <button class="btn-monochrome-sub" id="refreshServersBtn" style="width:100%;margin-top:16px;padding:14px;">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:middle;margin-right:8px;"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
-                            <span data-i18n="monitor_refresh">REFRESH</span>
-                        </button>
-                    </div>
-                </div>
-
                 <div class="screen" id="screen-resourcepacks">
                     <div class="card" style="margin-bottom:20px;">
                         <div class="card-title" data-i18n="rp_title">Resource Packs</div>
@@ -547,17 +529,6 @@
                     </div>
                 </div>
 
-                <div class="screen" id="screen-social">
-                    <div class="card" style="margin-bottom:20px;">
-                        <div class="card-title" data-i18n="friends_title">Друзья</div>
-                        <div class="card-desc" data-i18n="friends_desc">Добавляй друзей и смотри кто в игре.</div>
-                        <div style="display:flex;gap:12px;margin-top:16px;">
-                            <input type="text" id="friendAddInput" placeholder="Введите ник друга..." style="flex:1;background:var(--bg-input);border:1px solid var(--border-color);padding:12px 16px;border-radius:10px;color:var(--text-main);font-size:14px;outline:none;text-transform:lowercase;">
-                            <button class="btn-monochrome-sub" id="friendAddBtn" style="padding:12px 24px;width:auto;" data-i18n="friends_add">ДОБАВИТЬ</button>
-                        </div>
-                    </div>
-                    <div id="friendList" style="display:flex;flex-direction:column;gap:8px;"></div>
-                </div>
 
             </div>
         </div>
