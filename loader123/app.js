@@ -76,8 +76,8 @@ function validateKeyLocal(key, hwid) {
     if (!key || key.length < 17) return { valid: false, error: 'Invalid key format' };
 
     const parts = key.split('-');
-    if (parts.length !== 4 || parts[0] !== 'RM') return { valid: false, error: 'Invalid key format' };
-    for (let i = 1; i < 4; i++) {
+    if (parts[0] !== 'RM' || parts.length < 4 || parts.length > 5) return { valid: false, error: 'Invalid key format' };
+    for (let i = 1; i < parts.length; i++) {
         if (parts[i].length !== 4) return { valid: false, error: 'Invalid key format' };
     }
 
