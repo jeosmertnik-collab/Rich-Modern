@@ -1061,7 +1061,17 @@ ipcMain.on('game:launch', async (event, { nickname, ram, server }) => {
 
     const gameDir = path.join(app.getPath('userData'), '.minecraft');
     const launcher = new MinecraftLauncher(gameDir, event, log);
-    await launcher.launch(nickname, ram, server);
+
+    try {
+        await launcher.launch(nickname, ram, server);
+    } catch (e) {
+        log('Launch error: ' + e.message);
+    }
+
+    // Destroy tray and close window so launcher disappears from taskbar/taskmgr
+    try { if (tray) { tray.destroy(); tray = null; } } catch (e) {}
+    try { if (win) { win.destroy(); win = null; } } catch (e) {}
+
     app.exit(0);
 });
 
