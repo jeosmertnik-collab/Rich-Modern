@@ -72,6 +72,26 @@ function generateLicenseKey(plan, days, email, nick) {
     return { key, plan, expiresAt };
 }
 
+async function validateKeyRemote(key, hwid) {
+    const cfg = loadBotConfig();
+    const apiUrl = (cfg && cfg.subscriptionApiUrl) || '';
+    if (!apiUrl) return null;
+    try {
+        const url = apiUrl.replace(/\/+$/, '') + '/api/validate';
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 10000);
+        const res = await net.fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key, hwid }),
+            signal: controller.signal
+        });
+        clearTimeout(timeout);
+        if (res.ok) return await res.json();
+    } catch (e) {}
+    return null;
+}
+
 function validateKeyLocal(key, hwid) {
     if (!key || key.length < 17) return { valid: false, error: 'Invalid key format' };
 
@@ -978,7 +998,27 @@ ipcMain.handle('update:getLocalVersion', () => {
 
 ipcMain.handle('license:activate', async (event, { key, username }) => {
     const hwid = getHardwareId();
-    const result = validateKeyLocal(key, hwid);
+    let result = validateKeyLocal(key, hwid);
+
+    // If key not found locally, try remote validation against subscription site API
+    if (!result.valid && result.error === 'Key not found') {
+        const remote = await validateKeyRemote(key, hwid);
+        if (remote && remote.valid) {
+            const db = loadLicenseDB();
+            db[key] = {
+                plan: remote.plan,
+                days: remote.daysTotal || 30,
+                email: remote.email || '',
+                nick: remote.nick || username || '',
+                createdAt: Date.now(),
+                expiresAt: remote.expiresAt,
+                hwid
+            };
+            saveLicenseDB(db);
+            result = { valid: true, plan: remote.plan, daysTotal: remote.daysTotal, expiresAt: remote.expiresAt };
+        }
+    }
+
     if (result.valid) {
         const db = loadLicenseDB();
         if (db[key]) {
