@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-const PORT = 3000;
+const PORT = 3001;
 const DB_FILE = path.join(__dirname, 'licenses.json');
 const SECRET = 'rich-modern-secret-2026';
 // Optional: sync keys to launcher's DB so they work without manual import
