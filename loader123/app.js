@@ -1147,6 +1147,82 @@ ipcMain.handle('resourcepacks:remove', async (event, { name }) => {
     }
 });
 
+ipcMain.handle('configs:list', async () => {
+    const presetsDir = getConfigPresetsDir();
+    try {
+        if (!fs.existsSync(presetsDir)) return [];
+        const entries = fs.readdirSync(presetsDir, { withFileTypes: true });
+        const presets = [];
+        for (const entry of entries) {
+            if (entry.isDirectory()) {
+                const presetPath = path.join(presetsDir, entry.name);
+                const files = fs.readdirSync(presetPath);
+                presets.push({ name: entry.name, fileCount: files.length });
+            }
+        }
+        return presets;
+    } catch (e) {
+        return [];
+    }
+});
+
+ipcMain.handle('configs:save', async (event, name) => {
+    const gameDir = path.join(app.getPath('userData'), '.minecraft');
+    const configSrc = path.join(gameDir, 'Excel', 'configs');
+    const presetDir = path.join(getConfigPresetsDir(), name);
+    try {
+        if (!fs.existsSync(configSrc)) return { success: false, error: 'Config directory not found' };
+        if (fs.existsSync(presetDir)) fs.rmSync(presetDir, { recursive: true });
+        fs.mkdirSync(presetDir, { recursive: true });
+        copyDirSync(configSrc, presetDir);
+        return { success: true };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
+
+ipcMain.handle('configs:load', async (event, name) => {
+    const gameDir = path.join(app.getPath('userData'), '.minecraft');
+    const configDest = path.join(gameDir, 'Excel', 'configs');
+    const presetDir = path.join(getConfigPresetsDir(), name);
+    try {
+        if (!fs.existsSync(presetDir)) return { success: false, error: 'Preset not found' };
+        if (!fs.existsSync(configDest)) fs.mkdirSync(configDest, { recursive: true });
+        copyDirSync(presetDir, configDest);
+        return { success: true };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
+
+ipcMain.handle('configs:delete', async (event, name) => {
+    const presetDir = path.join(getConfigPresetsDir(), name);
+    try {
+        if (fs.existsSync(presetDir)) fs.rmSync(presetDir, { recursive: true });
+        return { success: true };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+});
+
+function getConfigPresetsDir() {
+    return path.join(app.getPath('userData'), 'config-presets');
+}
+
+function copyDirSync(src, dest) {
+    fs.mkdirSync(dest, { recursive: true });
+    const entries = fs.readdirSync(src, { withFileTypes: true });
+    for (const entry of entries) {
+        const srcPath = path.join(src, entry.name);
+        const destPath = path.join(dest, entry.name);
+        if (entry.isDirectory()) {
+            copyDirSync(srcPath, destPath);
+        } else {
+            fs.copyFileSync(srcPath, destPath);
+        }
+    }
+}
+
 ipcMain.on('game:launch', async (event, { nickname, ram, server }) => {
     log('=== LAUNCH START (Direct) ===' + (server ? ' server=' + server : ''));
 

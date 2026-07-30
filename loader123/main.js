@@ -1319,6 +1319,91 @@ document.addEventListener('DOMContentLoaded', () => {
 
     updateRouletteUI();
 
+    // --- CONFIGS SYSTEM ---
+    const configPresetName = document.getElementById('configPresetName');
+    const configSaveBtn = document.getElementById('configSaveBtn');
+    const configPresetList = document.getElementById('configPresetList');
+
+    async function loadConfigPresets() {
+        if (!configPresetList) return;
+        configPresetList.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">Загрузка...</div>';
+        const presets = await ipcRenderer.invoke('configs:list');
+        if (!presets || presets.length === 0) {
+            configPresetList.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">Нет сохранённых пресетов</div>';
+            return;
+        }
+        let html = '';
+        for (const p of presets) {
+            html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--bg-input);border:1px solid var(--border-color);border-radius:10px;margin-bottom:8px;">' +
+                '<div><div style="font-weight:600;font-size:14px;">' + escapeHtml(p.name) + '</div><div style="font-size:11px;color:var(--text-muted);">' + p.fileCount + ' файлов</div></div>' +
+                '<div style="display:flex;gap:6px;">' +
+                '<button class="btn-load-preset" data-name="' + escapeHtml(p.name) + '" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.2);color:#22c55e;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;">ЗАГРУЗИТЬ</button>' +
+                '<button class="btn-delete-preset" data-name="' + escapeHtml(p.name) + '" style="background:rgba(255,74,74,0.1);border:1px solid rgba(255,74,74,0.2);color:#ff4a4a;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;">УДАЛИТЬ</button>' +
+                '</div></div>';
+        }
+        configPresetList.innerHTML = html;
+
+        configPresetList.querySelectorAll('.btn-load-preset').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const name = btn.getAttribute('data-name');
+                btn.disabled = true;
+                btn.textContent = 'ЗАГРУЗКА...';
+                const result = await ipcRenderer.invoke('configs:load', name);
+                if (result.success) {
+                    showToast('✅', 'Конфиг загружен', 'Пресет "' + name + '" применён. Перезапусти клиент.');
+                } else {
+                    showToast('❌', 'Ошибка', result.error || 'Не удалось загрузить пресет');
+                }
+                loadConfigPresets();
+            });
+        });
+
+        configPresetList.querySelectorAll('.btn-delete-preset').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const name = btn.getAttribute('data-name');
+                const result = await ipcRenderer.invoke('configs:delete', name);
+                if (result.success) {
+                    showToast('🗑️', 'Пресет удалён', '"' + name + '" удалён.');
+                }
+                loadConfigPresets();
+            });
+        });
+    }
+
+    function escapeHtml(str) {
+        return String(str).replace(/[&<>"]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            if (m === '"') return '&quot;';
+            return m;
+        });
+    }
+
+    if (configSaveBtn && configPresetName) {
+        configSaveBtn.addEventListener('click', async () => {
+            const name = configPresetName.value.trim();
+            if (!name) {
+                showToast('⚠️', 'Ошибка', 'Введи название пресета');
+                return;
+            }
+            configSaveBtn.disabled = true;
+            configSaveBtn.textContent = 'СОХРАНЕНИЕ...';
+            const result = await ipcRenderer.invoke('configs:save', name);
+            configSaveBtn.disabled = false;
+            configSaveBtn.textContent = 'СОХРАНИТЬ';
+            if (result.success) {
+                showToast('✅', 'Конфиг сохранён', 'Пресет "' + name + '" сохранён.');
+                configPresetName.value = '';
+                loadConfigPresets();
+            } else {
+                showToast('❌', 'Ошибка', result.error || 'Не удалось сохранить пресет');
+            }
+        });
+    }
+
+    loadConfigPresets();
+
     loadSubscriptionStatus();
     updateLaunchState();
 });
