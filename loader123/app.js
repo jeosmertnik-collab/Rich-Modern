@@ -73,7 +73,7 @@ function generateLicenseKey(plan, days, email, nick) {
 }
 
 function validateKeyLocal(key, hwid) {
-    if (!key || key.length < 18) return { valid: false, error: 'Invalid key format' };
+    if (!key || key.length < 17) return { valid: false, error: 'Invalid key format' };
 
     const parts = key.split('-');
     if (parts.length !== 4 || parts[0] !== 'RM') return { valid: false, error: 'Invalid key format' };

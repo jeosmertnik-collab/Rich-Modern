@@ -6,6 +6,9 @@ const crypto = require('crypto');
 const PORT = 3000;
 const DB_FILE = path.join(__dirname, 'licenses.json');
 const SECRET = 'rich-modern-secret-2026';
+// Optional: sync keys to launcher's DB so they work without manual import
+// Set this to the full path of the launcher's licenses.json (e.g. %APPDATA%/excel-client-launcher/.minecraft/licenses.json)
+const LAUNCHER_DB_FILE = process.env.LAUNCHER_DB_PATH || '';
 
 function loadDB() {
     if (!fs.existsSync(DB_FILE)) return {};
@@ -16,25 +19,18 @@ function saveDB(db) {
     fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
 }
 
-function generateLicenseKey(plan, days, email, nick) {
+function generateRandomSegment() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    let seed = 0;
-    const str = plan + days + email + nick + SECRET;
-    for (let i = 0; i < str.length; i++) {
-        seed = ((seed << 5) - seed + str.charCodeAt(i)) | 0;
+    const buf = crypto.randomBytes(4);
+    let s = '';
+    for (let i = 0; i < 4; i++) {
+        s += chars[buf[i] % chars.length];
     }
-    function rand() {
-        seed = (seed * 1103515245 + 12345) & 0x7fffffff;
-        return seed;
-    }
-    function segment() {
-        let s = '';
-        for (let i = 0; i < 4; i++) s += chars[rand() % chars.length];
-        return s;
-    }
-    const planCode = { stable: 'ST', beta: 'BT', alpha: 'AL' }[plan];
-    const daysCode = days.toString(16).toUpperCase().padStart(2, '0');
-    return `RM-${planCode}${daysCode}-${segment()}-${segment()}-${segment()}`;
+    return s;
+}
+
+function generateLicenseKey(plan, days, email, nick) {
+    return `RM-${generateRandomSegment()}-${generateRandomSegment()}-${generateRandomSegment()}`;
 }
 
 function validateKey(key) {
@@ -55,19 +51,41 @@ function validateKey(key) {
     };
 }
 
-function createLicense(plan, days, email, nick) {
-    const key = generateLicenseKey(plan, days, email, nick);
-    const db = loadDB();
-    db[key] = {
+function saveLicenseEntry(key, plan, days, email, nick) {
+    const entry = {
         plan,
         days,
         email,
         nick,
         createdAt: Date.now(),
-        expiresAt: Date.now() + days * 86400000,
+        expiresAt: days === 9999 ? Date.now() + 3650 * 86400000 : Date.now() + days * 86400000,
         hwid: null
     };
+    // Save to own DB
+    const db = loadDB();
+    db[key] = entry;
     saveDB(db);
+    // Also save to launcher DB if configured
+    if (LAUNCHER_DB_FILE) {
+        try {
+            const dir = path.dirname(LAUNCHER_DB_FILE);
+            if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+            let ldb = {};
+            if (fs.existsSync(LAUNCHER_DB_FILE)) {
+                ldb = JSON.parse(fs.readFileSync(LAUNCHER_DB_FILE, 'utf8'));
+            }
+            ldb[key] = entry;
+            fs.writeFileSync(LAUNCHER_DB_FILE, JSON.stringify(ldb, null, 2));
+        } catch (e) {
+            console.error('[license] Failed to write to launcher DB:', e.message);
+        }
+    }
+    return entry;
+}
+
+function createLicense(plan, days, email, nick) {
+    const key = generateLicenseKey(plan, days, email, nick);
+    saveLicenseEntry(key, plan, days, email, nick);
     return key;
 }
 

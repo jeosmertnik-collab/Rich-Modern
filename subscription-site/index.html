@@ -600,7 +600,7 @@
                     <h2>Оплата прошла!</h2>
                     <p class="subtitle">Твой лицензионный ключ</p>
                     <div class="license-key" id="licenseKeyDisplay" onclick="copyLicense()" title="Нажми чтобы скопировать">
-                        RM-XXXX-XXXX-XXXX-XXXX
+                        RM-XXXX-XXXX-XXXX
                     </div>
                     <p class="copy-hint">Нажми на ключ чтобы скопировать</p>
                     <p style="margin-top:20px; font-size:13px; color:#71717a;">
@@ -745,48 +745,41 @@
             btn.disabled = true;
             btn.textContent = 'Обработка...';
 
-            const cacheKey = selectedPlan + '_' + selectedDays + '_' + email;
-            let key = localStorage.getItem('rm_key_' + cacheKey);
+            try {
+                const res = await fetch('/api/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        plan: selectedPlan,
+                        days: selectedDays,
+                        email: email,
+                        nick: email.split('@')[0]
+                    })
+                });
 
-            if (!key) {
-                key = generateLicenseKey(selectedPlan, selectedDays, email);
-                localStorage.setItem('rm_key_' + cacheKey, key);
+                if (!res.ok) {
+                    alert('Ошибка сервера, попробуйте позже');
+                    btn.disabled = false;
+                    btn.textContent = 'Оплатить';
+                    return;
+                }
+
+                const data = await res.json();
+                const key = data.key;
+
+                localStorage.setItem('rm_key_' + selectedPlan + '_' + selectedDays + '_' + email, key);
+
+                await new Promise(r => setTimeout(r, 1000));
+
+                document.getElementById('licenseKeyDisplay').textContent = key;
+                document.getElementById('checkoutForm').style.display = 'none';
+                document.getElementById('successContent').style.display = '';
+            } catch (e) {
+                alert('Ошибка соединения с сервером');
             }
-
-            await new Promise(r => setTimeout(r, 2000));
-
-            document.getElementById('licenseKeyDisplay').textContent = key;
-            document.getElementById('checkoutForm').style.display = 'none';
-            document.getElementById('successContent').style.display = '';
 
             btn.disabled = false;
             btn.textContent = 'Оплатить';
-        }
-
-        function generateLicenseKey(plan, days, email) {
-            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-            const nonce = Date.now().toString(36) + Math.random().toString(36).substring(2, 8);
-            let seed = 0;
-            const str = plan + days + email + nonce + 'rich-modern-secret-2026';
-            for (let i = 0; i < str.length; i++) {
-                seed = ((seed << 5) - seed + str.charCodeAt(i)) | 0;
-            }
-
-            function rand() {
-                seed = (seed * 1103515245 + 12345) & 0x7fffffff;
-                return seed;
-            }
-
-            function segment() {
-                let s = '';
-                for (let i = 0; i < 4; i++) s += chars[rand() % chars.length];
-                return s;
-            }
-
-            const planCode = { stable: 'ST', beta: 'BT', alpha: 'AL' }[plan];
-            const daysCode = days.toString(16).toUpperCase().padStart(2, '0');
-
-            return `RM-${planCode}${daysCode}-${segment()}-${segment()}-${segment()}`;
         }
 
         function copyLicense() {
