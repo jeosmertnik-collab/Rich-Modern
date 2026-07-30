@@ -168,6 +168,25 @@ public class WayCommand extends Command implements IMinecraft {
                         manager.getPrefix() + label + " list"
                 );
             }
+            case "deathpoints", "dp" -> {
+                String server = repository.getCurrentServer();
+                List<Way> deathWays = repository.getWayList().stream()
+                        .filter(w -> w.server().equalsIgnoreCase(server) && w.name().startsWith("☠"))
+                        .toList();
+                if (deathWays.isEmpty()) {
+                    logDirect("Нет deathpoints!", Formatting.RED);
+                    return;
+                }
+                logDirectRaw(Text.literal(getLine()));
+                logDirect("§f§lDEATHPOINTS §7(" + deathWays.size() + ")");
+                logDirectRaw(Text.literal(getLine()));
+                for (Way w : deathWays) {
+                    BlockPos p = w.pos();
+                    logDirect("§c☠ §f" + w.name() + " §8[§7" + p.getX() + " " + p.getY() + " " + p.getZ() + "§8]");
+                }
+                logDirect("§7> way remove <name> §8- §fудалить deathpoint");
+                logDirectRaw(Text.literal(getLine()));
+            }
             default -> {
                 logDirectRaw(Text.literal(getLine()));
                 logDirect("§f§lУПРАВЛЕНИЕ ТОЧКАМИ");
@@ -177,6 +196,7 @@ public class WayCommand extends Command implements IMinecraft {
                 logDirect("§7> way list §8- §fПоказать список точек");
                 logDirect("§7> way clear §8- §fУдалить точки для этого сервера");
                 logDirect("§7> way clearall §8- §fУдалить все точки");
+                logDirect("§7> way deathpoints §8- §fПоказать deathpoints");
                 logDirectRaw(Text.literal(getLine()));
             }
         }

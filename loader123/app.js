@@ -1,12 +1,12 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, net, Tray, Menu, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const https = require('https');
 const http = require('http');
 const { spawn, execSync, exec } = require('child_process');
 const MinecraftLauncher = require('./mc-launcher');
 
 let win;
+let tray;
 let g_licenseServer = null;
 
 
@@ -43,6 +43,9 @@ const REMOTE_USERS_API = 'https://api.github.com/repos/jeosmertnik-collab/Rich-M
 const LICENSE_API_URL = 'http://localhost:3000/api/validate';
 const LOCAL_VERSION_FILE = path.join(app.getPath('userData'), 'version.json');
 const LICENSE_SECRET = 'rich-modern-secret-2026';
+const NOTIF_DB_FILE = path.join(app.getPath('userData'), '.minecraft', 'notifications.json');
+const CAPES_DIR = path.join(__dirname, 'capes');
+const ADMIN_PASSWORD_HASH_FILE = path.join(app.getPath('userData'), '.admin_hash');
 
 function generateRandomSegment() {
     const crypto = require('crypto');
@@ -359,6 +362,167 @@ function startLicenseServer() {
                 }
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify(active));
+            // --- Admin panel static ---
+            } else if (req.url === '/admin' || req.url === '/admin/' || req.url.startsWith('/admin/')) {
+                const filePath = req.url === '/admin' || req.url === '/admin/' ? '/index.html' : req.url.replace('/admin', '');
+                const localPath = path.join(__dirname, 'admin', filePath);
+                try {
+                    if (fs.existsSync(localPath) && !fs.statSync(localPath).isDirectory()) {
+                        const ext = path.extname(localPath).toLowerCase();
+                        const mime = { '.html': 'text/html; charset=utf-8', '.js': 'application/javascript', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
+                        res.writeHead(200, { 'Content-Type': mime[ext] || 'application/octet-stream' });
+                        res.end(fs.readFileSync(localPath));
+                    } else {
+                        res.writeHead(404); res.end('Not found');
+                    }
+                } catch (e) { res.writeHead(404); res.end('Not found'); }
+            // --- Cape file serving (public) ---
+            } else if (req.url.startsWith('/api/capes/') && req.method === 'GET') {
+                const username = decodeURIComponent(req.url.split('/').pop());
+                const assigns = loadCapeAssignments();
+                const file = assigns[username.toLowerCase()];
+                if (file) {
+                    const capePath = path.join(CAPES_DIR, file);
+                    try {
+                        if (fs.existsSync(capePath) && !fs.statSync(capePath).isDirectory()) {
+                            res.writeHead(200, { 'Content-Type': 'image/png' });
+                            res.end(fs.readFileSync(capePath));
+                            return;
+                        }
+                    } catch (e) {}
+                }
+                res.writeHead(404); res.end(JSON.stringify({ error: 'No cape' }));
+            // --- Admin API ---
+            } else if (req.url.startsWith('/api/admin') && req.method === 'POST') {
+                let body = '';
+                req.on('data', chunk => body += chunk);
+                req.on('end', () => {
+                    try {
+                        const data = JSON.parse(body);
+                        const adminPass = getAdminPassword();
+                        const subUrl = req.url.replace('/api/admin', '') || '/';
+                        const token = data.token || req.headers['x-admin-token'] || '';
+
+                        if (subUrl === '/login') {
+                            const ok = data.password === adminPass;
+                            if (ok) {
+                                res.writeHead(200); res.end(JSON.stringify({ token: adminHash(adminPass), ok: true }));
+                            } else {
+                                res.writeHead(403); res.end(JSON.stringify({ error: 'Invalid password' }));
+                            }
+                            return;
+                        }
+                        if (!adminCheckToken(token, adminPass)) {
+                            res.writeHead(403); res.end(JSON.stringify({ error: 'Unauthorized' }));
+                            return;
+                        }
+                        if (subUrl === '/check') {
+                            res.writeHead(200); res.end(JSON.stringify({ ok: true })); return;
+                        }
+                        if (subUrl === '/ban') {
+                            const db = loadLicenseDB();
+                            if (db[data.key]) { db[data.key].banned = true; saveLicenseDB(db); res.writeHead(200); res.end(JSON.stringify({ ok: true })); }
+                            else { res.writeHead(404); res.end(JSON.stringify({ error: 'Key not found' })); }
+                            return;
+                        }
+                        if (subUrl === '/unban') {
+                            const db = loadLicenseDB();
+                            if (db[data.key]) { delete db[data.key].banned; saveLicenseDB(db); res.writeHead(200); res.end(JSON.stringify({ ok: true })); }
+                            else { res.writeHead(404); res.end(JSON.stringify({ error: 'Key not found' })); }
+                            return;
+                        }
+                        if (subUrl === '/extend') {
+                            const db = loadLicenseDB();
+                            if (db[data.key]) { db[data.key].expiresAt += (data.days || 30) * 86400000; saveLicenseDB(db); res.writeHead(200); res.end(JSON.stringify({ ok: true })); }
+                            else { res.writeHead(404); res.end(JSON.stringify({ error: 'Key not found' })); }
+                            return;
+                        }
+                        if (subUrl === '/genkey') {
+                            const result = generateLicenseKey(data.plan || 'beta', parseInt(data.days) || 30, data.email || '', data.nick || '');
+                            res.writeHead(200); res.end(JSON.stringify({ key: result.key, plan: result.plan, expiresAt: result.expiresAt }));
+                            return;
+                        }
+                        if (subUrl === '/notify') {
+                            addNotification(data.title || 'Новое уведомление', data.body || '', data.type || 'info');
+                            res.writeHead(200); res.end(JSON.stringify({ ok: true }));
+                            return;
+                        }
+                        if (subUrl === '/cape/upload') {
+                            ensureCapesDir();
+                            const name = data.name || 'cape_' + Date.now();
+                            const fileName = name.replace(/[^a-zA-Z0-9_-]/g, '_') + '.png';
+                            const filePath = path.join(CAPES_DIR, fileName);
+                            try {
+                                const buf = Buffer.from(data.data, 'base64');
+                                fs.writeFileSync(filePath, buf);
+                                res.writeHead(200); res.end(JSON.stringify({ ok: true, file: fileName }));
+                            } catch (e) { res.writeHead(500); res.end(JSON.stringify({ error: e.message })); }
+                            return;
+                        }
+                        if (subUrl === '/cape/assign') {
+                            const assigns = loadCapeAssignments();
+                            const user = (data.user || '').toLowerCase();
+                            if (!user || !data.file) { res.writeHead(400); res.end(JSON.stringify({ error: 'user and file required' })); return; }
+                            assigns[user] = data.file;
+                            saveCapeAssignments(assigns);
+                            res.writeHead(200); res.end(JSON.stringify({ ok: true }));
+                            return;
+                        }
+                        res.writeHead(404); res.end(JSON.stringify({ error: 'Unknown admin route' }));
+                    } catch (e) { res.writeHead(400); res.end(JSON.stringify({ error: 'Invalid request' })); }
+                });
+            // --- Admin API GET ---
+            } else if (req.url.startsWith('/api/admin') && req.method === 'GET') {
+                const token = req.headers['x-admin-token'] || '';
+                const adminPass = getAdminPassword();
+                if (!adminCheckToken(token, adminPass)) {
+                    res.writeHead(403); res.end(JSON.stringify({ error: 'Unauthorized' })); return;
+                }
+                const subUrl = req.url.replace('/api/admin', '') || '/';
+                if (subUrl === '/stats') {
+                    const db = loadLicenseDB();
+                    const keys = Object.values(db);
+                    const presenceDB = loadPresenceDB();
+                    const now = Date.now();
+                    const online = Object.keys(presenceDB).filter(u => (now - presenceDB[u].lastSeen) < 120000).length;
+                    const linksPath = path.join(app.getPath('userData'), 'bot_links.json');
+                    let linked = 0;
+                    try { if (fs.existsSync(linksPath)) linked = Object.keys(JSON.parse(fs.readFileSync(linksPath, 'utf8'))).length; } catch (e) {}
+                    res.writeHead(200); res.end(JSON.stringify({
+                        total: keys.length,
+                        active: keys.filter(k => !k.banned && now < k.expiresAt).length,
+                        expired: keys.filter(k => now > k.expiresAt).length,
+                        banned: keys.filter(k => k.banned).length,
+                        linked, online
+                    })); return;
+                }
+                if (subUrl === '/users') {
+                    const db = loadLicenseDB();
+                    const users = Object.entries(db).map(([key, data]) => ({ key, ...data }));
+                    res.writeHead(200); res.end(JSON.stringify({ users })); return;
+                }
+                if (subUrl === '/notifications') {
+                    const list = loadNotifDB();
+                    res.writeHead(200); res.end(JSON.stringify({ list })); return;
+                }
+                if (subUrl === '/capes') {
+                    ensureCapesDir();
+                    let files = [];
+                    try { files = fs.readdirSync(CAPES_DIR).filter(f => f.endsWith('.png') && f !== '_assignments.json'); } catch (e) {}
+                    const list = files.map(f => ({ name: f.replace('.png', ''), file: f }));
+                    res.writeHead(200); res.end(JSON.stringify({ list })); return;
+                }
+                if (subUrl.startsWith('/cape/file/')) {
+                    const fileName = decodeURIComponent(subUrl.split('/').pop());
+                    const filePath = path.join(CAPES_DIR, fileName);
+                    try {
+                        if (fs.existsSync(filePath) && !fs.statSync(filePath).isDirectory()) {
+                            res.writeHead(200, { 'Content-Type': 'image/png' }); res.end(fs.readFileSync(filePath)); return;
+                        }
+                    } catch (e) {}
+                    res.writeHead(404); res.end(JSON.stringify({ error: 'Not found' })); return;
+                }
+                res.writeHead(404); res.end(JSON.stringify({ error: 'Unknown admin route' }));
             } else {
                 res.writeHead(404);
                 res.end(JSON.stringify({ error: 'Not found' }));
@@ -436,6 +600,54 @@ function saveLicense(license) {
     } catch (e) {}
 }
 
+// --- Notification DB ---
+function loadNotifDB() {
+    try { if (fs.existsSync(NOTIF_DB_FILE)) return JSON.parse(fs.readFileSync(NOTIF_DB_FILE, 'utf8')); } catch (e) {}
+    return [];
+}
+function saveNotifDB(db) {
+    try { const dir = path.dirname(NOTIF_DB_FILE); if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(NOTIF_DB_FILE, JSON.stringify(db, null, 2)); } catch (e) {}
+}
+function addNotification(title, body, type) {
+    const db = loadNotifDB();
+    db.push({ title, body, type: type || 'info', time: Date.now() });
+    saveNotifDB(db);
+}
+// --- Cape helpers ---
+function ensureCapesDir() { try { if (!fs.existsSync(CAPES_DIR)) fs.mkdirSync(CAPES_DIR, { recursive: true }); } catch (e) {} }
+function loadCapeAssignments() {
+    const p = path.join(CAPES_DIR, '_assignments.json');
+    try { if (fs.existsSync(p)) return JSON.parse(fs.readFileSync(p, 'utf8')); } catch (e) {}
+    return {};
+}
+function saveCapeAssignments(a) {
+    try { ensureCapesDir(); fs.writeFileSync(path.join(CAPES_DIR, '_assignments.json'), JSON.stringify(a, null, 2)); } catch (e) {}
+}
+// --- Admin auth ---
+function getAdminPassword() {
+    // First check cached bot config
+    const cfg = loadBotConfig();
+    if (cfg && cfg.adminPassword) return cfg.adminPassword;
+    // If not cached, read directly from dev config (user might have old userData copy)
+    try {
+        const devPath = path.join(__dirname, 'bot.config.json');
+        if (fs.existsSync(devPath)) {
+            const devCfg = JSON.parse(fs.readFileSync(devPath, 'utf8'));
+            if (devCfg && devCfg.adminPassword) return devCfg.adminPassword;
+        }
+    } catch (e) {}
+    return 'admin123';
+}
+function adminHash(pass) {
+    const crypto = require('crypto');
+    return crypto.createHash('sha256').update(pass + LICENSE_SECRET).digest('hex');
+}
+function adminCheckToken(token, pass) {
+    if (!token) return false;
+    const expected = adminHash(pass);
+    return token === expected;
+}
+
 function getHardwareId() {
     const os = require('os');
     const crypto = require('crypto');
@@ -479,10 +691,33 @@ function createWindow() {
         }
     });
     win.loadFile('index.html');
-    win.on('closed', () => {
-        try { killExistingGameProcesses(log); } catch (e) {}
-        app.quit();
+    win.on('close', (event) => {
+        if (!app.isQuitting) {
+            event.preventDefault();
+            win.hide();
+        }
     });
+}
+
+function createTray() {
+    try {
+        const iconPath = path.join(__dirname, 'excel.ico');
+        let trayIcon;
+        if (fs.existsSync(iconPath)) {
+            trayIcon = nativeImage.createFromPath(iconPath);
+        } else {
+            trayIcon = nativeImage.createEmpty();
+        }
+        tray = new Tray(trayIcon);
+        tray.setToolTip('Excel Client');
+        const menu = Menu.buildFromTemplate([
+            { label: 'Открыть лаунчер', click: () => { if (win) { win.show(); win.focus(); } else createWindow(); } },
+            { type: 'separator' },
+            { label: 'Выход', click: () => { app.isQuitting = true; app.quit(); } }
+        ]);
+        tray.setContextMenu(menu);
+        tray.on('double-click', () => { if (win) { win.show(); win.focus(); } else createWindow(); });
+    } catch (e) { console.error('[tray] error:', e.message); }
 }
 
 app.on('before-quit', () => {
@@ -490,7 +725,21 @@ app.on('before-quit', () => {
 });
 
 ipcMain.on('window-minimize', () => { if (win) win.minimize(); });
-ipcMain.on('window-close', () => { if (win) win.close(); });
+ipcMain.on('window-close', () => { if (win) win.hide(); });
+
+ipcMain.handle('autostart:set', async (event, enable) => {
+    try {
+        app.setLoginItemSettings({ openAtLogin: enable });
+    } catch (e) {
+        console.error('[autostart] error:', e.message);
+    }
+});
+
+ipcMain.handle('autostart:get', async () => {
+    try {
+        return app.getLoginItemSettings().openAtLogin;
+    } catch (e) { return false; }
+});
 
 ipcMain.on('open-avatar-dialog', (event) => {
     dialog.showOpenDialog(win, {
@@ -727,11 +976,31 @@ ipcMain.handle('update:getLocalVersion', () => {
 
 // === SUBSCRIPTION HANDLERS ===
 
-ipcMain.handle('license:activate', async (event, { key }) => {
+ipcMain.handle('license:activate', async (event, { key, username }) => {
     const hwid = getHardwareId();
     const result = validateKeyLocal(key, hwid);
     if (result.valid) {
+        const db = loadLicenseDB();
+        if (db[key]) {
+            if (username) db[key].nick = username;
+        } else {
+            db[key] = { plan: result.plan, days: result.daysTotal || 30, createdAt: Date.now(), expiresAt: result.expiresAt, hwid, email: '', nick: username || '' };
+        }
+        saveLicenseDB(db);
         saveLicense({ key, plan: result.plan, expiresAt: result.expiresAt, activatedAt: Date.now(), hwid });
+        const chatId = getPresenceChatId();
+        if (chatId && username) {
+            botSend(chatId, '🟢 Активация: `' + username + '`\nКлюч: `' + key + '`\nПлан: ' + result.plan);
+        } else if (username) {
+            const linksPath = path.join(app.getPath('userData'), 'bot_links.json');
+            try {
+                if (fs.existsSync(linksPath)) {
+                    const links = JSON.parse(fs.readFileSync(linksPath, 'utf8'));
+                    const target = Object.values(links).find(c => c);
+                    if (target) botSend(target, '🟢 Активация: `' + username + '`\nКлюч: `' + key + '`\nПлан: ' + result.plan);
+                }
+            } catch (e) {}
+        }
         return { success: true, plan: result.plan, expiresAt: result.expiresAt };
     }
     return { success: false, error: result.error };
@@ -885,42 +1154,63 @@ function selfUpdate() {
 let botEnabled = false;
 let botInterval = null;
 let botOffset = 0;
+let _botCfg = null;
 
 function loadBotConfig() {
+    if (_botCfg) return _botCfg;
     const cfgPath = path.join(app.getPath('userData'), 'bot.config.json');
-    try {
-        if (fs.existsSync(cfgPath)) return JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
-    } catch (e) {}
-    // fallback to dev config
     const devPath = path.join(__dirname, 'bot.config.json');
+    // Try userData copy first, but always merge adminPassword from dev config
+    try {
+        if (fs.existsSync(cfgPath)) {
+            _botCfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
+            // Merge adminPassword from dev config to ensure it's always up-to-date
+            try {
+                if (fs.existsSync(devPath)) {
+                    const devCfg = JSON.parse(fs.readFileSync(devPath, 'utf8'));
+                    if (devCfg.adminPassword) {
+                        _botCfg.adminPassword = devCfg.adminPassword;
+                        fs.writeFileSync(cfgPath, JSON.stringify(_botCfg, null, 2));
+                    }
+                }
+            } catch (e) {}
+            return _botCfg;
+        }
+    } catch (e) { console.error('[bot] load config error:', e.message); }
     try {
         if (fs.existsSync(devPath)) {
             const cfg = JSON.parse(fs.readFileSync(devPath, 'utf8'));
             fs.mkdirSync(path.dirname(cfgPath), { recursive: true });
             fs.writeFileSync(cfgPath, JSON.stringify(cfg, null, 2));
-            return cfg;
+            _botCfg = cfg;
+            return _botCfg;
         }
-    } catch (e) {}
+    } catch (e) { console.error('[bot] load dev config error:', e.message); }
     return null;
 }
+function clearBotConfigCache() { _botCfg = null; }
 
-function botApi(method, body) {
-    return new Promise((resolve) => {
+async function botApi(method, body) {
+    try {
         const cfg = loadBotConfig();
-        if (!cfg || !cfg.token) return resolve({ ok: false });
+        if (!cfg || !cfg.token) return { ok: false };
         const data = body ? JSON.stringify(body) : '';
-        const req = https.request('https://api.telegram.org/bot' + cfg.token + '/' + method, {
+        const url = 'https://api.telegram.org/bot' + cfg.token + '/' + method;
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 15000);
+        const res = await net.fetch(url, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) }
-        }, (res) => {
-            let r = '';
-            res.on('data', c => r += c);
-            res.on('end', () => { try { resolve(JSON.parse(r)); } catch (e) { resolve({ ok: false }); } });
+            headers: { 'Content-Type': 'application/json' },
+            body: data || undefined,
+            signal: controller.signal
         });
-        req.on('error', () => resolve({ ok: false }));
-        req.write(data);
-        req.end();
-    });
+        clearTimeout(timeout);
+        const txt = await res.text();
+        return JSON.parse(txt);
+    } catch (e) {
+        console.error('[bot] API error:', e.message);
+        return { ok: false };
+    }
 }
 
 function botSend(chatId, text) {
@@ -937,6 +1227,10 @@ function botGenKey() {
 async function botHandle(cmd, chatId, username) {
     const parts = cmd.split(' ');
     const c = parts[0].toLowerCase();
+
+    if (!getPresenceChatId() && c.startsWith('/')) {
+        setPresenceChatId(chatId);
+    }
 
     const cfg = loadBotConfig();
     const admins = (cfg && cfg.admins) || [];
@@ -965,13 +1259,40 @@ async function botHandle(cmd, chatId, username) {
             + '*/key* — получить ключ\n'
             + '*/status* — статус подписки\n'
             + '*/online* — кто в игре\n\n'
-            + (isAdmin ? '_Админ:_ `/genkey`, `/ban`, `/unban`, `/stats`\n' : '')
+            + (isAdmin ? '_Админ:_ `/genkey`, `/ban`, `/unban`, `/stats`, `/broadcast`, `/notify`\n' : '')
         );
     }
 
     if (c === '/key') {
         if (!linkedUser) return botSend(chatId, '❌ Привяжи аккаунт: `/start твой_логин`');
-        const userKeys = Object.entries(licenses).filter(([k, v]) => v.email === linkedUser || k.includes(linkedUser));
+        let userKeys = Object.entries(licenses).filter(([k, v]) =>
+            (v.email || '').toLowerCase() === linkedUser.toLowerCase() ||
+            (v.nick || '').toLowerCase() === linkedUser.toLowerCase() ||
+            k.toLowerCase().includes(linkedUser.toLowerCase())
+        );
+        if (userKeys.length === 0) {
+            const local = loadLicense();
+            if (local && local.key) {
+                if (licenses[local.key]) {
+                    licenses[local.key].nick = linkedUser;
+                    saveLicenseDB(licenses);
+                    userKeys = [[local.key, licenses[local.key]]];
+                } else {
+                    userKeys = [[local.key, {
+                        plan: local.plan || 'beta',
+                        expiresAt: local.expiresAt || 0,
+                        days: local.days || 30,
+                        hwid: local.hwid || null,
+                        email: '',
+                        nick: linkedUser
+                    }]];
+                    if (userKeys[0][1].expiresAt > Date.now()) {
+                        licenses[local.key] = userKeys[0][1];
+                        saveLicenseDB(licenses);
+                    }
+                }
+            }
+        }
         if (userKeys.length === 0) return botSend(chatId, '❌ Нет активных ключей.');
         const active = userKeys.find(([k, v]) => Date.now() < v.expiresAt);
         if (!active) return botSend(chatId, '❌ Все ключи истекли.');
@@ -980,7 +1301,34 @@ async function botHandle(cmd, chatId, username) {
 
     if (c === '/status') {
         if (!linkedUser) return botSend(chatId, '❌ Привяжи аккаунт: `/start твой_логин`');
-        const userKeys = Object.entries(licenses).filter(([k, v]) => v.email === linkedUser || k.includes(linkedUser));
+        let userKeys = Object.entries(licenses).filter(([k, v]) =>
+            (v.email || '').toLowerCase() === linkedUser.toLowerCase() ||
+            (v.nick || '').toLowerCase() === linkedUser.toLowerCase() ||
+            k.toLowerCase().includes(linkedUser.toLowerCase())
+        );
+        if (userKeys.length === 0) {
+            const local = loadLicense();
+            if (local && local.key) {
+                if (licenses[local.key]) {
+                    licenses[local.key].nick = linkedUser;
+                    saveLicenseDB(licenses);
+                    userKeys = [[local.key, licenses[local.key]]];
+                } else {
+                    userKeys = [[local.key, {
+                        plan: local.plan || 'beta',
+                        expiresAt: local.expiresAt || 0,
+                        days: local.days || 30,
+                        hwid: local.hwid || null,
+                        email: '',
+                        nick: linkedUser
+                    }]];
+                    if (userKeys[0][1].expiresAt > Date.now()) {
+                        licenses[local.key] = userKeys[0][1];
+                        saveLicenseDB(licenses);
+                    }
+                }
+            }
+        }
         if (userKeys.length === 0) return botSend(chatId, '📭 Нет ключей.');
         let msg = '*Твои ключи:*\n';
         userKeys.forEach(([key, data]) => {
@@ -1012,9 +1360,9 @@ async function botHandle(cmd, chatId, username) {
         if (!['stable', 'beta', 'alpha'].includes(plan)) return botSend(chatId, '❌ План: stable/beta/alpha');
         const key = botGenKey();
         const expiresAt = days === 9999 ? Date.now() + 3650 * 86400000 : Date.now() + days * 86400000;
-        licenses[key] = { plan, days, createdAt: Date.now(), expiresAt, hwid: null, email: parts[3] || '' };
+        licenses[key] = { plan, days, createdAt: Date.now(), expiresAt, hwid: null, email: parts[3] || '', nick: parts[4] || '' };
         saveLicenseDB(licenses);
-        return botSend(chatId, '✅ Ключ создан:\n`' + key + '`\nПлан: ' + plan + '\nДней: ' + days);
+        return botSend(chatId, '✅ Ключ создан:\n`' + key + '`\nПлан: ' + plan + '\nДней: ' + days + (parts[4] ? '\nНик: ' + parts[4] : ''));
     }
 
     if (c === '/ban') {
@@ -1055,25 +1403,58 @@ async function botHandle(cmd, chatId, username) {
         msg += '\n👥 Привязано: ' + linkCount;
         return botSend(chatId, msg);
     }
+
+    if (c === '/broadcast' && isAdmin) {
+        const text = parts.slice(1).join(' ');
+        if (!text) return botSend(chatId, '❌ Укажи текст: `/broadcast Сообщение всем`');
+        const links = loadLinks();
+        const targets = Object.values(links);
+        if (targets.length === 0) return botSend(chatId, '📭 Нет привязанных аккаунтов.');
+        let sent = 0;
+        for (const cid of targets) {
+            try { await botSend(cid, '📢 *Важно:* ' + text); sent++; } catch (e) {}
+        }
+        return botSend(chatId, '✅ Разослано ' + sent + '/' + targets.length + ' пользователям.');
+    }
+
+    if (c === '/notify' && isAdmin) {
+        const text = parts.slice(1).join(' ');
+        if (!text) return botSend(chatId, '❌ Укажи текст: `/notify Сообщение`');
+        addNotification('📢 Уведомление', text, 'info');
+        const links = loadLinks();
+        const targets = Object.values(links);
+        let sent = 0;
+        for (const cid of targets) {
+            try { await botSend(cid, '📢 *' + text + '*'); sent++; } catch (e) {}
+        }
+        return botSend(chatId, '✅ Оповещение сохранено и разослано ' + sent + '/' + targets.length + ' пользователям.');
+    }
 }
 
 function botPoll() {
+    const startTime = Date.now();
     botApi('getUpdates', { offset: botOffset, timeout: 10 }).then(res => {
-        if (!res.ok || !res.result) return;
+        if (!res.ok) {
+            console.error('[bot] API returned error:', JSON.stringify(res).slice(0, 200));
+            return;
+        }
+        if (!res.result || res.result.length === 0) return;
         for (const upd of res.result) {
             botOffset = upd.update_id + 1;
             const msg = upd.message;
             if (!msg || !msg.text) continue;
             const chatId = msg.chat.id;
             const username = msg.from.username || msg.from.first_name || 'unknown';
-            console.log('[bot] <<', msg.text, 'from', username);
-            botHandle(msg.text, chatId, username).catch(e => {
+            console.log('[bot] <<', msg.text, 'from', username, 'chat', chatId);
+            // Capture the current botHandle for the promise chain
+            const handleFn = botHandle;
+            handleFn(msg.text, chatId, username).catch(e => {
                 console.error('[bot] cmd error:', e.message);
                 botSend(chatId, '⚠️ ' + e.message);
             });
         }
     }).catch(e => {
-        // silent
+        console.error('[bot] poll error:', e.message);
     });
 }
 
@@ -1082,6 +1463,16 @@ function startBot() {
     const cfg = loadBotConfig();
     if (!cfg || !cfg.token) { console.log('[bot] no token, disabled'); return; }
     botEnabled = true;
+    if (!_presenceChatId) {
+        const linksPath = path.join(app.getPath('userData'), 'bot_links.json');
+        try {
+            if (fs.existsSync(linksPath)) {
+                const links = JSON.parse(fs.readFileSync(linksPath, 'utf8'));
+                const first = Object.values(links).find(c => c);
+                if (first) setPresenceChatId(first);
+            }
+        } catch (e) {}
+    }
     botInterval = setInterval(botPoll, 1500);
     botPoll();
     console.log('[bot] inline polling started');
@@ -1101,10 +1492,188 @@ ipcMain.handle('bot:toggle', async (event, enable) => {
 
 ipcMain.handle('bot:status', () => botInterval !== null);
 
+// --- PRESENCE VIA TELEGRAM ---
+let _presenceChatId = null;
+
+function getPresenceChatId() {
+    if (_presenceChatId) return _presenceChatId;
+    const cfg = loadBotConfig();
+    if (cfg && cfg.presenceChatId) { _presenceChatId = cfg.presenceChatId; return _presenceChatId; }
+    return null;
+}
+
+function setPresenceChatId(id) {
+    _presenceChatId = id;
+    const cfgPath = path.join(app.getPath('userData'), 'bot.config.json');
+    try {
+        const raw = fs.readFileSync(cfgPath, 'utf8');
+        const cfg = JSON.parse(raw);
+        cfg.presenceChatId = id;
+        fs.writeFileSync(cfgPath, JSON.stringify(cfg, null, 2));
+        _botCfg = null;
+    } catch (e) { console.error('[presence] save chat id error:', e.message); }
+}
+
+async function botBroadcastPresence(user, status, game) {
+    const chatId = getPresenceChatId();
+    if (!chatId) return;
+    try {
+        await botApi('sendMessage', {
+            chat_id: chatId,
+            text: '/presence ' + user + ' ' + status + (game ? ' ' + game : ''),
+            disable_notification: true
+        });
+    } catch (e) { /* silent */ }
+}
+
+async function botPeekPresence(username) {
+    try {
+        const res = await botApi('getUpdates', { offset: -200, limit: 200 });
+        if (!res.ok || !res.result) return null;
+        const chatId = getPresenceChatId();
+        if (!chatId) return null;
+        const now = Date.now();
+        for (const upd of res.result) {
+            const msg = upd.message;
+            if (!msg || !msg.text || msg.chat.id !== chatId) continue;
+            const parts = msg.text.split(' ');
+            if (parts[0] !== '/presence' || parts.length < 3) continue;
+            if (parts[1] !== username) continue;
+            const msgTime = (msg.date || 0) * 1000;
+            if ((now - msgTime) > 120000) continue;
+            if (parts[2] === 'online') {
+                return { status: 'online', lastSeen: msgTime, game: parts.slice(3).join(' ') || 'В игре' };
+            } else {
+                return { status: 'offline', lastSeen: msgTime };
+            }
+        }
+        return { status: 'offline', lastSeen: 0 };
+    } catch (e) {
+        console.error('[presence] peek error:', e.message);
+        return null;
+    }
+}
+
+ipcMain.handle('presence:check', async (event, username) => {
+    const result = await botPeekPresence(username);
+    if (result) return result;
+    const localDB = loadPresenceDB();
+    const entry = localDB[username];
+    if (entry && (Date.now() - entry.lastSeen) < 120000) return entry;
+    return null;
+});
+
+ipcMain.handle('presence:update', async (event, { user, status, game }) => {
+    const presenceDB = loadPresenceDB();
+    if (status === 'online') {
+        presenceDB[user] = { status: 'online', lastSeen: Date.now(), game: game || 'В игре' };
+    } else {
+        delete presenceDB[user];
+    }
+    savePresenceDB(presenceDB);
+    await botBroadcastPresence(user, status, game);
+    return true;
+});
+
+// --- CHAT WebSocket Server ---
+let g_chatWss = null;
+let g_chatInstanceId = require('crypto').randomBytes(4).toString('hex');
+let g_recentChatIds = new Set();
+
+function startChatServer() {
+    try {
+        const { WebSocketServer, WebSocket } = require('ws');
+        g_chatWss = new WebSocketServer({ port: 4000 });
+        console.log('[chat] WS server on port 4000');
+
+        g_chatWss.on('connection', (ws) => {
+            let username = null;
+            console.log('[chat] client connected');
+
+            ws.on('message', (raw) => {
+                try {
+                    const msg = JSON.parse(raw.toString());
+                    if (msg.type === 'auth') {
+                        username = msg.username;
+                        const sys = { type: 'system', text: username + ' присоединился к чату', time: Date.now() };
+                        broadcastChat(sys, ws);
+                        return;
+                    }
+                    if (msg.type === 'message' && username) {
+                        const payload = { type: 'message', username, text: msg.text, time: Date.now(), id: g_chatInstanceId + '_' + Date.now() };
+                        broadcastChat(payload, null);
+                        // Relay via Telegram for cross-instance
+                        const chatId = getPresenceChatId();
+                        if (chatId) {
+                            botApi('sendMessage', { chat_id: chatId, text: '/chat ' + JSON.stringify(payload), disable_notification: true }).catch(() => {});
+                        }
+                    }
+                } catch (e) {}
+            });
+
+            ws.on('close', () => {
+                if (username) {
+                    const sys = { type: 'system', text: username + ' покинул чат', time: Date.now() };
+                    broadcastChat(sys, null);
+                }
+            });
+        });
+
+        g_chatWss.on('error', (e) => {
+            console.log('[chat] WS error:', e.message);
+        });
+
+    } catch (e) {
+        console.log('[chat] failed to start:', e.message);
+    }
+}
+
+function broadcastChat(msg, exclude) {
+    if (!g_chatWss) return;
+    const str = JSON.stringify(msg);
+    g_chatWss.clients.forEach(client => {
+        if (client !== exclude && client.readyState === 1) {
+            try { client.send(str); } catch (e) {}
+        }
+    });
+}
+
+function stopChatServer() {
+    if (g_chatWss) {
+        g_chatWss.close();
+        g_chatWss = null;
+        console.log('[chat] server stopped');
+    }
+}
+
+// Wrap botHandle to intercept /chat messages for cross-instance relay
+const _origBotHandle = botHandle;
+botHandle = async function(cmd, chatId, username) {
+    const parts = cmd.split(' ');
+    if (parts[0] === '/chat' && parts.length >= 3) {
+        try {
+            const rest = parts.slice(1).join(' ');
+            const payload = JSON.parse(rest);
+            if (payload.id && payload.id.startsWith(g_chatInstanceId)) return;
+            broadcastChat(payload, null);
+        } catch (e) {
+            const relayUser = parts[1];
+            const relayText = parts.slice(2).join(' ');
+            if (relayUser && relayText) {
+                broadcastChat({ type: 'message', username: relayUser, text: relayText, time: Date.now() }, null);
+            }
+        }
+        return;
+    }
+    if (_origBotHandle) return _origBotHandle(cmd, chatId, username);
+};
+
 app.whenReady().then(() => {
     startLicenseServer();
+    startChatServer();
     createWindow();
-    startBot(); // auto-start bot with launcher
+    createTray();
+    startBot();
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) createWindow();
     });
@@ -1112,8 +1681,7 @@ app.whenReady().then(() => {
 
 app.on('before-quit', () => {
     stopBot();
+    stopChatServer();
 });
 
-app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') app.quit();
-});
+app.on('window-all-closed', () => {});

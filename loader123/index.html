@@ -169,7 +169,7 @@
         .roulette-wheel-wrap { position: relative; width: 200px; height: 200px; margin: 0 auto 16px; }
         .roulette-pointer { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); z-index: 10; font-size: 28px; color: #fff; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5)); }
         .roulette-wheel { width: 200px; height: 200px; border-radius: 50%; background: conic-gradient(#ff4a4a 0deg 60deg, #22c55e 60deg 120deg, #ff4a4a 120deg 180deg, #6366f1 180deg 240deg, #ff4a4a 240deg 300deg, #22c55e 300deg 360deg); border: 3px solid rgba(255,255,255,0.15); box-shadow: 0 0 30px rgba(0,0,0,0.3), inset 0 0 20px rgba(0,0,0,0.2); position: relative; transition: transform 3s cubic-bezier(0.17, 0.67, 0.12, 0.99); }
-        .wheel-label { position: absolute; width: 60px; text-align: center; font-size: 9px; font-weight: 700; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.5); pointer-events: none; }
+        .wheel-label { position: absolute; width: 60px; text-align: center; font-size: 10px; font-weight: 800; color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,0.7), 0 0 8px rgba(0,0,0,0.3); pointer-events: none; transform: translate(-50%, -50%); letter-spacing: 0.5px; }
         .btn-spin { background: linear-gradient(135deg,#6366f1,#8b5cf6); border: none; color: #fff; padding: 12px 40px; border-radius: 12px; font-size: 14px; font-weight: 700; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; transition: all 0.3s ease; }
         .btn-spin:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(99,102,241,0.4); }
         .btn-spin:disabled { opacity: 0.4; cursor: default; }
@@ -267,12 +267,12 @@
                         <div class="roulette-wheel-wrap">
                             <div class="roulette-pointer">▼</div>
                             <div class="roulette-wheel" id="rouletteWheel">
-                                <div class="wheel-label" style="top:12px;left:70px;">ПУСТО</div>
-                                <div class="wheel-label" style="top:40px;right:14px;">1 ДЕНЬ</div>
-                                <div class="wheel-label" style="bottom:52px;right:10px;">ПУСТО</div>
-                                <div class="wheel-label" style="bottom:10px;left:76px;">7 ДНЕЙ</div>
-                                <div class="wheel-label" style="bottom:52px;left:10px;">ПУСТО</div>
-                                <div class="wheel-label" style="top:40px;left:14px;">1 ДЕНЬ</div>
+                                <div class="wheel-label" style="left:133px;top:44px;">ПУСТО</div>
+                                <div class="wheel-label" style="left:165px;top:100px;">1 ДЕНЬ</div>
+                                <div class="wheel-label" style="left:133px;top:156px;">ПУСТО</div>
+                                <div class="wheel-label" style="left:68px;top:156px;">7 ДНЕЙ</div>
+                                <div class="wheel-label" style="left:35px;top:100px;">ПУСТО</div>
+                                <div class="wheel-label" style="left:68px;top:44px;">1 ДЕНЬ</div>
                             </div>
                         </div>
                         <button class="btn-spin" id="spinBtn">КРУТИТЬ</button>
@@ -432,17 +432,7 @@
                                 <span id="soundToggleLabel" style="font-size:13px;color:var(--text-muted);">Вкл</span>
                             </label>
                         </div>
-                        <div class="card">
-                            <div class="card-title">Telegram Bot</div>
-                            <div class="card-desc">Управление TG ботом (команды: /key, /status, /online).</div>
-                            <label style="display:flex;align-items:center;gap:12px;cursor:pointer;padding:12px 0;">
-                                <input type="checkbox" id="botToggle" checked style="display:none;">
-                                <div style="width:44px;height:24px;border-radius:12px;background:#1a1c26;border:1px solid var(--border-color);position:relative;transition:all 0.3s;">
-                                    <div id="botToggleKnob" style="width:18px;height:18px;border-radius:50%;background:#22c55e;position:absolute;top:2px;left:22px;transition:all 0.3s;"></div>
-                                </div>
-                                <span id="botToggleLabel" style="font-size:13px;color:var(--text-muted);">Запущен</span>
-                            </label>
-                        </div>
+
                     </div>
                     <div style="margin-top: 20px;">
                         <div class="card">

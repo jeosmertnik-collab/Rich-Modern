@@ -569,7 +569,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (launchProgress) launchProgress.style.display = 'none';
             launchGameBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"></circle><polyline points="8 12 11 15 16 9"></polyline></svg> ${t.status_started || 'ИГРА ЗАПУЩЕНА'}`;
             playSuccessSound();
-            updateOwnPresence();
+            updateOwnPresence(data.server || 'Minecraft');
         } else if (data.status === 'closed') {
             if (launchProgress) launchProgress.style.display = 'none';
             launchGameBtn.disabled = false;
@@ -844,7 +844,7 @@ document.addEventListener('DOMContentLoaded', () => {
             activateKeyBtn.textContent = currentLanguage === 'ru' ? 'ПРОВЕРКА...' : 'CHECKING...';
             if (licenseError) licenseError.style.display = 'none';
 
-            const result = await ipcRenderer.invoke('license:activate', { key });
+            const result = await ipcRenderer.invoke('license:activate', { key, username: currentUser });
 
             activateKeyBtn.disabled = false;
             activateKeyBtn.textContent = currentLanguage === 'ru' ? 'АКТИВИРОВАТЬ' : 'ACTIVATE';
@@ -1163,28 +1163,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     updateSoundUI();
 
-    // --- BOT TOGGLE ---
-    const botToggle = document.getElementById('botToggle');
-    const botToggleKnob = document.getElementById('botToggleKnob');
-    const botToggleLabel = document.getElementById('botToggleLabel');
-
-    async function updateBotUI() {
-        const running = await ipcRenderer.invoke('bot:status');
-        if (botToggle) botToggle.checked = running;
-        if (botToggleKnob) {
-            botToggleKnob.style.left = running ? '22px' : '2px';
-            botToggleKnob.style.background = running ? '#22c55e' : '#626475';
-        }
-        if (botToggleLabel) botToggleLabel.textContent = running ? 'Запущен' : 'Остановлен';
-    }
-
-    if (botToggle) {
-        botToggle.addEventListener('change', async () => {
-            await ipcRenderer.invoke('bot:toggle', botToggle.checked);
-            updateBotUI();
-        });
-    }
-    updateBotUI();
     // --- END SOUND SYSTEM ---
 
     // --- NOTIFICATION TOAST SYSTEM ---
@@ -1215,18 +1193,14 @@ document.addEventListener('DOMContentLoaded', () => {
     function checkFriendNotifications(friends) {
         const now = Date.now();
         friends.forEach(f => {
-            const url = getPresenceURL() + '/api/presence/' + encodeURIComponent(f.username);
-            const controller = new AbortController();
-            const timer = setTimeout(() => controller.abort(), 2000);
-            fetch(url, { signal: controller.signal }).then(r => r.json()).then(data => {
-                clearTimeout(timer);
+            checkFriendOnline(f.username).then(data => {
                 const wasOnline = prevFriendStatus[f.username];
                 const isOnline = data && data.status === 'online' && (now - data.lastSeen) < 120000;
                 if (isOnline && !wasOnline && f.username !== currentUser) {
                     showToast('🟢', 'Друг в игре', f.username + ' зашёл' + (data.game ? ' на ' + data.game : '') + '!');
                 }
                 prevFriendStatus[f.username] = isOnline;
-            }).catch(() => { clearTimeout(timer); });
+            });
         });
     }
 
@@ -1299,48 +1273,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const friendAddBtn = document.getElementById('friendAddBtn');
     const friendList = document.getElementById('friendList');
 
-    function getPresenceURL() {
-        return localStorage.getItem('launcher_presence_url') || 'http://localhost:3000';
-    }
-
     async function checkFriendOnline(username) {
         try {
-            const url = getPresenceURL() + '/api/presence/' + encodeURIComponent(username);
-            const controller = new AbortController();
-            const timer = setTimeout(() => controller.abort(), 3000);
-            const resp = await fetch(url, { signal: controller.signal });
-            clearTimeout(timer);
-            if (!resp.ok) return null;
-            return await resp.json();
+            return await ipcRenderer.invoke('presence:check', username);
         } catch (e) {
             return null;
         }
     }
 
-    async function updateOwnPresence() {
+    async function updateOwnPresence(game) {
         const user = currentUser;
         if (!user) return;
         try {
-            const url = getPresenceURL() + '/api/presence/' + encodeURIComponent(user);
-            const controller = new AbortController();
-            const timer = setTimeout(() => controller.abort(), 3000);
-            await fetch(url, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: 'online', user }),
-                signal: controller.signal
-            });
-            clearTimeout(timer);
-        } catch (e) { /* presence server not available */ }
+            await ipcRenderer.invoke('presence:update', { user, status: 'online', game });
+        } catch (e) { /* presence relay not available */ }
     }
 
-    function removeOwnPresence() {
+    async function removeOwnPresence() {
         const user = currentUser;
         if (!user) return;
         try {
-            const controller = new AbortController();
-            setTimeout(() => controller.abort(), 2000);
-            fetch(getPresenceURL() + '/api/presence/' + encodeURIComponent(user), { method: 'DELETE', signal: controller.signal }).catch(() => {});
+            await ipcRenderer.invoke('presence:update', { user, status: 'offline' });
         } catch (e) {}
     }
 

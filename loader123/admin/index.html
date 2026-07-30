@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Admin Panel — Excel Client</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:system-ui,-apple-system,sans-serif;background:#0a0a0f;color:#e4e4e7;min-height:100vh}
+.hidden{display:none!important}
+#loginPage{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+.login-box{background:#18181b;border:1px solid #27272a;border-radius:20px;padding:40px;width:100%;max-width:400px}
+.login-box h1{font-size:22px;margin-bottom:6px}
+.login-box p{color:#71717a;font-size:14px;margin-bottom:28px}
+.login-box input{width:100%;padding:12px 16px;background:#0a0a0f;border:1px solid #27272a;border-radius:10px;color:#e4e4e7;font-size:14px;margin-bottom:16px}
+.login-box input:focus{outline:none;border-color:#6366f1}
+.login-box button{width:100%;padding:12px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:600;cursor:pointer}
+.login-box .error{color:#ef4444;font-size:13px;margin-bottom:12px;display:none}
+#dashboard{padding:20px;max-width:1400px;margin:0 auto}
+header{display:flex;justify-content:space-between;align-items:center;padding:16px 24px;background:#18181b;border:1px solid #27272a;border-radius:14px;margin-bottom:20px}
+header h1{font-size:18px;font-weight:700}
+header .logout{background:none;border:1px solid #3f3f46;color:#a1a1aa;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:12px}
+header .logout:hover{border-color:#ef4444;color:#ef4444}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:24px}
+.stat-card{background:#18181b;border:1px solid #27272a;border-radius:12px;padding:20px}
+.stat-card .label{font-size:12px;color:#71717a;margin-bottom:4px}
+.stat-card .value{font-size:28px;font-weight:700}
+.stat-card .value.green{color:#22c55e}
+.stat-card .value.yellow{color:#eab308}
+.stat-card .value.red{color:#ef4444}
+.tabs{display:flex;gap:4px;margin-bottom:16px;background:#18181b;border:1px solid #27272a;border-radius:10px;padding:4px;flex-wrap:wrap}
+.tab{padding:8px 16px;border-radius:8px;border:none;background:none;color:#a1a1aa;font-size:13px;font-weight:500;cursor:pointer;transition:all .2s}
+.tab:hover{color:#e4e4e7}
+.tab.active{background:#6366f1;color:#fff}
+.section{display:none}
+.section.active{display:block}
+.table-wrap{background:#18181b;border:1px solid #27272a;border-radius:14px;overflow:hidden}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:#0a0a0f;padding:12px 16px;text-align:left;color:#71717a;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #27272a}
+td{padding:10px 16px;border-bottom:1px solid #1a1a24;color:#d4d4d8}
+tr:hover td{background:rgba(99,102,241,0.04)}
+.badge{padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600}
+.badge.stable{background:rgba(234,179,8,0.15);color:#eab308}
+.badge.beta{background:rgba(99,102,241,0.15);color:#a78bfa}
+.badge.alpha{background:rgba(34,197,94,0.15);color:#22c55e}
+.badge.expired{background:rgba(239,68,68,0.15);color:#ef4444}
+.badge.active{background:rgba(34,197,94,0.15);color:#22c55e}
+.badge.banned{background:rgba(239,68,68,0.15);color:#ef4444}
+.btn-mini{padding:4px 10px;border-radius:6px;border:none;font-size:11px;font-weight:600;cursor:pointer;transition:all .2s}
+.btn-ban{background:rgba(239,68,68,0.15);color:#ef4444}
+.btn-ban:hover{background:#ef4444;color:#fff}
+.btn-unban{background:rgba(34,197,94,0.15);color:#22c55e}
+.btn-unban:hover{background:#22c55e;color:#fff}
+.btn-extend{background:rgba(99,102,241,0.15);color:#a78bfa}
+.btn-extend:hover{background:#6366f1;color:#fff}
+.btn-send{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;padding:10px 20px;border-radius:8px;font-weight:600;cursor:pointer;font-size:13px}
+.btn-send:hover{filter:brightness(1.1)}
+input,select,textarea{background:#0a0a0f;border:1px solid #27272a;border-radius:8px;color:#e4e4e7;padding:10px 12px;font-size:13px;width:100%;margin-bottom:12px}
+input:focus,select:focus,textarea:focus{outline:none;border-color:#6366f1}
+textarea{resize:vertical;min-height:80px;font-family:inherit}
+label{font-size:12px;color:#a1a1aa;display:block;margin-bottom:4px;font-weight:500}
+.flex{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.flex-1{flex:1;min-width:200px}
+.cape-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px}
+.cape-card{background:#18181b;border:1px solid #27272a;border-radius:10px;overflow:hidden;text-align:center;padding:12px}
+.cape-card img{width:100%;max-width:120px;border-radius:6px;margin-bottom:8px}
+.cape-card .name{font-size:12px;color:#d4d4d8;font-weight:500}
+.cape-card .assign-btn{font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid #3f3f46;background:none;color:#a1a1aa;cursor:pointer;margin-top:6px}
+.cape-card .assign-btn:hover{border-color:#6366f1;color:#6366f1}
+.toast{position:fixed;bottom:24px;right:24px;padding:14px 20px;border-radius:10px;font-size:13px;font-weight:500;z-index:9999;animation:slideIn .3s ease}
+.toast.success{background:#22c55e;color:#fff}
+.toast.error{background:#ef4444;color:#fff}
+@keyframes slideIn{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;align-items:center;justify-content:center}
+.modal-overlay.active{display:flex}
+.modal{background:#18181b;border:1px solid #27272a;border-radius:16px;padding:32px;width:90%;max-width:480px;max-height:80vh;overflow-y:auto}
+.modal h2{font-size:18px;margin-bottom:16px}
+</style>
+</head>
+<body>
+<div id="loginPage">
+  <div class="login-box">
+    <h1>Admin Panel</h1>
+    <p>Excel Client — управление</p>
+    <div class="error" id="loginError"></div>
+    <input type="password" id="loginPass" placeholder="Пароль администратора" onkeydown="if(event.key==='Enter')doLogin()">
+    <button onclick="doLogin()">Войти</button>
+  </div>
+</div>
+
+<div id="dashboard" class="hidden">
+  <header>
+    <h1>📊 Excel Admin</h1>
+    <button class="logout" onclick="doLogout()">Выйти</button>
+  </header>
+
+  <div class="stats-grid" id="statsGrid"></div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('users',this)">👥 Пользователи</button>
+    <button class="tab" onclick="switchTab('notifications',this)">🔔 Уведомления</button>
+    <button class="tab" onclick="switchTab('capes',this)">🦚 Плащи</button>
+    <button class="tab" onclick="switchTab('keys',this)">🔑 Ключи</button>
+  </div>
+
+  <div class="section active" id="tab-users">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Логин</th><th>Ключ</th><th>План</th><th>Статус</th><th>Истекает</th><th>HWID</th><th>Действия</th></tr></thead>
+        <tbody id="usersBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section" id="tab-notifications">
+    <div style="background:#18181b;border:1px solid #27272a;border-radius:14px;padding:24px;max-width:600px">
+      <h2 style="font-size:16px;margin-bottom:16px">Отправить уведомление</h2>
+      <label>Заголовок</label>
+      <input type="text" id="notifTitle" placeholder="Например: Новое обновление!">
+      <label>Текст</label>
+      <textarea id="notifBody" placeholder="Текст уведомления..."></textarea>
+      <label>Тип</label>
+      <select id="notifType"><option value="info">ℹ Информация</option><option value="success">✅ Успех</option><option value="warning">⚠ Предупреждение</option></select>
+      <button class="btn-send" onclick="sendNotification()">📨 Отправить всем</button>
+    </div>
+    <div style="margin-top:20px">
+      <h3 style="font-size:14px;color:#71717a;margin-bottom:12px">История</h3>
+      <div id="notifHistory" class="table-wrap"></div>
+    </div>
+  </div>
+
+  <div class="section" id="tab-capes">
+    <div style="background:#18181b;border:1px solid #27272a;border-radius:14px;padding:24px;margin-bottom:20px">
+      <h2 style="font-size:16px;margin-bottom:16px">Загрузить плащ</h2>
+      <input type="file" id="capeFileInput" accept="image/png" style="display:none" onchange="uploadCape(this)">
+      <div class="flex">
+        <input type="text" id="capeNameInput" placeholder="Название плаща" style="flex:1;margin:0">
+        <button class="btn-send" onclick="document.getElementById('capeFileInput').click()">📁 Выбрать PNG</button>
+      </div>
+    </div>
+    <div id="capeList" class="cape-grid"></div>
+  </div>
+
+  <div class="section" id="tab-keys">
+    <div style="background:#18181b;border:1px solid #27272a;border-radius:14px;padding:24px;max-width:500px">
+      <h2 style="font-size:16px;margin-bottom:16px">Сгенерировать ключ</h2>
+      <label>План</label>
+      <select id="genPlan"><option value="stable">Stable</option><option value="beta" selected>Beta</option><option value="alpha">Alpha</option></select>
+      <label>Дней</label>
+      <select id="genDays"><option value="7">7</option><option value="30" selected>30</option><option value="90">90</option><option value="180">180</option><option value="365">365</option></select>
+      <label>Ник (опционально)</label>
+      <input type="text" id="genNick" placeholder="username">
+      <button class="btn-send" onclick="genKey()">🔑 Сгенерировать</button>
+      <div id="genResult" style="margin-top:12px;font-family:monospace;color:#a78bfa;font-size:14px;display:none"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="assignCapeModal">
+  <div class="modal">
+    <h2>Назначить плащ</h2>
+    <label>Ник игрока</label>
+    <input type="text" id="assignCapeUser" placeholder="username">
+    <div class="flex" style="justify-content:flex-end;margin-top:12px">
+      <button class="btn-mini btn-ban" onclick="closeAssignCape()" style="padding:8px 16px">Отмена</button>
+      <button class="btn-send" id="assignCapeBtn" style="margin-left:8px">Привязать</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let token = localStorage.getItem('admin_token');
+
+function toast(msg, type) {
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+async function api(method, body) {
+  try {
+    const res = await fetch('/api/admin' + method, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Admin-Token': token || '' },
+      body: body ? JSON.stringify(body) : undefined
+    });
+    return await res.json();
+  } catch(e) { return { error: e.message }; }
+}
+
+async function apiGet(method) {
+  try {
+    const res = await fetch('/api/admin' + method, {
+      headers: { 'X-Admin-Token': token || '' }
+    });
+    return await res.json();
+  } catch(e) { return { error: e.message }; }
+}
+
+function doLogin() {
+  const pass = document.getElementById('loginPass').value;
+  if (!pass) return;
+  api('/login', { password: pass }).then(r => {
+    if (r.token) {
+      token = r.token;
+      localStorage.setItem('admin_token', token);
+      document.getElementById('loginPage').classList.add('hidden');
+      document.getElementById('dashboard').classList.remove('hidden');
+      loadAll();
+    } else {
+      document.getElementById('loginError').textContent = r.error || 'Ошибка входа';
+      document.getElementById('loginError').style.display = 'block';
+    }
+  });
+}
+
+function doLogout() {
+  token = null;
+  localStorage.removeItem('admin_token');
+  document.getElementById('loginPage').classList.remove('hidden');
+  document.getElementById('dashboard').classList.add('hidden');
+}
+
+if (token) {
+  api('/check', {}).then(r => {
+    if (r.ok) { document.getElementById('loginPage').classList.add('hidden'); document.getElementById('dashboard').classList.remove('hidden'); loadAll(); }
+    else { localStorage.removeItem('admin_token'); token = null; }
+  });
+}
+
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+  if (name === 'capes') loadCapes();
+  if (name === 'keys') document.getElementById('genResult').style.display = 'none';
+}
+
+function loadAll() {
+  loadStats();
+  loadUsers();
+  loadNotifHistory();
+}
+
+function loadStats() {
+  apiGet('/stats').then(r => {
+    if (r.error) return;
+    document.getElementById('statsGrid').innerHTML = `
+      <div class="stat-card"><div class="label">Всего ключей</div><div class="value">${r.total}</div></div>
+      <div class="stat-card"><div class="label">Активных</div><div class="value green">${r.active}</div></div>
+      <div class="stat-card"><div class="label">Истекло</div><div class="value yellow">${r.expired}</div></div>
+      <div class="stat-card"><div class="label">Забанено</div><div class="value red">${r.banned}</div></div>
+      <div class="stat-card"><div class="label">Привязано аккаунтов</div><div class="value">${r.linked}</div></div>
+      <div class="stat-card"><div class="label">Онлайн</div><div class="value green">${r.online}</div></div>
+    `;
+  });
+}
+
+function loadUsers() {
+  apiGet('/users').then(r => {
+    if (r.error) return;
+    const tbody = document.getElementById('usersBody');
+    tbody.innerHTML = r.users.map(u => {
+      const alive = Date.now() < u.expiresAt;
+      const status = u.banned ? 'banned' : (alive ? 'active' : 'expired');
+      const statusLabel = u.banned ? 'Забанен' : (alive ? 'Активен' : 'Истёк');
+      return `<tr>
+        <td>${u.nick || u.email || '-'}</td>
+        <td style="font-family:monospace;font-size:12px">${u.key}</td>
+        <td><span class="badge ${u.plan}">${u.plan}</span></td>
+        <td><span class="badge ${status}">${statusLabel}</span></td>
+        <td>${new Date(u.expiresAt).toLocaleDateString('ru-RU')}</td>
+        <td style="font-size:11px;color:#71717a;font-family:monospace">${u.hwid ? u.hwid.substring(0,8)+'...' : '-'}</td>
+        <td>
+          <div class="flex" style="gap:4px">
+            ${u.banned
+              ? `<button class="btn-mini btn-unban" onclick="doUnban('${u.key}')">Разбанить</button>`
+              : `<button class="btn-mini btn-ban" onclick="doBan('${u.key}')">Забанить</button>`}
+            <button class="btn-mini btn-extend" onclick="doExtend('${u.key}')">+30д</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+  });
+}
+
+function doBan(key) {
+  if (!confirm('Забанить ключ ' + key + '?')) return;
+  api('/ban', { key }).then(r => { if (r.ok) { toast('Забанено','success'); loadUsers(); loadStats(); } else toast(r.error||'Ошибка','error'); });
+}
+
+function doUnban(key) {
+  api('/unban', { key }).then(r => { if (r.ok) { toast('Разбанено','success'); loadUsers(); loadStats(); } else toast(r.error||'Ошибка','error'); });
+}
+
+function doExtend(key) {
+  api('/extend', { key, days: 30 }).then(r => { if (r.ok) { toast('+30 дней','success'); loadUsers(); loadStats(); } else toast(r.error||'Ошибка','error'); });
+}
+
+function genKey() {
+  const plan = document.getElementById('genPlan').value;
+  const days = parseInt(document.getElementById('genDays').value);
+  const nick = document.getElementById('genNick').value;
+  api('/genkey', { plan, days, nick }).then(r => {
+    if (r.key) {
+      document.getElementById('genResult').textContent = '✅ ' + r.key;
+      document.getElementById('genResult').style.display = 'block';
+      loadUsers();
+      loadStats();
+    } else toast(r.error||'Ошибка','error');
+  });
+}
+
+function sendNotification() {
+  const title = document.getElementById('notifTitle').value.trim();
+  const body = document.getElementById('notifBody').value.trim();
+  if (!title || !body) { toast('Заполни заголовок и текст','error'); return; }
+  api('/notify', { title, body, type: document.getElementById('notifType').value }).then(r => {
+    if (r.ok) { toast('Уведомление отправлено','success'); document.getElementById('notifTitle').value = ''; document.getElementById('notifBody').value = ''; loadNotifHistory(); }
+    else toast(r.error||'Ошибка','error');
+  });
+}
+
+function loadNotifHistory() {
+  apiGet('/notifications').then(r => {
+    if (r.error || !r.list || r.list.length === 0) {
+      document.getElementById('notifHistory').innerHTML = '<div style="padding:16px;color:#71717a;font-size:13px">История пуста</div>';
+      return;
+    }
+    const html = '<table><thead><tr><th>Дата</th><th>Тип</th><th>Заголовок</th><th>Текст</th></tr></thead><tbody>' +
+      r.list.slice().reverse().map(n => `<tr><td>${new Date(n.time).toLocaleString('ru-RU')}</td><td>${n.type}</td><td>${n.title}</td><td>${n.body}</td></tr>`).join('') +
+      '</tbody></table>';
+    document.getElementById('notifHistory').innerHTML = html;
+  });
+}
+
+function uploadCape(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const name = document.getElementById('capeNameInput').value.trim() || file.name.replace('.png','');
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const base64 = e.target.result.split(',')[1];
+    api('/cape/upload', { name, data: base64 }).then(r => {
+      if (r.ok) { toast('Плащ загружен','success'); document.getElementById('capeNameInput').value = ''; loadCapes(); }
+      else toast(r.error||'Ошибка','error');
+    });
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
+}
+
+function loadCapes() {
+  apiGet('/capes').then(r => {
+    if (r.error) return;
+    const grid = document.getElementById('capeList');
+    if (!r.list || r.list.length === 0) {
+      grid.innerHTML = '<div style="color:#71717a;font-size:13px;padding:20px">Нет загруженных плащей</div>';
+      return;
+    }
+    grid.innerHTML = r.list.map(c => `
+      <div class="cape-card">
+        <img src="/api/admin/cape/file/${c.file}" alt="${c.name}">
+        <div class="name">${c.name}</div>
+        <button class="assign-btn" onclick="openAssignCape('${c.file}')">Назначить</button>
+      </div>
+    `).join('');
+  });
+}
+
+let assignCapeFile = null;
+function openAssignCape(file) {
+  assignCapeFile = file;
+  document.getElementById('assignCapeUser').value = '';
+  document.getElementById('assignCapeModal').classList.add('active');
+}
+function closeAssignCape() {
+  document.getElementById('assignCapeModal').classList.remove('active');
+}
+document.getElementById('assignCapeBtn').addEventListener('click', () => {
+  const user = document.getElementById('assignCapeUser').value.trim();
+  if (!user) { toast('Введи ник','error'); return; }
+  api('/cape/assign', { file: assignCapeFile, user }).then(r => {
+    if (r.ok) { toast('Плащ назначен','success'); closeAssignCape(); }
+    else toast(r.error||'Ошибка','error');
+  });
+});
+</script>
+</body>
+</html>

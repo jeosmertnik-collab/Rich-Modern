@@ -28,7 +28,8 @@ public class Hud extends ModuleStructure {
                     "ThirdPersonHud",
                     "Inventory",
                     "MusicBar",
-                    "ServerAssistBinds")
+                    "ServerAssistBinds",
+                    "ChatOverlay")
 
             .selected("Watermark",
                     "HotKeys",
@@ -44,7 +45,8 @@ public class Hud extends ModuleStructure {
                     "ThirdPersonHud",
                     "Inventory",
                     "MusicBar",
-                    "ServerAssistBinds");
+                    "ServerAssistBinds",
+                    "ChatOverlay");
 
     public BooleanSetting showBps = new BooleanSetting("Show BPS", "Показывать блоки в секунду")
             .setValue(true)

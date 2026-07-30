@@ -115,6 +115,7 @@ public class ModuleRepository {
                 .add(new AutoFish())
                 .add(new ClanHelper())
                 .add(new ChatSpammer())
+                .add(new ChatMod())
                 .add(new LeafFarmer())
                 .hidden(new AutoParser());
     }

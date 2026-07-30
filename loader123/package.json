@@ -1,6 +1,6 @@
 {
   "name": "excel-client-launcher",
-  "version": "1.0.20",
+  "version": "1.0.23",
   "description": "Excel Client Launcher",
   "main": "app.js",
   "scripts": {
@@ -40,5 +40,8 @@
     "electron": "^30.0.0",
     "electron-builder": "^24.0.0",
     "rcedit": "^5.0.2"
+  },
+  "dependencies": {
+    "ws": "^8.21.1"
   }
 }

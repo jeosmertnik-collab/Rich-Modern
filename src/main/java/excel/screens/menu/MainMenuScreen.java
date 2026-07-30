@@ -212,7 +212,6 @@ public class MainMenuScreen extends Screen {
     }
 
     private void drawBackground(int screenWidth, int screenHeight) {
-        int bgAlpha = (int) (screenFadeIn * 255);
         BackgroundConfig bg = BackgroundConfig.getInstance();
 
         switch (bg.getBackgroundType()) {
@@ -221,28 +220,31 @@ public class MainMenuScreen extends Screen {
                 if (img != null && !img.isEmpty()) {
                     try {
                         Identifier texId = Identifier.of(img);
-                        Render2D.texture(texId, 0, 0, screenWidth, screenHeight, 0, 0, 1, 1, withAlpha(0xFFFFFF, bgAlpha), 0, 0);
+                        Render2D.texture(texId, 0, 0, screenWidth, screenHeight, 0, 0, 1, 1, 0xFFFFFFFF, 0, 0);
                     } catch (Exception e) {
-                        Render2D.rect(0, 0, screenWidth, screenHeight, withAlpha(bg.getSolidColor(), bgAlpha));
+                        Render2D.rect(0, 0, screenWidth, screenHeight, 0xFF000000 | (bg.getSolidColor() & 0xFFFFFF));
                     }
                 } else {
-                    Render2D.rect(0, 0, screenWidth, screenHeight, withAlpha(bg.getSolidColor(), bgAlpha));
+                    Render2D.rect(0, 0, screenWidth, screenHeight, 0xFF000000 | (bg.getSolidColor() & 0xFFFFFF));
                 }
                 break;
             }
             case "GRADIENT":
                 Render2D.gradientRect(0, 0, screenWidth, screenHeight,
                         new int[]{
-                                withAlpha(bg.getGradientTop(), bgAlpha),
-                                withAlpha(bg.getGradientTop(), bgAlpha),
-                                withAlpha(bg.getGradientBottom(), bgAlpha),
-                                withAlpha(bg.getGradientBottom(), bgAlpha)
+                                0xFF000000 | (bg.getGradientTop() & 0xFFFFFF),
+                                0xFF000000 | (bg.getGradientTop() & 0xFFFFFF),
+                                0xFF000000 | (bg.getGradientBottom() & 0xFFFFFF),
+                                0xFF000000 | (bg.getGradientBottom() & 0xFFFFFF)
                         }, 0);
                 break;
             default:
-                Render2D.rect(0, 0, screenWidth, screenHeight, withAlpha(bg.getSolidColor(), bgAlpha));
+                Render2D.rect(0, 0, screenWidth, screenHeight, 0xFF000000 | (bg.getSolidColor() & 0xFFFFFF));
                 break;
         }
+
+        // Dark overlay fade-in (subtle, doesn't reveal vanilla menu)
+        Render2D.rect(0, 0, screenWidth, screenHeight, ((int)(screenFadeIn * 80) << 24) | 0x000000);
 
         if (bg.isParticlesEnabled()) {
             initParticles(screenWidth, screenHeight);
@@ -626,7 +628,7 @@ public class MainMenuScreen extends Screen {
             }
             case 2 -> currentView = View.ALT_SCREEN;
             case 3 -> this.client.setScreen(new OptionsScreen(this, this.client.options));
-            case 4 -> this.client.setScreen(new BackgroundSettingsScreen());
+            case 4 -> this.client.setScreen(new BackgroundSettingsScreen(this));
             case 5 -> this.client.scheduleStop();
         }
     }
