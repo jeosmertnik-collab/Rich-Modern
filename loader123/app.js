@@ -66,7 +66,7 @@ function generateLicenseKey(plan, days, email, nick) {
     if (db[key]) return generateLicenseKey(plan, days, email, nick);
 
     const expiresAt = days === 9999 ? Date.now() + 3650 * 86400000 : Date.now() + days * 86400000;
-    db[key] = { plan, days, createdAt: Date.now(), expiresAt, hwid: null, email: email || '' };
+    db[key] = { plan, days, createdAt: Date.now(), expiresAt, hwid: null, email: email || '', nick: nick || '' };
     saveLicenseDB(db);
 
     return { key, plan, expiresAt };
@@ -329,6 +329,25 @@ function startLicenseServer() {
                     try {
                         const { plan, days, email } = JSON.parse(body);
                         const result = generateLicenseKey(plan, parseInt(days), email || '');
+                        res.writeHead(200, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ key: result.key }));
+                    } catch (e) {
+                        res.writeHead(400);
+                        res.end(JSON.stringify({ error: 'Invalid request' }));
+                    }
+                });
+            } else if (req.url === '/api/create' && req.method === 'POST') {
+                let body = '';
+                req.on('data', chunk => body += chunk);
+                req.on('end', () => {
+                    try {
+                        const { plan, days, email, nick } = JSON.parse(body);
+                        if (!plan || !days || !email || !nick) {
+                            res.writeHead(400);
+                            res.end(JSON.stringify({ error: 'Missing fields' }));
+                            return;
+                        }
+                        const result = generateLicenseKey(plan, parseInt(days), email || '', nick || '');
                         res.writeHead(200, { 'Content-Type': 'application/json' });
                         res.end(JSON.stringify({ key: result.key }));
                     } catch (e) {
@@ -711,11 +730,10 @@ function createWindow() {
         }
     });
     win.loadFile('index.html');
-    win.on('close', (event) => {
-        if (!app.isQuitting) {
-            event.preventDefault();
-            win.hide();
-        }
+    win.on('close', () => {
+        app.isQuitting = true;
+        try { if (tray) { tray.destroy(); tray = null; } } catch (e) {}
+        app.exit(0);
     });
 }
 
@@ -1734,4 +1752,6 @@ app.on('before-quit', () => {
     stopChatServer();
 });
 
-app.on('window-all-closed', () => {});
+app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') app.quit();
+});
