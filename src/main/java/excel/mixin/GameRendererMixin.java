@@ -7,6 +7,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.render.GuiRenderer;
 import net.minecraft.client.gui.render.state.GuiRenderState;
+import net.minecraft.client.gui.screen.ChatScreen;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.GameRenderer;
@@ -205,6 +206,7 @@ public abstract class GameRendererMixin {
     private boolean shouldRenderOnTop(Screen screen) {
         if (screen == null) return true;
         if (screen instanceof ClickGui) return true;
+        if (screen instanceof ChatScreen) return true;
         return false;
     }
 
