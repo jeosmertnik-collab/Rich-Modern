@@ -24,6 +24,7 @@ import excel.events.impl.JumpEvent;
 import excel.events.impl.PushEvent;
 import excel.events.impl.SwingDurationEvent;
 import excel.modules.impl.combat.aura.AngleConnection;
+import excel.util.move.MoveUtil;
 
 import java.lang.reflect.Method;
 
@@ -104,6 +105,9 @@ public abstract class LivingEntityMixin {
             return original;
         }
         if (!shouldApplyRichMoveCorrection()) {
+            return original;
+        }
+        if (!MoveUtil.hasPlayerMovement()) {
             return original;
         }
         float yaw = AngleConnection.INSTANCE.getMoveRotation().getYaw() * 0.017453292F;
