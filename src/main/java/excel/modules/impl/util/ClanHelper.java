@@ -6,9 +6,9 @@ import lombok.experimental.FieldDefaults;
 import lombok.experimental.NonFinal;
 import net.minecraft.block.Blocks;
 import net.minecraft.item.BlockItem;
+import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
-import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
@@ -35,6 +35,8 @@ public class ClanHelper extends ModuleStructure {
     StopWatch timer = new StopWatch();
 
     @NonFinal int savedSlot = -1;
+    @NonFinal BlockPos currentPos = null;
+    @NonFinal int phase = 0;
 
     public ClanHelper() {
         super("Clan Helper", "Ставит факел под ноги и сразу ломает", ModuleCategory.UTIL);
@@ -45,6 +47,8 @@ public class ClanHelper extends ModuleStructure {
     public void activate() {
         timer.reset();
         savedSlot = -1;
+        currentPos = null;
+        phase = 0;
     }
 
     @Override
@@ -53,6 +57,8 @@ public class ClanHelper extends ModuleStructure {
             InventoryUtils.selectSlot(savedSlot);
             savedSlot = -1;
         }
+        currentPos = null;
+        phase = 0;
     }
 
     @EventHandler
@@ -63,18 +69,23 @@ public class ClanHelper extends ModuleStructure {
                 && mc.getNetworkHandler().getServerInfo() != null
                 && !mc.getNetworkHandler().getServerInfo().address.toLowerCase().contains("funtime")) return;
 
-        if (!timer.finished((long) delay.getValue())) return;
+        if (phase == 0) {
+            if (!timer.finished((long) delay.getValue())) return;
 
-        int torchSlot = findTorchSlot();
-        if (torchSlot == -1) return;
+            int torchSlot = findTorchSlot();
+            if (torchSlot == -1) return;
 
-        BlockPos below = mc.player.getBlockPos().down();
-        if (canPlace(below)) {
+            BlockPos below = mc.player.getBlockPos().down();
+            if (!canPlace(below)) return;
+
+            currentPos = below;
+            phase = 1;
             placeTorch(below, torchSlot);
-            breakTorch(below);
+        } else if (phase == 1) {
+            breakTorch(currentPos);
+            phase = 0;
+            timer.reset();
         }
-
-        timer.reset();
     }
 
     private boolean canPlace(BlockPos pos) {
@@ -86,16 +97,29 @@ public class ClanHelper extends ModuleStructure {
         InventoryUtils.selectSlot(slot);
 
         Vec3d hitVec = new Vec3d(pos.getX() + 0.5, pos.getY() + 1.0, pos.getZ() + 0.5);
-        BlockHitResult hitResult = new BlockHitResult(hitVec, Direction.DOWN, pos, false);
+        BlockHitResult hitResult = new BlockHitResult(hitVec, Direction.UP, pos, false);
 
+        facePosition(hitVec);
         mc.interactionManager.interactBlock(mc.player, Hand.MAIN_HAND, hitResult);
-        mc.player.swingHand(Hand.MAIN_HAND);
+        if (swingHandSetting.isValue()) mc.player.swingHand(Hand.MAIN_HAND);
     }
 
     private void breakTorch(BlockPos pos) {
-        mc.interactionManager.updateBlockBreakingProgress(pos, Direction.UP);
+        Vec3d breakVec = new Vec3d(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
+        facePosition(breakVec);
         mc.interactionManager.attackBlock(pos, Direction.UP);
         if (swingHandSetting.isValue()) mc.player.swingHand(Hand.MAIN_HAND);
+    }
+
+    private void facePosition(Vec3d target) {
+        Vec3d eyes = mc.player.getCameraPosVec(1f);
+        double dx = target.x - eyes.x;
+        double dy = target.y - eyes.y;
+        double dz = target.z - eyes.z;
+        double dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
+        float pitch = (float) -Math.toDegrees(Math.atan2(dy, dist));
+        mc.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.LookAndOnGround(yaw, pitch, mc.player.isOnGround(), false));
     }
 
     private boolean isTorch(net.minecraft.item.Item item) {

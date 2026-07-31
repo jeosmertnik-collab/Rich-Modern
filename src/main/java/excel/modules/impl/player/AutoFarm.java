@@ -4,6 +4,7 @@ import net.minecraft.block.*;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
+import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
@@ -32,6 +33,7 @@ public class AutoFarm extends ModuleStructure {
     private BlockPos currentTarget = null;
     private final TimerUtil breakTimer = TimerUtil.create();
     private static final long BREAK_DELAY = 100;
+    private int phase = 0;
 
     public AutoFarm() {
         super("AutoFarm", "Automatically breaks fully-grown crops and replants them", ModuleCategory.PLAYER);
@@ -42,6 +44,7 @@ public class AutoFarm extends ModuleStructure {
     public void activate() {
         currentTarget = null;
         breakTimer.resetCounter();
+        phase = 0;
     }
 
     @EventHandler
@@ -49,28 +52,53 @@ public class AutoFarm extends ModuleStructure {
         if (mc.player == null || mc.world == null) return;
         if (onlyWhileSneaking.isValue() && !mc.player.isSneaking()) return;
 
-        if (currentTarget != null && !isGrownCrop(currentTarget)) {
+        if (phase == 0) {
+            if (currentTarget != null && !isGrownCrop(currentTarget)) {
+                currentTarget = null;
+            }
+
+            if (currentTarget == null) {
+                currentTarget = findNearestCrop();
+            }
+
+            if (currentTarget == null) return;
+
+            if (!breakTimer.hasTimeElapsed(BREAK_DELAY)) return;
+
+            phase = 1;
+            breakCurrent();
+        } else if (phase == 1) {
+            if (autoReplant.isValue()) {
+                phase = 2;
+                replant(currentTarget);
+            } else {
+                currentTarget = null;
+                breakTimer.resetCounter();
+                phase = 0;
+            }
+        } else if (phase == 2) {
             currentTarget = null;
+            breakTimer.resetCounter();
+            phase = 0;
         }
+    }
 
-        if (currentTarget == null) {
-            currentTarget = findNearestCrop();
-        }
-
-        if (currentTarget == null) return;
-
-        if (!breakTimer.hasTimeElapsed(BREAK_DELAY)) return;
-
+    private void breakCurrent() {
+        facePos(new Vec3d(currentTarget.getX() + 0.5, currentTarget.getY() + 0.5, currentTarget.getZ() + 0.5));
         mc.interactionManager.updateBlockBreakingProgress(currentTarget, Direction.UP);
         mc.interactionManager.attackBlock(currentTarget, Direction.UP);
         mc.player.swingHand(Hand.MAIN_HAND);
+    }
 
-        if (autoReplant.isValue()) {
-            replant(currentTarget);
-        }
-
-        currentTarget = null;
-        breakTimer.resetCounter();
+    private void facePos(Vec3d target) {
+        Vec3d eyes = mc.player.getCameraPosVec(1f);
+        double dx = target.x - eyes.x;
+        double dy = target.y - eyes.y;
+        double dz = target.z - eyes.z;
+        double dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
+        float pitch = (float) -Math.toDegrees(Math.atan2(dy, dist));
+        mc.player.networkHandler.sendPacket(new PlayerMoveC2SPacket.LookAndOnGround(yaw, pitch, mc.player.isOnGround(), false));
     }
 
     private boolean isGrownCrop(BlockPos pos) {
@@ -116,6 +144,7 @@ public class AutoFarm extends ModuleStructure {
 
         BlockPos targetPos = pos.down();
         Vec3d hitVec = new Vec3d(targetPos.getX() + 0.5, targetPos.getY() + 1.0, targetPos.getZ() + 0.5);
+        facePos(hitVec);
         BlockHitResult hitResult = new BlockHitResult(hitVec, Direction.UP, targetPos, false);
         mc.interactionManager.interactBlock(mc.player, Hand.MAIN_HAND, hitResult);
         mc.player.swingHand(Hand.MAIN_HAND);

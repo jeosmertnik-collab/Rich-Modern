@@ -73,8 +73,7 @@ function generateLicenseKey(plan, days, email, nick) {
 }
 
 async function validateKeyRemote(key, hwid) {
-    const cfg = loadBotConfig();
-    const apiUrl = (cfg && cfg.subscriptionApiUrl) || '';
+    const apiUrl = SUBSCRIPTION_API_URL || '';
     if (!apiUrl) return null;
     try {
         const url = apiUrl.replace(/\/+$/, '') + '/api/validate';
@@ -465,15 +464,12 @@ function startLicenseServer() {
                     const db = loadLicenseDB();
                     const keys = Object.values(db);
                     const now = Date.now();
-                    const linksPath = path.join(app.getPath('userData'), 'bot_links.json');
-                    let linked = 0;
-                    try { if (fs.existsSync(linksPath)) linked = Object.keys(JSON.parse(fs.readFileSync(linksPath, 'utf8'))).length; } catch (e) {}
                     res.writeHead(200); res.end(JSON.stringify({
                         total: keys.length,
                         active: keys.filter(k => !k.banned && now < k.expiresAt).length,
                         expired: keys.filter(k => now > k.expiresAt).length,
                         banned: keys.filter(k => k.banned).length,
-                        linked
+                        linked: 0
                     })); return;
                 }
                 if (subUrl === '/users') {
@@ -605,18 +601,7 @@ function saveCapeAssignments(a) {
 }
 // --- Admin auth ---
 function getAdminPassword() {
-    // First check cached bot config
-    const cfg = loadBotConfig();
-    if (cfg && cfg.adminPassword) return cfg.adminPassword;
-    // If not cached, read directly from dev config (user might have old userData copy)
-    try {
-        const devPath = path.join(__dirname, 'bot.config.json');
-        if (fs.existsSync(devPath)) {
-            const devCfg = JSON.parse(fs.readFileSync(devPath, 'utf8'));
-            if (devCfg && devCfg.adminPassword) return devCfg.adminPassword;
-        }
-    } catch (e) {}
-    return 'admin123';
+    return ADMIN_PASSWORD || 'admin123';
 }
 function adminHash(pass) {
     const crypto = require('crypto');
@@ -1084,16 +1069,6 @@ ipcMain.handle('license:activate', async (event, { key, username }) => {
         }
         saveLicenseDB(db);
         saveLicense({ key, plan: result.plan, expiresAt: result.expiresAt, activatedAt: Date.now(), hwid });
-        if (username) {
-            const linksPath = path.join(app.getPath('userData'), 'bot_links.json');
-            try {
-                if (fs.existsSync(linksPath)) {
-                    const links = JSON.parse(fs.readFileSync(linksPath, 'utf8'));
-                    const target = Object.values(links).find(c => c);
-                    if (target) botSend(target, '🟢 Активация: `' + username + '`\nКлюч: `' + key + '`\nПлан: ' + result.plan);
-                }
-            } catch (e) {}
-        }
         return { success: true, plan: result.plan, expiresAt: result.expiresAt };
     }
     return { success: false, error: result.error };
@@ -1146,82 +1121,6 @@ ipcMain.handle('resourcepacks:remove', async (event, { name }) => {
         return { success: false, error: e.message };
     }
 });
-
-ipcMain.handle('configs:list', async () => {
-    const presetsDir = getConfigPresetsDir();
-    try {
-        if (!fs.existsSync(presetsDir)) return [];
-        const entries = fs.readdirSync(presetsDir, { withFileTypes: true });
-        const presets = [];
-        for (const entry of entries) {
-            if (entry.isDirectory()) {
-                const presetPath = path.join(presetsDir, entry.name);
-                const files = fs.readdirSync(presetPath);
-                presets.push({ name: entry.name, fileCount: files.length });
-            }
-        }
-        return presets;
-    } catch (e) {
-        return [];
-    }
-});
-
-ipcMain.handle('configs:save', async (event, name) => {
-    const gameDir = path.join(app.getPath('userData'), '.minecraft');
-    const configSrc = path.join(gameDir, 'Excel', 'configs');
-    const presetDir = path.join(getConfigPresetsDir(), name);
-    try {
-        if (!fs.existsSync(configSrc)) return { success: false, error: 'Config directory not found' };
-        if (fs.existsSync(presetDir)) fs.rmSync(presetDir, { recursive: true });
-        fs.mkdirSync(presetDir, { recursive: true });
-        copyDirSync(configSrc, presetDir);
-        return { success: true };
-    } catch (e) {
-        return { success: false, error: e.message };
-    }
-});
-
-ipcMain.handle('configs:load', async (event, name) => {
-    const gameDir = path.join(app.getPath('userData'), '.minecraft');
-    const configDest = path.join(gameDir, 'Excel', 'configs');
-    const presetDir = path.join(getConfigPresetsDir(), name);
-    try {
-        if (!fs.existsSync(presetDir)) return { success: false, error: 'Preset not found' };
-        if (!fs.existsSync(configDest)) fs.mkdirSync(configDest, { recursive: true });
-        copyDirSync(presetDir, configDest);
-        return { success: true };
-    } catch (e) {
-        return { success: false, error: e.message };
-    }
-});
-
-ipcMain.handle('configs:delete', async (event, name) => {
-    const presetDir = path.join(getConfigPresetsDir(), name);
-    try {
-        if (fs.existsSync(presetDir)) fs.rmSync(presetDir, { recursive: true });
-        return { success: true };
-    } catch (e) {
-        return { success: false, error: e.message };
-    }
-});
-
-function getConfigPresetsDir() {
-    return path.join(app.getPath('userData'), 'config-presets');
-}
-
-function copyDirSync(src, dest) {
-    fs.mkdirSync(dest, { recursive: true });
-    const entries = fs.readdirSync(src, { withFileTypes: true });
-    for (const entry of entries) {
-        const srcPath = path.join(src, entry.name);
-        const destPath = path.join(dest, entry.name);
-        if (entry.isDirectory()) {
-            copyDirSync(srcPath, destPath);
-        } else {
-            fs.copyFileSync(srcPath, destPath);
-        }
-    }
-}
 
 ipcMain.on('game:launch', async (event, { nickname, ram, server }) => {
     log('=== LAUNCH START (Direct) ===' + (server ? ' server=' + server : ''));
@@ -1329,324 +1228,13 @@ function selfUpdate() {
 
 
 
-// === INLINE TELEGRAM BOT ===
-let botEnabled = false;
-let botInterval = null;
-let botOffset = 0;
-let _botCfg = null;
-
-function loadBotConfig() {
-    if (_botCfg) return _botCfg;
-    const cfgPath = path.join(app.getPath('userData'), 'bot.config.json');
-    const devPath = path.join(__dirname, 'bot.config.json');
-    // Try userData copy first, but always merge adminPassword from dev config
-    try {
-        if (fs.existsSync(cfgPath)) {
-            _botCfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
-            // Merge adminPassword from dev config to ensure it's always up-to-date
-            try {
-                if (fs.existsSync(devPath)) {
-                    const devCfg = JSON.parse(fs.readFileSync(devPath, 'utf8'));
-                    if (devCfg.adminPassword) {
-                        _botCfg.adminPassword = devCfg.adminPassword;
-                        fs.writeFileSync(cfgPath, JSON.stringify(_botCfg, null, 2));
-                    }
-                }
-            } catch (e) {}
-            return _botCfg;
-        }
-    } catch (e) { console.error('[bot] load config error:', e.message); }
-    try {
-        if (fs.existsSync(devPath)) {
-            const cfg = JSON.parse(fs.readFileSync(devPath, 'utf8'));
-            fs.mkdirSync(path.dirname(cfgPath), { recursive: true });
-            fs.writeFileSync(cfgPath, JSON.stringify(cfg, null, 2));
-            _botCfg = cfg;
-            return _botCfg;
-        }
-    } catch (e) { console.error('[bot] load dev config error:', e.message); }
-    return null;
-}
-function clearBotConfigCache() { _botCfg = null; }
-
-async function botApi(method, body) {
-    try {
-        const cfg = loadBotConfig();
-        if (!cfg || !cfg.token) return { ok: false };
-        const data = body ? JSON.stringify(body) : '';
-        const url = 'https://api.telegram.org/bot' + cfg.token + '/' + method;
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 15000);
-        const res = await net.fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: data || undefined,
-            signal: controller.signal
-        });
-        clearTimeout(timeout);
-        const txt = await res.text();
-        return JSON.parse(txt);
-    } catch (e) {
-        console.error('[bot] API error:', e.message);
-        return { ok: false };
-    }
-}
-
-function botSend(chatId, text) {
-    return botApi('sendMessage', { chat_id: chatId, text, parse_mode: 'Markdown' });
-}
-
-function botGenKey() {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    return 'RM-' + Array.from({ length: 3 }, () =>
-        Array.from({ length: 4 }, () => chars[crypto.randomInt(chars.length)]).join('')
-    ).join('-');
-}
-
-async function botHandle(cmd, chatId, username) {
-    const parts = cmd.split(' ');
-    const c = parts[0].toLowerCase();
-
-    const cfg = loadBotConfig();
-    const admins = (cfg && cfg.admins) || [];
-    const isAdmin = admins.includes(username) || admins.includes(String(chatId));
-
-    const linksPath = path.join(app.getPath('userData'), 'bot_links.json');
-    function loadLinks() { try { if (fs.existsSync(linksPath)) return JSON.parse(fs.readFileSync(linksPath, 'utf8')); } catch (e) {} return {}; }
-    function saveLinks(l) { try { fs.writeFileSync(linksPath, JSON.stringify(l, null, 2)); } catch (e) {} }
-
-    // Read licenses from the same DB as the launcher
-    const licenses = loadLicenseDB();
-
-    const links = loadLinks();
-    const linkedUser = Object.keys(links).find(k => links[k] === chatId);
-
-    if (c === '/start') {
-        const arg = parts.slice(1).join(' ');
-        if (arg) {
-            links[arg.toLowerCase()] = chatId;
-            saveLinks(links);
-            return botSend(chatId, '✅ Аккаунт `' + arg + '` привязан!');
-        }
-        return botSend(chatId,
-            '*Excel Client Bot*\n\n'
-            + 'Привяжи аккаунт: `/start твой_логин`\n\n'
-            + '*/key* — получить ключ\n'
-            + '*/status* — статус подписки\n'
-
-            + (isAdmin ? '_Админ:_ `/genkey`, `/ban`, `/unban`, `/stats`, `/broadcast`, `/notify`\n' : '')
-        );
-    }
-
-    if (c === '/key') {
-        if (!linkedUser) return botSend(chatId, '❌ Привяжи аккаунт: `/start твой_логин`');
-        let userKeys = Object.entries(licenses).filter(([k, v]) =>
-            (v.email || '').toLowerCase() === linkedUser.toLowerCase() ||
-            (v.nick || '').toLowerCase() === linkedUser.toLowerCase() ||
-            k.toLowerCase().includes(linkedUser.toLowerCase())
-        );
-        if (userKeys.length === 0) {
-            const local = loadLicense();
-            if (local && local.key) {
-                if (licenses[local.key]) {
-                    licenses[local.key].nick = linkedUser;
-                    saveLicenseDB(licenses);
-                    userKeys = [[local.key, licenses[local.key]]];
-                } else {
-                    userKeys = [[local.key, {
-                        plan: local.plan || 'beta',
-                        expiresAt: local.expiresAt || 0,
-                        days: local.days || 30,
-                        hwid: local.hwid || null,
-                        email: '',
-                        nick: linkedUser
-                    }]];
-                    if (userKeys[0][1].expiresAt > Date.now()) {
-                        licenses[local.key] = userKeys[0][1];
-                        saveLicenseDB(licenses);
-                    }
-                }
-            }
-        }
-        if (userKeys.length === 0) return botSend(chatId, '❌ Нет активных ключей.');
-        const active = userKeys.find(([k, v]) => Date.now() < v.expiresAt);
-        if (!active) return botSend(chatId, '❌ Все ключи истекли.');
-        return botSend(chatId, '🔑 `' + active[0] + '`\nПлан: ' + active[1].plan + '\nДо: ' + new Date(active[1].expiresAt).toLocaleDateString('ru-RU'));
-    }
-
-    if (c === '/status') {
-        if (!linkedUser) return botSend(chatId, '❌ Привяжи аккаунт: `/start твой_логин`');
-        let userKeys = Object.entries(licenses).filter(([k, v]) =>
-            (v.email || '').toLowerCase() === linkedUser.toLowerCase() ||
-            (v.nick || '').toLowerCase() === linkedUser.toLowerCase() ||
-            k.toLowerCase().includes(linkedUser.toLowerCase())
-        );
-        if (userKeys.length === 0) {
-            const local = loadLicense();
-            if (local && local.key) {
-                if (licenses[local.key]) {
-                    licenses[local.key].nick = linkedUser;
-                    saveLicenseDB(licenses);
-                    userKeys = [[local.key, licenses[local.key]]];
-                } else {
-                    userKeys = [[local.key, {
-                        plan: local.plan || 'beta',
-                        expiresAt: local.expiresAt || 0,
-                        days: local.days || 30,
-                        hwid: local.hwid || null,
-                        email: '',
-                        nick: linkedUser
-                    }]];
-                    if (userKeys[0][1].expiresAt > Date.now()) {
-                        licenses[local.key] = userKeys[0][1];
-                        saveLicenseDB(licenses);
-                    }
-                }
-            }
-        }
-        if (userKeys.length === 0) return botSend(chatId, '📭 Нет ключей.');
-        let msg = '*Твои ключи:*\n';
-        userKeys.forEach(([key, data]) => {
-            const ok = Date.now() < data.expiresAt;
-            msg += '\n' + (ok ? '✅' : '❌') + ' `' + key + '` (' + data.plan + ') до ' + new Date(data.expiresAt).toLocaleDateString('ru-RU');
-        });
-        return botSend(chatId, msg);
-    }
-
-    if (!isAdmin) return;
-
-    if (c === '/genkey') {
-        const plan = parts[1] || 'beta';
-        const days = parseInt(parts[2]) || 30;
-        if (!['stable', 'beta', 'alpha'].includes(plan)) return botSend(chatId, '❌ План: stable/beta/alpha');
-        const key = botGenKey();
-        const expiresAt = days === 9999 ? Date.now() + 3650 * 86400000 : Date.now() + days * 86400000;
-        licenses[key] = { plan, days, createdAt: Date.now(), expiresAt, hwid: null, email: parts[3] || '', nick: parts[4] || '' };
-        saveLicenseDB(licenses);
-        return botSend(chatId, '✅ Ключ создан:\n`' + key + '`\nПлан: ' + plan + '\nДней: ' + days + (parts[4] ? '\nНик: ' + parts[4] : ''));
-    }
-
-    if (c === '/ban') {
-        const target = parts.slice(1).join(' ');
-        if (!target) return botSend(chatId, '❌ Укажи ключ или логин.');
-        if (licenses[target]) {
-            licenses[target].banned = true;
-            saveLicenseDB(licenses);
-            return botSend(chatId, '🔨 Ключ `' + target + '` забанен.');
-        }
-        return botSend(chatId, '🔨 `' + target + '` добавлен в бан-лист (ключ не найден в БД).');
-    }
-
-    if (c === '/unban') {
-        const target = parts.slice(1).join(' ');
-        if (!target) return botSend(chatId, '❌ Укажи ключ или логин.');
-        if (licenses[target]) {
-            delete licenses[target].banned;
-            saveLicenseDB(licenses);
-            return botSend(chatId, '✅ `' + target + '` разбанен.');
-        }
-        return botSend(chatId, '✅ `' + target + '` разбанен (не был в БД).');
-    }
-
-    if (c === '/stats') {
-        const keys = Object.values(licenses);
-        const total = keys.length;
-        const active = keys.filter(k => !k.banned && Date.now() < k.expiresAt).length;
-        const expired = keys.filter(k => Date.now() > k.expiresAt).length;
-        const banned = keys.filter(k => k.banned).length;
-        const byPlan = {};
-        keys.forEach(k => { byPlan[k.plan] = (byPlan[k.plan] || 0) + 1; });
-        let msg = '*📊 Статистика*\nВсего: ' + total + ' | ✅ ' + active + ' | ❌ ' + expired + ' | 🔨 ' + banned + '\n\n*По планам:*\n';
-        Object.entries(byPlan).forEach(([p, c]) => { msg += p + ': ' + c + '\n'; });
-        const lPath = path.join(app.getPath('userData'), 'bot_links.json');
-        let linkCount = 0;
-        try { if (fs.existsSync(lPath)) linkCount = Object.keys(JSON.parse(fs.readFileSync(lPath, 'utf8'))).length; } catch (e) {}
-        msg += '\n👥 Привязано: ' + linkCount;
-        return botSend(chatId, msg);
-    }
-
-    if (c === '/broadcast' && isAdmin) {
-        const text = parts.slice(1).join(' ');
-        if (!text) return botSend(chatId, '❌ Укажи текст: `/broadcast Сообщение всем`');
-        const links = loadLinks();
-        const targets = Object.values(links);
-        if (targets.length === 0) return botSend(chatId, '📭 Нет привязанных аккаунтов.');
-        let sent = 0;
-        for (const cid of targets) {
-            try { await botSend(cid, '📢 *Важно:* ' + text); sent++; } catch (e) {}
-        }
-        return botSend(chatId, '✅ Разослано ' + sent + '/' + targets.length + ' пользователям.');
-    }
-
-    if (c === '/notify' && isAdmin) {
-        const text = parts.slice(1).join(' ');
-        if (!text) return botSend(chatId, '❌ Укажи текст: `/notify Сообщение`');
-        addNotification('📢 Уведомление', text, 'info');
-        const links = loadLinks();
-        const targets = Object.values(links);
-        let sent = 0;
-        for (const cid of targets) {
-            try { await botSend(cid, '📢 *' + text + '*'); sent++; } catch (e) {}
-        }
-        return botSend(chatId, '✅ Оповещение сохранено и разослано ' + sent + '/' + targets.length + ' пользователям.');
-    }
-}
-
-function botPoll() {
-    const startTime = Date.now();
-    botApi('getUpdates', { offset: botOffset, timeout: 10 }).then(res => {
-        if (!res.ok) {
-            console.error('[bot] API returned error:', JSON.stringify(res).slice(0, 200));
-            return;
-        }
-        if (!res.result || res.result.length === 0) return;
-        for (const upd of res.result) {
-            botOffset = upd.update_id + 1;
-            const msg = upd.message;
-            if (!msg || !msg.text) continue;
-            const chatId = msg.chat.id;
-            const username = msg.from.username || msg.from.first_name || 'unknown';
-            console.log('[bot] <<', msg.text, 'from', username, 'chat', chatId);
-            // Capture the current botHandle for the promise chain
-            const handleFn = botHandle;
-            handleFn(msg.text, chatId, username).catch(e => {
-                console.error('[bot] cmd error:', e.message);
-                botSend(chatId, '⚠️ ' + e.message);
-            });
-        }
-    }).catch(e => {
-        console.error('[bot] poll error:', e.message);
-    });
-}
-
-function startBot() {
-    if (botInterval) return;
-    const cfg = loadBotConfig();
-    if (!cfg || !cfg.token) { console.log('[bot] no token, disabled'); return; }
-    botEnabled = true;
-    botInterval = setInterval(botPoll, 1500);
-    botPoll();
-    console.log('[bot] inline polling started');
-}
-
-function stopBot() {
-    botEnabled = false;
-    if (botInterval) { clearInterval(botInterval); botInterval = null; }
-    console.log('[bot] inline polling stopped');
-}
-
-ipcMain.handle('bot:toggle', async (event, enable) => {
-    if (enable) startBot();
-    else stopBot();
-    return true;
-});
-
-ipcMain.handle('bot:status', () => botInterval !== null);
+// === BOT SETTINGS ===
+const ADMIN_PASSWORD = '040312';
+const SUBSCRIPTION_API_URL = '';
 
 // --- CHAT WebSocket Server ---
 let g_chatWss = null;
 let g_chatInstanceId = require('crypto').randomBytes(4).toString('hex');
-let g_recentChatIds = new Set();
 
 function startChatServer() {
     try {
@@ -1709,41 +1297,17 @@ function stopChatServer() {
     }
 }
 
-// Wrap botHandle to intercept /chat messages for cross-instance relay
-const _origBotHandle = botHandle;
-botHandle = async function(cmd, chatId, username) {
-    const parts = cmd.split(' ');
-    if (parts[0] === '/chat' && parts.length >= 3) {
-        try {
-            const rest = parts.slice(1).join(' ');
-            const payload = JSON.parse(rest);
-            if (payload.id && payload.id.startsWith(g_chatInstanceId)) return;
-            broadcastChat(payload, null);
-        } catch (e) {
-            const relayUser = parts[1];
-            const relayText = parts.slice(2).join(' ');
-            if (relayUser && relayText) {
-                broadcastChat({ type: 'message', username: relayUser, text: relayText, time: Date.now() }, null);
-            }
-        }
-        return;
-    }
-    if (_origBotHandle) return _origBotHandle(cmd, chatId, username);
-};
-
 app.whenReady().then(() => {
     startLicenseServer();
     startChatServer();
     createWindow();
     createTray();
-    startBot();
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) createWindow();
     });
 });
 
 app.on('before-quit', () => {
-    stopBot();
     stopChatServer();
 });
 
