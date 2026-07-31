@@ -1,13 +1,13 @@
 {
-  "version": "1.0.34",
+  "version": "1.0.35",
   "launcherVersion": "1.0.25",
-  "clientVersion": "1.0.07",
-  "downloadUrl": "https://github.com/jeosmertnik-collab/Rich-Modern/releases/download/v1.0.34/excel-1.0.07.jar",
-  "launcherUrl": "https://github.com/jeosmertnik-collab/Rich-Modern/releases/download/v1.0.34/ExcelClientSetup.exe",
+  "clientVersion": "1.0.08",
+  "downloadUrl": "https://github.com/jeosmertnik-collab/Rich-Modern/releases/download/v1.0.35/excel-1.0.08.jar",
+  "launcherUrl": "https://github.com/jeosmertnik-collab/Rich-Modern/releases/download/v1.0.35/ExcelClientSetup.exe",
   "changelog": {
-    "ru": "Конфиги теперь в менюшке чита (категория Configs — сохранение/загрузка/удаление пресетов). Исправлен перенос HUD при открытом кликгуи. Исправлен ClanHelper (обход античита). Переработана система конфигов — config save/load/delete dir-пресеты.",
-    "en": "Configs now in the cheat menu (Configs category — save/load/delete presets). Fixed HUD dragging while ClickGui is open. Fixed ClanHelper (anticheat bypass). Reworked config system — config save/load/delete directory presets."
+    "ru": "Исправлен HUD при открытом чате (HUD больше не пропадает). Исправлена проекция ESP — корнер-боксы и неймтеги больше не летают при киллауре. Исправлена проекция StorageESP/waypoint.",
+    "en": "Fixed HUD disappearing while the chat is open. Fixed ESP projection — corner boxes and nametags no longer fly when KillAura is active. Fixed StorageESP/waypoint projection."
   },
   "required": true,
-  "releaseDate": "2026-07-30"
+  "releaseDate": "2026-07-31"
 }

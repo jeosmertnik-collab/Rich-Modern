@@ -36,12 +36,10 @@ public class Projection implements IMinecraft {
         double deltaZ = pos.z - camera.getCameraPos().z;
 
         Vector4f transformedCoordinates = new Vector4f((float) deltaX, (float) deltaY, (float) deltaZ, 1.0F);
-        transformedCoordinates.mul(Render3D.lastWorldSpaceMatrix);
+        transformedCoordinates.mul(new Matrix4f().rotation(camera.getRotation()));
 
         Matrix4f matrixProj = new Matrix4f(Render3D.lastProjMat);
-        Matrix4f matrixModel = new Matrix4f(Render3D.lastModMat);
-
-        matrixProj.mul(matrixModel).project(transformedCoordinates.x(), transformedCoordinates.y(), transformedCoordinates.z(), viewport, target);
+        matrixProj.project(transformedCoordinates.x(), transformedCoordinates.y(), transformedCoordinates.z(), viewport, target);
 
         return new Vec3d(
                 target.x / mc.getWindow().getScaleFactor(),
@@ -59,37 +57,30 @@ public class Projection implements IMinecraft {
         return result;
     }
 
-    private double getViewZ(Vec3d pos, Vec3d cameraPos) {
+    private double getViewZ(Vec3d pos, Vec3d cameraPos, Camera camera) {
         double deltaX = pos.x - cameraPos.x;
         double deltaY = pos.y - cameraPos.y;
         double deltaZ = pos.z - cameraPos.z;
 
-        Matrix4d worldSpace = toMatrix4d(Render3D.lastWorldSpaceMatrix);
-        Vector4d view = new Vector4d(deltaX, deltaY, deltaZ, 1.0);
-        worldSpace.transform(view);
+        Vector4f view = new Vector4f((float) deltaX, (float) deltaY, (float) deltaZ, 1.0F);
+        new Matrix4f().rotation(camera.getRotation()).transform(view);
 
         return -view.z;
     }
 
-    private ClipResult worldSpaceToClipSpaceDouble(Vec3d pos, Vec3d cameraPos) {
+    private ClipResult worldSpaceToClipSpaceDouble(Vec3d pos, Vec3d cameraPos, Camera camera) {
         double deltaX = pos.x - cameraPos.x;
         double deltaY = pos.y - cameraPos.y;
         double deltaZ = pos.z - cameraPos.z;
 
-        Matrix4d worldSpace = toMatrix4d(Render3D.lastWorldSpaceMatrix);
-        Vector4d view = new Vector4d(deltaX, deltaY, deltaZ, 1.0);
-        worldSpace.transform(view);
+        Vector4f view = new Vector4f((float) deltaX, (float) deltaY, (float) deltaZ, 1.0F);
+        new Matrix4f().rotation(camera.getRotation()).transform(view);
 
-        Matrix4d proj = toMatrix4d(Render3D.lastProjMat);
-        Matrix4d model = toMatrix4d(Render3D.lastModMat);
-        Matrix4d combined = new Matrix4d(proj).mul(model);
+        Matrix4d proj = toMatrix4d(new Matrix4f(Render3D.lastProjMat));
+        Vector4d clip = new Vector4d(view.x, view.y, view.z, view.w);
+        proj.transform(clip);
 
-        double clipX = combined.m00() * view.x + combined.m10() * view.y + combined.m20() * view.z + combined.m30() * view.w;
-        double clipY = combined.m01() * view.x + combined.m11() * view.y + combined.m21() * view.z + combined.m31() * view.w;
-        double clipZ = combined.m02() * view.x + combined.m12() * view.y + combined.m22() * view.z + combined.m32() * view.w;
-        double clipW = combined.m03() * view.x + combined.m13() * view.y + combined.m23() * view.z + combined.m33() * view.w;
-
-        return new ClipResult(clipX, clipY, clipZ, clipW, -view.z);
+        return new ClipResult(clip.x, clip.y, clip.z, clip.w, -view.z);
     }
 
     private Vec3d clipToScreenDouble(ClipResult clip, int[] viewport, int displayHeight, double scale) {
@@ -145,7 +136,7 @@ public class Projection implements IMinecraft {
 
         Vec3d boxCenter = box.getCenter();
 
-        double centerViewZ = getViewZ(boxCenter, cameraPos);
+        double centerViewZ = getViewZ(boxCenter, cameraPos, camera);
         if (centerViewZ < -5.0) {
             return null;
         }
@@ -176,7 +167,7 @@ public class Projection implements IMinecraft {
 
         ClipResult[] clipResults = new ClipResult[8];
         for (int i = 0; i < 8; i++) {
-            clipResults[i] = worldSpaceToClipSpaceDouble(corners[i], cameraPos);
+            clipResults[i] = worldSpaceToClipSpaceDouble(corners[i], cameraPos, camera);
             if (clipResults[i] == null) return null;
         }
 
