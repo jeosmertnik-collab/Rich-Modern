@@ -1021,6 +1021,8 @@ ipcMain.on('update:launcher-download', async (event) => {
                 event.reply('update:download-status', { status: 'error', message: 'Не удалось заменить файл: ' + e.message });
                 return;
             }
+        } else {
+            require('electron').shell.openPath(tempPath);
         }
 
         const local = loadLocalVersion();

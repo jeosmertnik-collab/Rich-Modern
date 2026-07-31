@@ -626,6 +626,30 @@ class MinecraftLauncher {
     async downloadModJar() {
         this.status('Скачивание Excel Client мода...');
         const dest = path.join(this.modsDir, 'rich.jar');
+
+        // If a versioned jar exists (rich-1.0.x.jar from update:download),
+        // sync the newest one to rich.jar and clean up old versioned jars.
+        let versionedFiles = [];
+        try {
+            versionedFiles = fs.readdirSync(this.modsDir)
+                .filter(f => /^rich-\d+\.\d+\.\d+\.jar$/.test(f))
+                .sort();
+        } catch (e) {}
+
+        if (versionedFiles.length > 0) {
+            const latest = path.join(this.modsDir, versionedFiles[versionedFiles.length - 1]);
+            try {
+                fs.copyFileSync(latest, dest);
+                this.log('Mod jar synced from ' + versionedFiles[versionedFiles.length - 1]);
+            } catch (e) {
+                this.error('Failed to sync mod jar: ' + e.message);
+            }
+            for (const f of versionedFiles) {
+                try { fs.unlinkSync(path.join(this.modsDir, f)); } catch (e) {}
+            }
+            return;
+        }
+
         if (fileExists(dest)) {
             this.log('Mod jar already exists');
             return;
