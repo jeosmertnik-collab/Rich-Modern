@@ -40,6 +40,9 @@ public class Trajectories extends ModuleStructure implements IMinecraft {
 
         ItemStack stack = mc.player.getMainHandStack();
         TrajectoryData data = getTrajectoryData(stack);
+        if (data == null && !mc.player.getOffHandStack().isEmpty()) {
+            data = getTrajectoryData(mc.player.getOffHandStack());
+        }
         if (data == null) return;
 
         Vec3d eyePos = mc.player.getCameraPosVec(e.getPartialTicks());

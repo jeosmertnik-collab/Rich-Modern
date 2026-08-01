@@ -1,13 +1,13 @@
 {
-  "version": "1.0.27",
+  "version": "1.0.28",
   "launcherVersion": "1.0.20",
-  "clientVersion": "1.0.03",
-  "downloadUrl": "https://github.com/jeosmertnik-collab/Rich-Modern/releases/download/v1.0.27/excel-1.0.03.jar",
-  "launcherUrl": "https://github.com/jeosmertnik-collab/Rich-Modern/releases/download/v1.0.27/ExcelClientSetup.exe",
+  "clientVersion": "1.0.04",
+  "downloadUrl": "https://github.com/jeosmertnik-collab/Rich-Modern/releases/download/v1.0.28/excel-1.0.04.jar",
+  "launcherUrl": "https://github.com/jeosmertnik-collab/Rich-Modern/releases/download/v1.0.28/ExcelClientSetup.exe",
   "changelog": {
-    "ru": "Добавлены модули Trajectories, AutoFish, AutoFarm. Круг при прыжке: выбор текстуры (Круг 1, Кончалебаль). Лаунчер: исправлен прогресс-бар при загрузке. Главное меню: кастомный фон (сплошной/градиент/картинка), большой скин, список серверов. GUI настроек фона в меню.",
-    "en": "Added Trajectories, AutoFish, AutoFarm modules. Jump circle: texture selection (Circle 1, Konchalebal). Launcher: fixed progress bar. Main menu: custom background (solid/gradient/image), large skin preview, server list. Background settings GUI."
+    "ru": "Вкладка Configs: пресеты конфигураций (сохранение/загрузка/удаление), команда config. ClickGui стал прозрачнее. Модуль Trajectories (стрелы, трезубцы, зелья).",
+    "en": "Configs tab: config presets (save/load/delete), config command. ClickGui transparency. Trajectories module (arrows, tridents, potions)."
   },
   "required": false,
-  "releaseDate": "2026-07-29"
+  "releaseDate": "2026-08-01"
 }

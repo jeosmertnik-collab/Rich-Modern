@@ -33,7 +33,7 @@ public abstract class ScreenDragMixin extends Screen {
     @Inject(method = "render", at = @At("TAIL"))
     private void onRender(DrawContext context, int mouseX, int mouseY, float deltaTicks, CallbackInfo ci) {
         if (richIsDragExcluded()) return;
-        Drag.onDraw(context, mouseX, mouseY, deltaTicks);
+        Drag.onDraw(context, mouseX, mouseY, deltaTicks, false);
     }
 
     @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true)

@@ -18,10 +18,11 @@ public class CategoryRenderer {
     private static final String[] MAIN_CATEGORY_ICONS = {"a", "b", "c", "d", "e", "h"};
 
     private static final ModuleCategory[] EXTRA_CATEGORIES = {
-            ModuleCategory.AUTOBUY
+            ModuleCategory.AUTOBUY,
+            ModuleCategory.CONFIGS
     };
-    private static final String[] EXTRA_CATEGORY_NAMES = {"AutoBuy"};
-    private static final String[] EXTRA_CATEGORY_ICONS = {"g"};
+    private static final String[] EXTRA_CATEGORY_NAMES = {"AutoBuy", "Configs"};
+    private static final String[] EXTRA_CATEGORY_ICONS = {"g", "l"};
 
     private final Map<ModuleCategory, Float> categoryAnimations = new HashMap<>();
 
