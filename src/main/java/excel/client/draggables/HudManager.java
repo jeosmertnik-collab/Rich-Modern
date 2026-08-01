@@ -36,7 +36,6 @@ public class HudManager {
         register(new ThirdPersonHud());
         register(new MusicBar());
         register(new ServerAssistBinds());
-        register(new ChatOverlay());
 
         initialized = true;
 

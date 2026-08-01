@@ -190,7 +190,7 @@ public abstract class GameRendererMixin {
 
         if (screen instanceof ChatScreen) {
             if (hudEnabled) {
-                Drag.onDraw(context, mouseX, mouseY, tickDelta);
+                Drag.onDraw(context, mouseX, mouseY, tickDelta, true);
             }
         } else if (screen == null) {
             if (hudEnabled) {

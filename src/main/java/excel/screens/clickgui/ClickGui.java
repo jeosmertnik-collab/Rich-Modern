@@ -10,7 +10,6 @@ import net.minecraft.text.Text;
 import org.lwjgl.glfw.GLFW;
 import excel.IMinecraft;
 import excel.Initialization;
-import excel.client.draggables.Drag;
 import excel.modules.module.category.ModuleCategory;
 import excel.modules.module.ModuleStructure;
 import excel.screens.clickgui.impl.DragHandler;
@@ -153,7 +152,7 @@ public class ClickGui extends Screen implements IMinecraft {
     }
 
     private boolean isModuleCategory(ModuleCategory category) {
-        return category != ModuleCategory.AUTOBUY && category != ModuleCategory.CONFIGS;
+        return category != ModuleCategory.AUTOBUY ;
     }
 
     @Override
@@ -202,7 +201,7 @@ public class ClickGui extends Screen implements IMinecraft {
 
         context.createNewRootLayer();
 
-        int dimAlpha = (int) (30 * animValue);
+        int dimAlpha = (int) (125 * animValue);
         if (dimAlpha > 0) {
             Render2D.rect(0, 0, 5000, 5000, new Color(0, 0, 0, dimAlpha).getRGB(), 0);
         }
@@ -291,19 +290,6 @@ public class ClickGui extends Screen implements IMinecraft {
     public boolean mouseClicked(Click click, boolean doubled) {
         if (closing) return false;
 
-        if (click.button() == 0) {
-            if (Initialization.getInstance() != null && Initialization.getInstance().getManager() != null
-                    && Initialization.getInstance().getManager().getHudManager() != null) {
-                if (Initialization.getInstance().getManager().getHudManager().mouseClicked(click.x(), click.y(), click.button())) {
-                    return true;
-                }
-            }
-            Drag.onMouseClick(click);
-            if (Drag.isDragging()) {
-                return true;
-            }
-        }
-
         int guiScale = mc.getWindow().calculateScaleFactor(mc.options.getGuiScale().getValue(), mc.forcesUnicodeFont());
         float scale = (float) FIXED_GUI_SCALE / guiScale;
         double mx = click.x() / scale, my = click.y() / scale;
@@ -355,11 +341,11 @@ public class ClickGui extends Screen implements IMinecraft {
             }
         }
 
-        if (selectedCategory == ModuleCategory.CONFIGS) {
-            if (configsRenderer.mouseClicked(mx, my, click.button(), bgX, bgY, selectedCategory)) {
-                return true;
-            }
-        }
+//        if (selectedCategory == ModuleCategory.CONFIGS) {
+//            if (configsRenderer.mouseClicked(mx, my, click.button(), bgX, bgY, selectedCategory)) {
+//                return true;
+//            }
+//        }
 
         float mlX = bgX + 92f, mlY = bgY + 38f, mlW = 120f, mlH = BackgroundComponent.BG_HEIGHT - 48f;
 
@@ -427,15 +413,13 @@ public class ClickGui extends Screen implements IMinecraft {
     public boolean mouseReleased(Click click) {
         if (closing) return false;
 
-        Drag.onMouseRelease(click);
-
         if (selectedCategory == ModuleCategory.AUTOBUY) {
             autoBuyRenderer.mouseReleased(click.x(), click.y(), click.button());
         }
 
-        if (selectedCategory == ModuleCategory.CONFIGS) {
-            configsRenderer.mouseReleased(click.x(), click.y(), click.button());
-        }
+//        if (selectedCategory == ModuleCategory.CONFIGS) {
+//            configsRenderer.mouseReleased(click.x(), click.y(), click.button());
+//        }
 
         for (AbstractSettingComponent c : moduleComponent.getSettingComponents()) {
             if (c.getSetting().isVisible() && c.mouseReleased(click.x(), click.y(), click.button())) {
@@ -488,11 +472,11 @@ public class ClickGui extends Screen implements IMinecraft {
             }
         }
 
-        if (selectedCategory == ModuleCategory.CONFIGS) {
-            if (configsRenderer.mouseScrolled(mx, my, vertical, bgX, bgY, selectedCategory)) {
-                return true;
-            }
-        }
+//        if (selectedCategory == ModuleCategory.CONFIGS) {
+//            if (configsRenderer.mouseScrolled(mx, my, vertical, bgX, bgY, selectedCategory)) {
+//                return true;
+//            }
+//        }
 
         float mlX = bgX + 92f, mlY = bgY + 38f, mlW = 120f, mlH = BackgroundComponent.BG_HEIGHT - 48f;
         if (mx >= mlX && mx <= mlX + mlW && my >= mlY && my <= mlY + mlH) {
@@ -533,11 +517,11 @@ public class ClickGui extends Screen implements IMinecraft {
             }
         }
 
-        if (selectedCategory == ModuleCategory.CONFIGS) {
-            if (configsRenderer.keyPressed(input.key(), input.scancode(), input.modifiers())) {
-                return true;
-            }
-        }
+//        if (selectedCategory == ModuleCategory.CONFIGS) {
+//            if (configsRenderer.keyPressed(input.key(), input.scancode(), input.modifiers())) {
+//                return true;
+//            }
+//        }
 
         if (background.isSearchActive()) {
             if (background.handleSearchKey(input.key())) {
@@ -574,11 +558,11 @@ public class ClickGui extends Screen implements IMinecraft {
             }
         }
 
-        if (selectedCategory == ModuleCategory.CONFIGS) {
-            if (configsRenderer.charTyped((char) input.codepoint(), input.modifiers())) {
-                return true;
-            }
-        }
+//        if (selectedCategory == ModuleCategory.CONFIGS) {
+//            if (configsRenderer.charTyped((char) input.codepoint(), input.modifiers())) {
+//                return true;
+//            }
+//        }
 
         if (background.isSearchActive()) {
             if (background.handleSearchChar((char) input.codepoint())) {

@@ -102,7 +102,7 @@ public class Watermark extends AbstractHudElement {
         float tpsNumberWidth = Fonts.SFPRO_REGULAR.getWidth(tpsNumber, 6);
         float tpsTextWidth = Fonts.SFPRO_REGULAR.getWidth(tpsText, 6);
 
-        float totalWidth = 5 + 2 + richWidth + 8 + 12 + fpsNumberWidth + 2 + fpsTextWidth + 8 + 12 + timeWidth;
+        float totalWidth = 10 + 12 + 2 + richWidth + 8 + 12 + fpsNumberWidth + 2 + fpsTextWidth + 8 + 12 + timeWidth;
 
         if (showTps) {
             totalWidth += 8 + 12 + 2 + tpsNumberWidth + 2 + tpsTextWidth + 6;
@@ -130,6 +130,9 @@ public class Watermark extends AbstractHudElement {
 
         float textY = y + 7;
         float offsetX = x + 12 + 5;
+
+        Fonts.BOLD.drawCentered("E", offsetX + 7, textY + 7, 14, new Color(accentR, accentG, accentB, 255).getRGB());
+        offsetX += 16;
 
         Fonts.BOLD.draw("Excel", offsetX, textY + 2, 9, new Color(accentR, accentG, accentB, 255).getRGB());
         offsetX += Fonts.BOLD.getWidth("Excel", 9) + 3;

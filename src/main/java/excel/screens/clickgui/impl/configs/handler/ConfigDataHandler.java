@@ -4,22 +4,16 @@ import lombok.Getter;
 import lombok.Setter;
 import excel.util.config.ConfigSystem;
 import excel.util.config.impl.ConfigPath;
-import excel.util.config.impl.drag.DragConfig;
-import excel.util.config.impl.friend.FriendConfig;
 
 import java.io.IOException;
-import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Stream;
 
 @Getter
 @Setter
 public class ConfigDataHandler {
-
-    private static final String PRESETS_DIR = "presets";
 
     private final List<String> configs = new ArrayList<>();
     private final ConfigAnimationHandler animationHandler;
@@ -40,16 +34,20 @@ public class ConfigDataHandler {
     public void refreshConfigs() {
         List<String> oldConfigs = new ArrayList<>(configs);
         configs.clear();
-        Path presetsPath = getPresetsRoot();
-        if (Files.exists(presetsPath)) {
-            try (DirectoryStream<Path> stream = Files.newDirectoryStream(presetsPath)) {
-                for (Path entry : stream) {
-                    if (Files.isDirectory(entry)) {
-                        configs.add(entry.getFileName().toString());
-                    }
-                }
-            } catch (IOException ignored) {}
-        }
+        try {
+            Path configDir = ConfigPath.getConfigDirectory();
+            if (Files.exists(configDir)) {
+                Files.list(configDir)
+                        .filter(path -> path.toString().endsWith(".json"))
+                        .forEach(path -> {
+                            String name = path.getFileName().toString();
+                            String configName = name.substring(0, name.length() - 5);
+                            if (!configName.equalsIgnoreCase("autoconfig")) {
+                                configs.add(configName);
+                            }
+                        });
+            }
+        } catch (IOException ignored) {}
 
         for (String config : configs) {
             if (!oldConfigs.contains(config)) {
@@ -89,12 +87,16 @@ public class ConfigDataHandler {
         }
 
         try {
-            Path presetDir = getPresetDir(name);
-            if (Files.exists(presetDir)) {
-                deleteDirectory(presetDir);
+            Path configDir = ConfigPath.getConfigDirectory();
+            Path newConfig = configDir.resolve(name + ".json");
+
+            if (Files.exists(newConfig)) {
+                return false;
             }
-            Files.createDirectories(presetDir);
-            copyConfigsTo(getConfigRoot(), presetDir);
+
+            ConfigSystem.getInstance().save();
+            Path currentConfig = ConfigPath.getConfigFile();
+            Files.copy(currentConfig, newConfig);
             refreshConfigs();
             return true;
         } catch (Exception e) {
@@ -104,16 +106,9 @@ public class ConfigDataHandler {
 
     public boolean loadConfig(String name) {
         try {
-            Path presetDir = getPresetDir(name);
-            if (!Files.exists(presetDir)) {
-                return false;
-            }
-            ConfigSystem.getInstance().save();
-            copyConfigsTo(presetDir, getConfigRoot());
-            ConfigSystem.getInstance().load();
-            FriendConfig.getInstance().load();
-            DragConfig.getInstance().load();
-            return true;
+            Path configDir = ConfigPath.getConfigDirectory();
+            Path configFile = configDir.resolve(name + ".json");
+            return Files.exists(configFile);
         } catch (Exception e) {
             return false;
         }
@@ -121,13 +116,17 @@ public class ConfigDataHandler {
 
     public boolean refreshConfig(String name) {
         try {
-            Path presetDir = getPresetDir(name);
-            if (!Files.exists(presetDir)) {
+            Path configDir = ConfigPath.getConfigDirectory();
+            Path configFile = configDir.resolve(name + ".json");
+
+            if (!Files.exists(configFile)) {
                 return false;
             }
-            deleteDirectory(presetDir);
-            Files.createDirectories(presetDir);
-            copyConfigsTo(getConfigRoot(), presetDir);
+
+            ConfigSystem.getInstance().save();
+            Files.deleteIfExists(configFile);
+            Path currentConfig = ConfigPath.getConfigFile();
+            Files.copy(currentConfig, configFile);
             return true;
         } catch (Exception e) {
             return false;
@@ -136,9 +135,11 @@ public class ConfigDataHandler {
 
     public boolean deleteConfig(String name) {
         try {
-            Path presetDir = getPresetDir(name);
-            if (Files.exists(presetDir)) {
-                deleteDirectory(presetDir);
+            Path configDir = ConfigPath.getConfigDirectory();
+            Path configFile = configDir.resolve(name + ".json");
+
+            if (Files.exists(configFile)) {
+                Files.delete(configFile);
                 if (name.equals(selectedConfig)) {
                     selectedConfig = null;
                 }
@@ -172,45 +173,5 @@ public class ConfigDataHandler {
 
     public void clearNewConfigName() {
         newConfigName = "";
-    }
-
-    private Path getConfigRoot() {
-        return ConfigPath.getConfigDirectory().getParent();
-    }
-
-    private Path getPresetsRoot() {
-        return getConfigRoot().resolve(PRESETS_DIR);
-    }
-
-    private Path getPresetDir(String name) {
-        return getPresetsRoot().resolve(name);
-    }
-
-    private void copyConfigsTo(Path sourceDir, Path targetDir) throws IOException {
-        Files.createDirectories(targetDir);
-        try (Stream<Path> stream = Files.walk(sourceDir)) {
-            stream.filter(Files::isRegularFile)
-                    .filter(source -> !source.startsWith(getPresetsRoot()))
-                    .forEach(source -> {
-                try {
-                    Path relative = sourceDir.relativize(source);
-                    Path target = targetDir.resolve(relative);
-                    Files.createDirectories(target.getParent());
-                    Files.copy(source, target, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            });
-        }
-    }
-
-    private void deleteDirectory(Path dir) throws IOException {
-        try (Stream<Path> stream = Files.walk(dir)) {
-            stream.sorted((a, b) -> b.compareTo(a)).forEach(path -> {
-                try {
-                    Files.deleteIfExists(path);
-                } catch (IOException ignored) {}
-            });
-        }
     }
 }

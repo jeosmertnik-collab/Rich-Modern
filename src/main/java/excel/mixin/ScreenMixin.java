@@ -11,14 +11,13 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import excel.command.CommandManager;
 import excel.screens.ai.AiChatScreen;
 import excel.screens.clickgui.ClickGui;
-import excel.screens.menu.BackgroundSettingsScreen;
 
 @Mixin(Screen.class)
 public class ScreenMixin {
 
     @Inject(method = "renderBackground", at = @At("HEAD"), cancellable = true)
     private void disableBackgroundBlurAndDimming(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
-        if ((Object) this instanceof ClickGui || (Object) this instanceof AiChatScreen || (Object) this instanceof BackgroundSettingsScreen) {
+        if ((Object) this instanceof ClickGui || (Object) this instanceof AiChatScreen) {
             ci.cancel();
         }
     }

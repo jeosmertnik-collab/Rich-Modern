@@ -24,14 +24,14 @@ public class BackgroundRenderer {
     }
 
     public void render(DrawContext context, float bgX, float bgY, float alphaMultiplier) {
-        int baseAlpha = (int) (160 * alphaMultiplier);
+        int baseAlpha = (int) (255 * alphaMultiplier);
         int aR = getAccentR(), aG = getAccentG(), aB = getAccentB();
         int[] gradientColors = {
-                new Color(40, 40, 50, baseAlpha).getRGB(),
-                new Color(20, 20, 30, baseAlpha).getRGB(),
-                new Color(40, 40, 50, baseAlpha).getRGB(),
-                new Color(20, 20, 30, baseAlpha).getRGB(),
-                new Color(40, 40, 45, baseAlpha).getRGB()
+                new Color(26, 26, 26, baseAlpha).getRGB(),
+                new Color(0, 0, 0, baseAlpha).getRGB(),
+                new Color(26, 26, 26, baseAlpha).getRGB(),
+                new Color(0, 0, 0, baseAlpha).getRGB(),
+                new Color(26, 26, 20, baseAlpha).getRGB()
         };
 
         Render2D.gradientRect(bgX, bgY, 400, 250, gradientColors, 15);

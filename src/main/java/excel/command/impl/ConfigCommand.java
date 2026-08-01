@@ -11,11 +11,8 @@ import excel.command.helpers.Paginator;
 import excel.command.helpers.TabCompleteHelper;
 import excel.util.config.ConfigSystem;
 import excel.util.config.impl.ConfigPath;
-import excel.util.config.impl.drag.DragConfig;
-import excel.util.config.impl.friend.FriendConfig;
 
 import java.io.IOException;
-import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -28,8 +25,6 @@ import static excel.command.impl.HelpCommand.getLine;
 
 public class ConfigCommand extends Command {
 
-    private static final String PRESETS_DIR = "presets";
-
     public ConfigCommand() {
         super("config", "Управление конфигурациями", "cfg");
     }
@@ -41,6 +36,26 @@ public class ConfigCommand extends Command {
         String arg = args.length > 0 ? args[0].toLowerCase(Locale.US) : "list";
 
         switch (arg) {
+            case "load" -> {
+                if (args.length < 2) {
+                    logDirect("Использование: config load <name>", Formatting.RED);
+                    return;
+                }
+                String name = args[1];
+                Path configDir = ConfigPath.getConfigDirectory();
+                Path configFile = configDir.resolve(name + ".json");
+
+                if (Files.exists(configFile)) {
+                    try {
+                        ConfigSystem.getInstance().load();
+                        logDirect(String.format("Конфигурация %s загружена!", name));
+                    } catch (Exception e) {
+                        logDirect(String.format("Ошибка при загрузке конфига! Детали: %s", e.getMessage()), Formatting.RED);
+                    }
+                } else {
+                    logDirect(String.format("Конфигурация %s не найдена!", name), Formatting.RED);
+                }
+            }
             case "save" -> {
                 if (args.length < 2) {
                     ConfigSystem.getInstance().save();
@@ -49,57 +64,14 @@ public class ConfigCommand extends Command {
                 }
                 String name = args[1];
                 try {
-                    Path configRoot = getConfigRoot();
-                    Path presetDir = getPresetDir(name);
-                    if (Files.exists(presetDir)) {
-                        deleteDirectory(presetDir);
-                    }
-                    Files.createDirectories(presetDir);
-                    copyConfigsTo(configRoot, presetDir);
-                    logDirect("Пресет §b" + name + " §fсохранён! Все настройки скопированы.");
-                } catch (Exception e) {
-                    logDirect("Ошибка при сохранении пресета: " + e.getMessage(), Formatting.RED);
-                }
-            }
-            case "load" -> {
-                if (args.length < 2) {
-                    logDirect("Использование: config load <name>", Formatting.RED);
-                    return;
-                }
-                String name = args[1];
-                Path presetDir = getPresetDir(name);
-                if (!Files.exists(presetDir)) {
-                    logDirect("Пресет §b" + name + " §fне найден!", Formatting.RED);
-                    return;
-                }
-                try {
+                    Path configDir = ConfigPath.getConfigDirectory();
+                    Path newConfig = configDir.resolve(name + ".json");
                     ConfigSystem.getInstance().save();
-                    Path configRoot = getConfigRoot();
-                    copyConfigsTo(presetDir, configRoot);
-                    ConfigSystem.getInstance().load();
-                    FriendConfig.getInstance().load();
-                    DragConfig.getInstance().load();
-                    logDirect("Пресет §b" + name + " §fзагружен!");
+                    Path currentConfig = ConfigPath.getConfigFile();
+                    Files.copy(currentConfig, newConfig);
+                    logDirect(String.format("Конфигурация %s сохранена!", name));
                 } catch (Exception e) {
-                    logDirect("Ошибка при загрузке пресета: " + e.getMessage(), Formatting.RED);
-                }
-            }
-            case "delete" -> {
-                if (args.length < 2) {
-                    logDirect("Использование: config delete <name>", Formatting.RED);
-                    return;
-                }
-                String name = args[1];
-                Path presetDir = getPresetDir(name);
-                if (!Files.exists(presetDir)) {
-                    logDirect("Пресет §b" + name + " §fне найден!", Formatting.RED);
-                    return;
-                }
-                try {
-                    deleteDirectory(presetDir);
-                    logDirect("Пресет §b" + name + " §fудалён!");
-                } catch (Exception e) {
-                    logDirect("Ошибка при удалении пресета: " + e.getMessage(), Formatting.RED);
+                    logDirect(String.format("Ошибка при сохранении конфига! Детали: %s", e.getMessage()), Formatting.RED);
                 }
             }
             case "list" -> {
@@ -110,63 +82,63 @@ public class ConfigCommand extends Command {
                     } catch (NumberFormatException ignored) {}
                 }
 
-                List<String> presets = getPresets();
+                List<String> configs = getConfigs();
 
-                if (presets.isEmpty()) {
-                    logDirect("Пресеты не найдены!", Formatting.RED);
+                if (configs.isEmpty()) {
+                    logDirect("Конфигурации не найдены!", Formatting.RED);
                     return;
                 }
 
-                Paginator<String> paginator = new Paginator<>(presets);
+                Paginator<String> paginator = new Paginator<>(configs);
                 paginator.setPage(page);
 
                 paginator.display(
                         () -> {
                             logDirectRaw(Text.literal(getLine()));
-                            logDirect("§f§lСПИСОК ПРЕСЕТОВ");
+                            logDirect("§f§lСПИСОК КОНФИГОВ");
                             logDirectRaw(Text.literal(getLine()));
                         },
-                        preset -> {
-                            MutableText component = Text.literal("  §b● §f" + preset);
+                        config -> {
+                            MutableText namesComponent = Text.literal("  §b● §f" + config);
 
-                            MutableText hoverText = Text.literal("§7Нажмите чтобы загрузить §f" + preset);
-                            String loadCommand = manager.getPrefix() + "config load " + preset;
+                            MutableText hoverText = Text.literal("§7Нажмите чтобы загрузить конфиг §f" + config);
+                            String loadCommand = manager.getPrefix() + "config load " + config;
 
-                            component.setStyle(component.getStyle()
+                            namesComponent.setStyle(namesComponent.getStyle()
                                     .withHoverEvent(new HoverEvent.ShowText(hoverText))
                                     .withClickEvent(new ClickEvent.RunCommand(loadCommand)));
 
-                            return component;
+                            return namesComponent;
                         },
                         manager.getPrefix() + label + " list"
                 );
             }
             case "dir" -> {
                 try {
-                    Path configRoot = getConfigRoot();
+                    Path configDir = ConfigPath.getConfigDirectory();
                     String os = System.getProperty("os.name").toLowerCase();
+
                     ProcessBuilder pb;
                     if (os.contains("win")) {
-                        pb = new ProcessBuilder("explorer", configRoot.toAbsolutePath().toString());
+                        pb = new ProcessBuilder("explorer", configDir.toAbsolutePath().toString());
                     } else if (os.contains("mac")) {
-                        pb = new ProcessBuilder("open", configRoot.toAbsolutePath().toString());
+                        pb = new ProcessBuilder("open", configDir.toAbsolutePath().toString());
                     } else {
-                        pb = new ProcessBuilder("xdg-open", configRoot.toAbsolutePath().toString());
+                        pb = new ProcessBuilder("xdg-open", configDir.toAbsolutePath().toString());
                     }
                     pb.start();
-                    logDirect("Папка с конфигами открыта!");
+                    logDirect("Папка с конфигурациями открыта!");
                 } catch (IOException e) {
-                    logDirect("Папка с конфигами не найдена! " + e.getMessage(), Formatting.RED);
+                    logDirect("Папка с конфигурациями не найдена! " + e.getMessage(), Formatting.RED);
                 }
             }
             default -> {
                 logDirectRaw(Text.literal(getLine()));
                 logDirect("§f§lИСПОЛЬЗОВАНИЕ");
                 logDirectRaw(Text.literal(getLine()));
-                logDirect("§7> config save <name> §8- §fСохраняет пресет (все файлы).");
-                logDirect("§7> config load <name> §8- §fЗагружает пресет.");
-                logDirect("§7> config delete <name> §8- §fУдаляет пресет.");
-                logDirect("§7> config list §8- §fСписок пресетов.");
+                logDirect("§7> config load <name> §8- §fЗагружает конфиг.");
+                logDirect("§7> config save <name> §8- §fСохраняет конфиг.");
+                logDirect("§7> config list §8- §fВозвращает список конфигов");
                 logDirect("§7> config dir §8- §fОткрывает папку с конфигами.");
                 logDirectRaw(Text.literal(getLine()));
             }
@@ -177,16 +149,16 @@ public class ConfigCommand extends Command {
     public Stream<String> tabComplete(String label, String[] args) {
         if (args.length == 1) {
             return new TabCompleteHelper()
-                    .append("save", "load", "delete", "list", "dir")
+                    .append("load", "save", "list", "dir")
                     .sortAlphabetically()
                     .filterPrefix(args[0])
                     .stream();
         }
         if (args.length == 2) {
             String action = args[0].toLowerCase();
-            if (action.equals("load") || action.equals("delete")) {
+            if (action.equals("load") || action.equals("save")) {
                 return new TabCompleteHelper()
-                        .append(getPresets().toArray(new String[0]))
+                        .append(getConfigs().toArray(new String[0]))
                         .filterPrefix(args[1])
                         .stream();
             }
@@ -196,70 +168,34 @@ public class ConfigCommand extends Command {
 
     @Override
     public String getShortDesc() {
-        return "Управление пресетами конфигов";
+        return "Позволяет взаимодействовать с конфигами в чите";
     }
 
     @Override
     public List<String> getLongDesc() {
         return Arrays.asList(
-                "Сохраняй и загружай полные пресеты настроек (модули, друзья, HUD и т.д.)",
+                "С помощью этой команды можно загружать/сохранять конфиги",
                 "Использование:",
-                "> config save <name> - Сохраняет пресет (все файлы).",
-                "> config load <name> - Загружает пресет.",
-                "> config delete <name> - Удаляет пресет.",
-                "> config list - Список пресетов.",
+                "> config load <name> - Загружает конфиг.",
+                "> config save <name> - Сохраняет конфиг.",
+                "> config list - Возвращает список конфигов",
                 "> config dir - Открывает папку с конфигами."
         );
     }
 
-    private Path getConfigRoot() {
-        return ConfigPath.getConfigDirectory().getParent();
-    }
-
-    private Path getPresetDir(String name) {
-        return getConfigRoot().resolve(PRESETS_DIR).resolve(name);
-    }
-
-    private List<String> getPresets() {
-        List<String> presets = new ArrayList<>();
-        Path presetsPath = getConfigRoot().resolve(PRESETS_DIR);
-        if (Files.exists(presetsPath)) {
-            try (DirectoryStream<Path> stream = Files.newDirectoryStream(presetsPath)) {
-                for (Path entry : stream) {
-                    if (Files.isDirectory(entry)) {
-                        presets.add(entry.getFileName().toString());
-                    }
-                }
-            } catch (IOException ignored) {}
-        }
-        return presets;
-    }
-
-    private void copyConfigsTo(Path sourceDir, Path targetDir) throws IOException {
-        Files.createDirectories(targetDir);
-        try (Stream<Path> stream = Files.walk(sourceDir)) {
-            stream.filter(Files::isRegularFile)
-                    .filter(source -> !source.startsWith(getConfigRoot().resolve(PRESETS_DIR)))
-                    .forEach(source -> {
-                try {
-                    Path relative = sourceDir.relativize(source);
-                    Path target = targetDir.resolve(relative);
-                    Files.createDirectories(target.getParent());
-                    Files.copy(source, target, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            });
-        }
-    }
-
-    private void deleteDirectory(Path dir) throws IOException {
-        try (Stream<Path> stream = Files.walk(dir)) {
-            stream.sorted((a, b) -> b.compareTo(a)).forEach(path -> {
-                try {
-                    Files.deleteIfExists(path);
-                } catch (IOException ignored) {}
-            });
-        }
+    public List<String> getConfigs() {
+        List<String> configs = new ArrayList<>();
+        try {
+            Path configDir = ConfigPath.getConfigDirectory();
+            if (Files.exists(configDir)) {
+                Files.list(configDir)
+                        .filter(path -> path.toString().endsWith(".json"))
+                        .forEach(path -> {
+                            String name = path.getFileName().toString();
+                            configs.add(name.substring(0, name.length() - 5));
+                        });
+            }
+        } catch (IOException ignored) {}
+        return configs;
     }
 }

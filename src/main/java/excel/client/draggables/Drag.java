@@ -1,7 +1,9 @@
 package excel.client.draggables;
 
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.Click;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.screen.ChatScreen;
 import excel.Initialization;
 import excel.modules.impl.render.Hud;
 import excel.util.ColorUtil;
@@ -35,69 +37,74 @@ public class Drag {
         wasHovered.clear();
     }
 
-    public static void onDraw(DrawContext context, int mouseX, int mouseY, float delta) {
+    public static void onDraw(DrawContext context, int mouseX, int mouseY, float delta, boolean isChatScreen) {
         HudManager hudManager = getHudManager();
         if (hudManager == null) return;
 
         Hud hud = Hud.getInstance();
         if (hud == null || !hud.isState()) return;
 
-        if (draggingElement != null) {
-            draggingElement.setX(mouseX - startX);
-            draggingElement.setY(mouseY - startY);
-        }
-
-        hudManager.render(context, delta, mouseX, mouseY);
-
-        for (HudElement element : hudManager.getEnabledElements()) {
-            if (!element.visible()) {
-                sweepAnimations.remove(element);
-                wasHovered.remove(element);
-                continue;
+        if (isChatScreen) {
+            if (draggingElement != null) {
+                draggingElement.setX(mouseX - startX);
+                draggingElement.setY(mouseY - startY);
             }
 
-            if (EXCLUDED_ELEMENTS.contains(element.getName())) {
-                continue;
-            }
+            hudManager.render(context, delta, mouseX, mouseY);
 
-            boolean isHovered = isHovered(element, mouseX, mouseY);
-            boolean previouslyHovered = wasHovered.getOrDefault(element, false);
+            for (HudElement element : hudManager.getEnabledElements()) {
+                if (!element.visible()) {
+                    sweepAnimations.remove(element);
+                    wasHovered.remove(element);
+                    continue;
+                }
 
-            float rounding = element.getRoundingRadius();
-            float offset = OUTLINE_OFFSET;
-            float outlineX = element.getX() - offset;
-            float outlineY = element.getY() - offset;
-            float outlineWidth = element.getWidth() + offset * 2;
-            float outlineHeight = element.getHeight() + offset * 2;
-            float outlineRounding = Math.max(0, rounding + offset);
+                if (EXCLUDED_ELEMENTS.contains(element.getName())) {
+                    continue;
+                }
 
-            SweepAnim anim = sweepAnimations.computeIfAbsent(element, e -> new SweepAnim(0.05f));
+                boolean isHovered = isHovered(element, mouseX, mouseY);
+                boolean previouslyHovered = wasHovered.getOrDefault(element, false);
 
-            if (isHovered && !previouslyHovered) {
-                anim.start();
-            } else if (!isHovered && previouslyHovered) {
-                anim.reset();
-            }
+                float rounding = element.getRoundingRadius();
+                float offset = OUTLINE_OFFSET;
+                float outlineX = element.getX() - offset;
+                float outlineY = element.getY() - offset;
+                float outlineWidth = element.getWidth() + offset * 2;
+                float outlineHeight = element.getHeight() + offset * 2;
+                float outlineRounding = Math.max(0, rounding + offset);
 
-            wasHovered.put(element, isHovered);
+                SweepAnim anim = sweepAnimations.computeIfAbsent(element, e -> new SweepAnim(0.05f));
 
-            anim.update();
-            float progress = anim.getProgress();
+                if (isHovered && !previouslyHovered) {
+                    anim.start();
+                } else if (!isHovered && previouslyHovered) {
+                    anim.reset();
+                }
 
-            if (isHovered || anim.isActive()) {
-                float baseAlpha = 0.3f;
-                Render2D.glowOutline(outlineX, outlineY, outlineWidth, outlineHeight,
-                        OUTLINE_THICKNESS, OUTLINE_COLOR, outlineRounding, progress, baseAlpha);
-            }
+                wasHovered.put(element, isHovered);
 
-            if (!isHovered && anim.isCompleted()) {
-                sweepAnimations.remove(element);
-                wasHovered.remove(element);
+                anim.update();
+                float progress = anim.getProgress();
+
+                if (isHovered || anim.isActive()) {
+                    float baseAlpha = 0.3f;
+                    Render2D.glowOutline(outlineX, outlineY, outlineWidth, outlineHeight,
+                            OUTLINE_THICKNESS, OUTLINE_COLOR, outlineRounding, progress, baseAlpha);
+                }
+
+                if (!isHovered && anim.isCompleted()) {
+                    sweepAnimations.remove(element);
+                    wasHovered.remove(element);
+                }
             }
         }
     }
 
     public static void onMouseClick(Click click) {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (!(mc.currentScreen instanceof ChatScreen)) return;
+
         if (click.button() == 0) {
             HudManager hudManager = getHudManager();
             if (hudManager == null) return;

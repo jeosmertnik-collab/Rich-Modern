@@ -262,7 +262,9 @@ public class TargetESP extends ModuleStructure implements IMinecraft {
     private void renderRhomb(MatrixStack stack, VertexConsumerProvider provider, LivingEntity target, float alpha) {
         VertexConsumer consumer = provider
                 .getBuffer(ClientPipelines.ROMB_ESP.apply(net.minecraft.util.Identifier.of("excel", "images/world/cube.png")));
+        Quaternionf camRot = mc.gameRenderer.getCamera().getRotation();
         stack.translate(0, target.getHeight() / 2f, 0);
+        stack.multiply(camRot);
         float timeRotation = (System.currentTimeMillis() % 6283) / 1000f;
         stack.multiply(RotationAxis.POSITIVE_Z.rotationDegrees((float) Math.sin(timeRotation) * 360));
         float size = 0.5f;
@@ -317,6 +319,7 @@ public class TargetESP extends ModuleStructure implements IMinecraft {
                 int ci = switch (layer) { case 0 -> color1.getColor(); case 1 -> color2.getColor(); default -> color3.getColor(); };
                 int color = withAlpha(ci, (int) (alpha * 200));
 
+                stack.multiply(mc.gameRenderer.getCamera().getRotation());
                 Matrix4f matrix = stack.peek().getPositionMatrix();
                 consumer.vertex(matrix, -pSize, -pSize, 0).texture(0, 0).color(color);
                 consumer.vertex(matrix, pSize, -pSize, 0).texture(1, 0).color(color);
@@ -330,6 +333,8 @@ public class TargetESP extends ModuleStructure implements IMinecraft {
     private static boolean blendSetup = false;
     private void renderMarker(MatrixStack stack, LivingEntity target, float alpha, WorldRenderEvent e) {
         stack.translate(0, target.getHeight() + 0.5f, 0);
+        Camera camera = mc.gameRenderer.getCamera();
+        stack.multiply(camera.getRotation());
 
         float scale = -0.15F * alpha;
         stack.scale(scale, scale, scale);
@@ -343,6 +348,7 @@ public class TargetESP extends ModuleStructure implements IMinecraft {
     }
 
     private void renderSpirits(MatrixStack stack, VertexConsumerProvider provider, LivingEntity target, float alpha, WorldRenderEvent e) {
+        Camera camera = mc.gameRenderer.getCamera();
         long timeMs = (long) ((float) (System.currentTimeMillis() - timestamp4) / 2.0F);
         float hurtTime = target.hurtTime > 0 ? ((float) target.hurtTime - e.getPartialTicks()) / 10.0F : 0.0F;
         long nanoTime = System.nanoTime();
@@ -382,6 +388,7 @@ public class TargetESP extends ModuleStructure implements IMinecraft {
                 int ci = switch (layer) { case 0 -> color1.getColor(); case 1 -> color2.getColor(); default -> color3.getColor(); };
                 int color = withAlpha(ci, (int) (alpha * 200));
 
+                stack.multiply(camera.getRotation());
                 Matrix4f matrix = stack.peek().getPositionMatrix();
                 consumer.vertex(matrix, -particleSize, -particleSize, 0).texture(0, 0).color(color);
                 consumer.vertex(matrix, particleSize, -particleSize, 0).texture(1, 0).color(color);
@@ -393,6 +400,7 @@ public class TargetESP extends ModuleStructure implements IMinecraft {
     }
 
     private void renderGhostOrbits(MatrixStack stack, VertexConsumerProvider provider, LivingEntity target, float alpha, WorldRenderEvent e) {
+        Camera camera = mc.gameRenderer.getCamera();
         Vec3d camPos = mc.gameRenderer.getCamera().getCameraPos();
         float partialTicks = e.getPartialTicks();
         Vec3d targetCenter = target.getLerpedPos(partialTicks).add(0, target.getHeight() / 2.0, 0);
@@ -446,6 +454,7 @@ public class TargetESP extends ModuleStructure implements IMinecraft {
                 float offset = 1.0f - (float) j / ORBIT_TRAIL_LENGTH;
                 stack.push();
                 stack.translate(p.x - camPos.x, p.y - camPos.y, p.z - camPos.z);
+                stack.multiply(camera.getRotation());
                 Matrix4f matrix = stack.peek().getPositionMatrix();
                 float opacity = (float) Math.pow(offset, 1.8) * alpha * 0.7f;
                 int color = withAlpha(baseColor, (int) (opacity * 255));
@@ -461,6 +470,7 @@ public class TargetESP extends ModuleStructure implements IMinecraft {
                 Vec3d head = orbitTrails[i].get(0);
                 stack.push();
                 stack.translate(head.x - camPos.x, head.y - camPos.y, head.z - camPos.z);
+                stack.multiply(camera.getRotation());
                 Matrix4f matrix = stack.peek().getPositionMatrix();
                 float headScale = 0.35f * alpha;
                 int headColor = withAlpha(baseColor, (int) (120 * alpha));
@@ -497,6 +507,8 @@ public class TargetESP extends ModuleStructure implements IMinecraft {
 
         VertexConsumer crystalConsumer = provider.getBuffer(ClientPipelines.CRYSTAL_FILLED);
         VertexConsumer glowConsumer = provider.getBuffer(ClientPipelines.CRYSTAL_GLOW);
+
+        Camera camera = mc.gameRenderer.getCamera();
 
         for (int i = 0; i < 360; i += 19) {
             float val = 1.2f - 0.5f * alpha;
@@ -535,6 +547,7 @@ public class TargetESP extends ModuleStructure implements IMinecraft {
 
             stack.push();
             stack.translate(sin, crystalY, cos);
+            stack.multiply(camera.getRotation());
             Matrix4f gmatrix = stack.peek().getPositionMatrix();
             float glowSize = 0.15f * alpha;
             int glowColor = withAlpha(baseColor, (int) (alpha * 100));

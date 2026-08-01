@@ -90,11 +90,11 @@ public abstract class MinecraftClientMixin {
         }
     }
 
-    @Inject(method = "setScreen", at = @At("TAIL"))
+    @Inject(method = "setScreen", at = @At("HEAD"), cancellable = true)
     private void redirectTitleScreen(Screen screen, CallbackInfo ci) {
-        MinecraftClient mc = (MinecraftClient)(Object)this;
-        if (mc.currentScreen instanceof TitleScreen && !(mc.currentScreen instanceof MainMenuScreen)) {
-            mc.setScreen(new MainMenuScreen());
+        if (screen instanceof TitleScreen && !(screen instanceof MainMenuScreen)) {
+            ci.cancel();
+            ((MinecraftClient)(Object)this).setScreen(new MainMenuScreen());
         }
     }
 

@@ -3,19 +3,14 @@ package excel.util.repository.way;
 import lombok.Getter;
 import net.minecraft.client.render.Camera;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
 import excel.IMinecraft;
 import excel.events.api.EventHandler;
 import excel.events.api.EventManager;
-import excel.events.impl.DeathScreenEvent;
 import excel.events.impl.DrawEvent;
-import excel.events.impl.WorldRenderEvent;
-import excel.util.ColorUtil;
 import excel.util.config.impl.way.WayConfig;
 import excel.util.math.Projection;
 import excel.util.render.Render2D;
-import excel.util.render.Render3D;
 import excel.util.render.font.Font;
 import excel.util.render.font.Fonts;
 
@@ -28,7 +23,6 @@ import java.util.stream.Collectors;
 public class WayRepository implements IMinecraft {
     private static WayRepository instance;
     private final List<Way> wayList = new ArrayList<>();
-    private int deathCounter = 0;
 
     public WayRepository() {
         instance = this;
@@ -177,44 +171,6 @@ public class WayRepository implements IMinecraft {
 
 
             font.drawCentered(text, (float) screenPos.x, y + 1f, fontSize, 0xFFFFFFFF);
-        }
-    }
-
-    @EventHandler
-    public void onDeath(DeathScreenEvent event) {
-        if (mc.player == null || mc.world == null) return;
-        String server = getCurrentServer();
-        if (server.isEmpty()) return;
-        deathCounter++;
-        BlockPos pos = mc.player.getBlockPos();
-        String name = "☠ Death #" + deathCounter;
-        addWayAndSave(name, pos, server);
-    }
-
-    @EventHandler
-    public void onWorldRender(WorldRenderEvent event) {
-        if (isEmpty() || mc.player == null || mc.world == null) return;
-        if (mc.getNetworkHandler() == null || mc.getNetworkHandler().getServerInfo() == null) return;
-
-        String currentServer = getCurrentServer();
-        int markerColor = ColorUtil.getColor(255, 80, 80, 180);
-
-        for (Way way : wayList) {
-            if (!way.server().equalsIgnoreCase(currentServer)) continue;
-
-            BlockPos pos = way.pos();
-            double dist = mc.player.squaredDistanceTo(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
-            if (dist > 4096) continue;
-
-            boolean isDeath = way.name().startsWith("☠");
-            int color = isDeath ? ColorUtil.getColor(255, 60, 60, 160) : markerColor;
-
-            Box box = new Box(pos.getX(), pos.getY(), pos.getZ(), pos.getX() + 1, pos.getY() + 1, pos.getZ() + 1);
-            Render3D.drawBox(box, color, 1);
-
-            Vec3d top = Vec3d.of(pos).add(0.5, 3, 0.5);
-            Vec3d bottom = Vec3d.of(pos).add(0.5, 1, 0.5);
-            Render3D.drawLine(top, bottom, color, 1.5f, false);
         }
     }
 }

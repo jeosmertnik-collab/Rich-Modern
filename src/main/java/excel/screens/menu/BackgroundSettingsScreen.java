@@ -10,7 +10,6 @@ import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.input.CharInput;
 import net.minecraft.client.input.KeyInput;
 import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
 import net.minecraft.util.Util;
 import net.minecraft.util.math.MathHelper;
 import org.lwjgl.glfw.GLFW;
@@ -49,19 +48,9 @@ public class BackgroundSettingsScreen extends Screen {
     private int[] presetsScrollOffset = new int[24];
     private float[] presetHoverProgress = new float[24];
 
-    private Screen parent;
-
     public BackgroundSettingsScreen() {
-        this(null);
-    }
-
-    public BackgroundSettingsScreen(Screen parent) {
         super(Text.of("Background Settings"));
-        this.parent = parent;
     }
-
-    @Override
-    public void renderBackground(DrawContext context, int mouseX, int mouseY, float delta) {}
 
     @Override
     protected void init() {
@@ -86,37 +75,7 @@ public class BackgroundSettingsScreen extends Screen {
         int sw = client.getWindow().getScaledWidth();
         int sh = client.getWindow().getScaledHeight();
 
-        int bgAlpha = (int) (openProgress * 80);
-
-        switch (bg.getBackgroundType()) {
-            case "IMAGE": {
-                String img = bg.getBackgroundImage();
-                if (img != null && !img.isEmpty()) {
-                    try {
-                        Identifier texId = Identifier.of(img);
-                        Render2D.texture(texId, 0, 0, sw, sh, 0, 0, 1, 1, 0xFFFFFFFF, 0, 0);
-                    } catch (Exception e) {
-                        Render2D.rect(0, 0, sw, sh, 0xFF000000 | (bg.getSolidColor() & 0xFFFFFF));
-                    }
-                } else {
-                    Render2D.rect(0, 0, sw, sh, 0xFF000000 | (bg.getSolidColor() & 0xFFFFFF));
-                }
-                break;
-            }
-            case "GRADIENT":
-                Render2D.gradientRect(0, 0, sw, sh,
-                        new int[]{
-                                0xFF000000 | (bg.getGradientTop() & 0xFFFFFF),
-                                0xFF000000 | (bg.getGradientTop() & 0xFFFFFF),
-                                0xFF000000 | (bg.getGradientBottom() & 0xFFFFFF),
-                                0xFF000000 | (bg.getGradientBottom() & 0xFFFFFF)
-                        }, 0);
-                break;
-            default:
-                Render2D.rect(0, 0, sw, sh, 0xFF000000 | (bg.getSolidColor() & 0xFFFFFF));
-                break;
-        }
-
+        int bgAlpha = (int) (openProgress * 160);
         Render2D.rect(0, 0, sw, sh, (bgAlpha << 24) | 0x000000);
 
         float panelW = 420f;
@@ -343,7 +302,7 @@ public class BackgroundSettingsScreen extends Screen {
         float backBtnH = 22;
         if (isHover(mx, my, backBtnX, backBtnY, backBtnW, backBtnH)) {
             bg.save();
-            client.setScreen(parent);
+            client.setScreen(null);
             return true;
         }
 
@@ -430,7 +389,7 @@ public class BackgroundSettingsScreen extends Screen {
         int key = input.key();
         if (key == GLFW.GLFW_KEY_ESCAPE) {
             bg.save();
-            client.setScreen(parent);
+            client.setScreen(null);
             return true;
         }
         if (key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_TAB) {
