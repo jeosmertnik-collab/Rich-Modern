@@ -24,7 +24,7 @@ public class BackgroundRenderer {
     }
 
     public void render(DrawContext context, float bgX, float bgY, float alphaMultiplier) {
-        int baseAlpha = (int) (160 * alphaMultiplier);
+        int baseAlpha = (int) (255 * alphaMultiplier);
         int aR = getAccentR(), aG = getAccentG(), aB = getAccentB();
         int[] gradientColors = {
                 new Color(26, 26, 26, baseAlpha).getRGB(),

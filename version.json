@@ -5,8 +5,8 @@
   "downloadUrl": "https://github.com/jeosmertnik-collab/Rich-Modern/releases/download/v1.0.28/excel-1.0.04.jar",
   "launcherUrl": "https://github.com/jeosmertnik-collab/Rich-Modern/releases/download/v1.0.28/ExcelClientSetup.exe",
   "changelog": {
-    "ru": "Вкладка Configs: пресеты конфигураций (сохранение/загрузка/удаление), команда config. ClickGui стал прозрачнее. Модуль Trajectories (стрелы, трезубцы, зелья).",
-    "en": "Configs tab: config presets (save/load/delete), config command. ClickGui transparency. Trajectories module (arrows, tridents, potions)."
+    "ru": "Новый ClickGui (порт CS GUI): тёмные панели, категории модулей, поиск, настройки (слайдеры/режимы/списки/цвета/текст), выбор темы, анимация открытия. Вкладка Configs: пресеты конфигураций (сохранение/загрузка/удаление), команда config. Модуль Trajectories (стрелы, трезубцы, зелья).",
+    "en": "New ClickGui (CS GUI port): dark panels, module categories, search, settings (sliders/modes/lists/colors/text), theme picker, open animation. Configs tab: config presets (save/load/delete), config command. Trajectories module (arrows, tridents, potions)."
   },
   "required": false,
   "releaseDate": "2026-08-01"

@@ -13,6 +13,7 @@ dist/
 RichModern.exe
 RichModern-*.exe
 RichModern/
+CS GUI/
 build_output/
 Rich/
 loader123/bot.config.json

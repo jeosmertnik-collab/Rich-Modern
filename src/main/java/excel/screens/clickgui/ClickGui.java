@@ -10,55 +10,51 @@ import net.minecraft.text.Text;
 import org.lwjgl.glfw.GLFW;
 import excel.IMinecraft;
 import excel.Initialization;
-import excel.client.draggables.Drag;
-import excel.modules.module.category.ModuleCategory;
 import excel.modules.module.ModuleStructure;
-import excel.screens.clickgui.impl.DragHandler;
-import excel.screens.clickgui.impl.autobuy.autobuyui.AutoBuyRenderer;
-import excel.screens.clickgui.impl.background.BackgroundComponent;
-import excel.screens.clickgui.impl.configs.ConfigsRenderer;
-import excel.screens.clickgui.impl.module.ModuleComponent;
-import excel.screens.clickgui.impl.settingsrender.BindComponent;
-import excel.screens.clickgui.impl.settingsrender.TextComponent;
-import excel.util.animations.Direction;
-import excel.util.animations.GuiAnimation;
-import excel.util.interfaces.AbstractSettingComponent;
-import excel.util.math.FrameRateCounter;
+import excel.modules.module.category.ModuleCategory;
+import excel.screens.clickgui.cs.Component;
+import excel.screens.clickgui.cs.DisplayUtils;
+import excel.screens.clickgui.cs.MathUtil;
+import excel.screens.clickgui.cs.ModuleComponent;
+import excel.screens.clickgui.cs.ThemeStyle;
+import excel.screens.clickgui.cs.ThemeStyle.Style;
+import excel.screens.clickgui.cs.impl.ColorComponent;
+import excel.screens.clickgui.cs.impl.ThemeComponent;
 import excel.util.render.Render2D;
+import excel.util.render.font.Fonts;
 import excel.util.render.shader.Scissor;
-import excel.util.render.gif.GifRender;
 
-import java.awt.*;
+import java.awt.Color;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 public class ClickGui extends Screen implements IMinecraft {
     public static ClickGui INSTANCE = new ClickGui();
     private static final int FIXED_GUI_SCALE = 2;
+    private static final float PANEL_H = 385f;
 
-    private final BackgroundComponent background = new BackgroundComponent();
-    private final ModuleComponent moduleComponent = new ModuleComponent();
-    private final AutoBuyRenderer autoBuyRenderer = new AutoBuyRenderer();
-    private final ConfigsRenderer configsRenderer = new ConfigsRenderer();
-    private final DragHandler dragHandler = new DragHandler();
-    private ModuleCategory selectedCategory = ModuleCategory.COMBAT;
+    private final List<ModuleComponent> objects = new ArrayList<>();
+    private ModuleCategory current = ModuleCategory.COMBAT;
 
-    private final GuiAnimation openAnimation = new GuiAnimation();
+    public static boolean typing;
+    private String searchText = "";
+    private boolean themerender;
+
     private boolean closing = false;
-    private boolean waitingForSlide = false;
-    private boolean slideTriggered = false;
+    private float openAnimation = 0f;
 
-    private float hintAlphaAnimation = 0f;
-    private long lastHintUpdateTime = System.currentTimeMillis();
-    private static final float HINT_ANIM_SPEED = 6f;
-    private static final float OFFSET_THRESHOLD = 5f;
+    private float scroll, scrollT, animateScroll, animateScrollT;
+
+    private float xPanel, yPanel;
 
     private int lastMouseX;
     private int lastMouseY;
     private float lastDelta;
 
     public ClickGui() {
-        super(Text.of("MenuScreen"));
+        super(Text.of("CS GUI"));
     }
 
     public boolean isClosing() {
@@ -69,91 +65,57 @@ public class ClickGui extends Screen implements IMinecraft {
     protected void init() {
         super.init();
         closing = false;
-        waitingForSlide = false;
-        slideTriggered = false;
-        openAnimation.setMs(250).setValue(1.0).setDirection(Direction.FORWARDS).reset();
-        hintAlphaAnimation = 0f;
-        lastHintUpdateTime = System.currentTimeMillis();
+        typing = false;
+        ColorComponent.opened = null;
+        ModuleComponent.binding = null;
+        scroll = scrollT = animateScroll = animateScrollT = 0;
+        openAnimation = 0f;
+        buildObjects();
 
         long handle = mc.getWindow().getHandle();
-        double centerX = mc.getWindow().getWidth() / 2.0;
-        double centerY = mc.getWindow().getHeight() / 2.0;
-        GLFW.glfwSetCursorPos(handle, centerX, centerY);
-
-        background.setSearchActive(false);
-        autoBuyRenderer.resetForClose();
-        updateModules();
+        GLFW.glfwSetCursorPos(handle, mc.getWindow().getWidth() / 2.0, mc.getWindow().getHeight() / 2.0);
     }
 
-    private void updateModules() {
-        List<ModuleStructure> modules = new ArrayList<>();
+    private void buildObjects() {
+        objects.clear();
         try {
             var repo = Initialization.getInstance().getManager().getModuleRepository();
             if (repo != null) {
                 for (ModuleStructure m : repo.modules()) {
-                    if (m.getCategory() == selectedCategory) modules.add(m);
+                    objects.add(new ModuleComponent(m));
                 }
             }
-        } catch (Exception ignored) {}
-        moduleComponent.updateModules(modules, selectedCategory);
+        } catch (Exception ignored) {
+        }
     }
 
     public void openGui() {
         if (mc.currentScreen == null) {
             closing = false;
-            waitingForSlide = false;
-            slideTriggered = false;
-            openAnimation.setMs(250).setValue(1.0).setDirection(Direction.FORWARDS).reset();
             mc.setScreen(this);
         }
     }
 
-    @Override
-    public void tick() {
-        GifRender.tick();
-        moduleComponent.tick();
-        super.tick();
-    }
-
-    private float[] calculateBackground(float scale) {
-        int vw = mc.getWindow().getWidth() / FIXED_GUI_SCALE;
-        int vh = mc.getWindow().getHeight() / FIXED_GUI_SCALE;
-        float bgX = (vw - BackgroundComponent.BG_WIDTH) / 2f + dragHandler.getOffsetX();
-        float bgY = (vh - BackgroundComponent.BG_HEIGHT) / 2f + dragHandler.getOffsetY();
-        return new float[]{bgX, bgY, vw, vh};
-    }
-
-    private boolean isAnyBindListening() {
-        for (AbstractSettingComponent c : moduleComponent.getSettingComponents()) {
-            if (c instanceof BindComponent bindComponent && bindComponent.isListening()) {
-                return true;
+    private List<ModuleComponent> visibleModules() {
+        List<ModuleComponent> out = new ArrayList<>();
+        for (ModuleComponent m : objects) {
+            if (!searchText.isEmpty()) {
+                if (m.function.getName().toLowerCase().contains(searchText.toLowerCase())) out.add(m);
+            } else {
+                if (m.function.getCategory() == current) out.add(m);
             }
         }
-        return false;
+        return out;
     }
 
-    private void updateHintAnimation() {
-        long currentTime = System.currentTimeMillis();
-        float deltaTime = Math.min((currentTime - lastHintUpdateTime) / 1000f, 0.1f);
-        lastHintUpdateTime = currentTime;
-
-        float offsetX = Math.abs(dragHandler.getOffsetX());
-        float offsetY = Math.abs(dragHandler.getOffsetY());
-        boolean shouldShow = (offsetX > OFFSET_THRESHOLD || offsetY > OFFSET_THRESHOLD);
-
-        float target = shouldShow ? 1f : 0f;
-        float diff = target - hintAlphaAnimation;
-
-        if (Math.abs(diff) < 0.001f) {
-            hintAlphaAnimation = target;
-        } else {
-            hintAlphaAnimation += diff * HINT_ANIM_SPEED * deltaTime;
-            hintAlphaAnimation = Math.max(0f, Math.min(1f, hintAlphaAnimation));
-        }
-    }
-
-    private boolean isModuleCategory(ModuleCategory category) {
-        return category != ModuleCategory.AUTOBUY && category != ModuleCategory.CONFIGS;
+    private float[] layout() {
+        int vw = mc.getWindow().getWidth() / FIXED_GUI_SCALE;
+        int vh = mc.getWindow().getHeight() / FIXED_GUI_SCALE;
+        float width = (themerender ? 1150 : 850) / FIXED_GUI_SCALE + 20 + 40;
+        float height = PANEL_H;
+        float x = vw / 2f - width / 2f;
+        float y = vh / 2f - height / 2f;
+        return new float[]{x, y, width, height};
     }
 
     @Override
@@ -161,288 +123,288 @@ public class ClickGui extends Screen implements IMinecraft {
         lastMouseX = mouseX;
         lastMouseY = mouseY;
         lastDelta = delta;
-
-        FrameRateCounter.INSTANCE.recordFrame();
-
-        if (waitingForSlide && selectedCategory == ModuleCategory.AUTOBUY) {
-            if (!slideTriggered) {
-                autoBuyRenderer.triggerSlideOut();
-                slideTriggered = true;
-            }
-
-            if (autoBuyRenderer.isSlideOutComplete()) {
-                waitingForSlide = false;
-                slideTriggered = false;
-                startActualClose();
-            }
-        }
-
-        if (closing && !waitingForSlide && openAnimation.isFinished(Direction.BACKWARDS)) {
-            closing = false;
-            TextComponent.typing = false;
-            moduleComponent.setBindingModule(null);
-            dragHandler.stopDrag();
-            autoBuyRenderer.resetForClose();
-            mc.currentScreen = null;
-        }
     }
 
     public void renderOverlay(DrawContext context, RenderTickCounter tickCounter) {
         if (mc.getWindow() == null) return;
 
-        float delta = lastDelta;
-        int mouseX = lastMouseX;
-        int mouseY = lastMouseY;
+        float anim = MathUtil.lerp(openAnimation, closing ? 0 : 1, 10);
+        openAnimation = anim;
 
-        float scrollSpeed = Math.min(1f, 60f / Math.max(FrameRateCounter.INSTANCE.getFps(), 1));
-        float animValue = openAnimation.getOutput().floatValue();
-
-        int screenWidth = mc.getWindow().getScaledWidth();
-        int screenHeight = mc.getWindow().getScaledHeight();
-
-        context.createNewRootLayer();
-
-        int dimAlpha = (int) (30 * animValue);
-        if (dimAlpha > 0) {
-            Render2D.rect(0, 0, 5000, 5000, new Color(0, 0, 0, dimAlpha).getRGB(), 0);
+        if (closing && anim < 0.02f) {
+            closing = false;
+            typing = false;
+            ModuleComponent.binding = null;
+            ColorComponent.opened = null;
+            mc.currentScreen = null;
+            return;
         }
 
         int guiScale = mc.getWindow().calculateScaleFactor(mc.options.getGuiScale().getValue(), mc.forcesUnicodeFont());
         float scale = (float) FIXED_GUI_SCALE / guiScale;
+        float mx = lastMouseX / scale, my = lastMouseY / scale;
 
-        float mx = mouseX / scale, my = mouseY / scale;
-
-        if (!closing || waitingForSlide) {
-            dragHandler.update(mx, my);
+        int dimAlpha = (int) (120 * anim);
+        if (dimAlpha > 0) {
+            Render2D.rect(0, 0, 5000, 5000, new Color(0, 0, 0, dimAlpha).getRGB(), 0);
         }
-
-        updateHintAnimation();
 
         context.getMatrices().pushMatrix();
         context.getMatrices().scale(scale, scale);
 
-        float[] bg = calculateBackground(scale);
-        float bgX = bg[0];
-        float bgY = bg[1];
-        int vw = (int) bg[2];
-        int vh = (int) bg[3];
-
-        float yOffset;
-        if (closing && !waitingForSlide) {
-            yOffset = (1f - animValue) * 30f;
+        float[] l = layout();
+        float x = l[0], y = l[1], width = l[2], height = l[3];
+        if (closing) {
+            y += (1 - anim) * 30f;
         } else {
-            yOffset = (1f - animValue) * -15f;
+            y += (1 - anim) * -15f;
         }
-        bgY += yOffset;
+        xPanel = x;
+        yPanel = y;
 
-        float alphaMultiplier = animValue;
+        int mxI = (int) mx, myI = (int) my;
 
-        context.getMatrices().pushMatrix();
-
-        background.render(context, bgX, bgY, selectedCategory, delta, alphaMultiplier);
-        background.renderCategoryPanel(bgX, bgY, alphaMultiplier);
-        background.renderHeader(bgX, bgY, selectedCategory, alphaMultiplier);
-        background.renderCategoryNames(bgX, bgY, selectedCategory, alphaMultiplier);
-
-        float mlX = bgX + 92f, mlY = bgY + 38f, mlW = 120f, mlH = BackgroundComponent.BG_HEIGHT - 46f;
-        float spX = bgX + 218f, spY = bgY + 38f, spW = 172f, spH = BackgroundComponent.BG_HEIGHT - 46f;
-
-        float normalAlpha = background.getNormalPanelAlpha();
-        float searchAlpha = background.getSearchPanelAlpha();
-
-        if (normalAlpha > 0.01f) {
-            configsRenderer.render(context, bgX, bgY, mx, my, delta, FIXED_GUI_SCALE, alphaMultiplier * normalAlpha, selectedCategory);
-
-            boolean isAutoBuySliding = autoBuyRenderer.isSliding();
-            boolean shouldRenderModules = isModuleCategory(selectedCategory);
-            boolean slidingToModuleCategory = isAutoBuySliding && isModuleCategory(selectedCategory);
-
-            if (shouldRenderModules || slidingToModuleCategory) {
-                moduleComponent.updateScroll(delta, scrollSpeed);
-                moduleComponent.updateScrollFades(delta, scrollSpeed, mlH, spH);
-                moduleComponent.renderModuleList(context, mlX, mlY, mlW, mlH, mx, my, FIXED_GUI_SCALE, alphaMultiplier * normalAlpha);
-                moduleComponent.renderSettingsPanel(context, spX, spY, spW, spH, mx, my, delta, FIXED_GUI_SCALE, alphaMultiplier * normalAlpha);
-            }
-
-            autoBuyRenderer.render(context, bgX, bgY, mx, my, delta, FIXED_GUI_SCALE, alphaMultiplier * normalAlpha, selectedCategory);
-        }
-
-        if (searchAlpha > 0.01f) {
-            background.renderSearchResults(context, bgX, bgY, mx, my, FIXED_GUI_SCALE, alphaMultiplier);
+        renderBackground(x, y, width, height, mxI, myI);
+        if (themerender) renderThemes(x, y, width, height, mxI, myI);
+        renderCategories(x, y, width, height, mxI, myI);
+        renderComponents(x, y, width, height, mxI, myI);
+        renderSearchBar(x, y, width, height, mxI, myI);
+        if (ColorComponent.opened != null) {
+            ColorComponent.opened.draw(mxI, myI);
         }
 
         Scissor.reset();
-
         context.getMatrices().popMatrix();
+    }
 
-        float finalHintAlpha = hintAlphaAnimation * alphaMultiplier;
-        if (finalHintAlpha > 0.01f) {
-            int hintAlpha = (int) (255 * finalHintAlpha);
-            float centerX = vw / 2f;
-            float centerY = vh / 2f;
-            float textY = centerY + BackgroundComponent.BG_HEIGHT / 2f + 10f;
-//            Fonts.TEST.drawCentered("Press CTRL + ALT to reset position", centerX, textY + 65, 6, new Color(150, 150, 150, hintAlpha).getRGB());
+    private void renderBackground(float x, float y, float width, float height, int mouseX, int mouseY) {
+        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm");
+        String timeString = sdf.format(new Date());
+
+        DisplayUtils.drawShadow(x, y, width, height, 20, new Color(22, 24, 28).getRGB());
+        DisplayUtils.drawRoundedRectWithOutline(x, y, width, height, 20, new Color(10, 10, 10).getRGB(), new Color(80, 85, 95).getRGB(), 0.75f);
+        if (themerender) {
+            DisplayUtils.drawRectVerticalW(x + 462, y, 0.75f, height, new Color(53, 55, 60).getRGB(), new Color(53, 55, 60).getRGB());
         }
 
-        context.getMatrices().popMatrix();
+        int accent = ThemeStyle.getAccentRGB();
+        DisplayUtils.drawCircle(x + 32, y + 30, 5, new Color(80, 85, 95).getRGB());
+        DisplayUtils.drawCircle(x + 32, y + 30, 3, accent);
+        Fonts.BOLD.draw("Excel", x + 46, y + 22.5f, 19, -1);
+        DisplayUtils.drawRoundedRectWithOutline(x + 47.8f, y + 30.5f, 8, 8, 3, new Color(10, 10, 10).getRGB(), new Color(80, 85, 95).getRGB(), 0.75f);
+        Fonts.BOLD.draw("R", x + 47.5f, y + 33.5f, 12, new Color(100, 100, 100).getRGB());
+        Fonts.BOLD.draw("Сменить тему", x + 49.5f, y + 33.5f, 12, new Color(100, 100, 100).getRGB());
+        Fonts.BOLD.draw(timeString, x + 47.5f, y + 45.5f, 12, new Color(100, 100, 100).getRGB());
+
+        float avatarSize = (height - 5) / 13;
+        DisplayUtils.drawCircle(x + 10 + avatarSize / 2f, y + 286 + avatarSize / 2f, avatarSize / 2f, accent);
+        DisplayUtils.drawCircle(x + 10 + avatarSize / 2f, y + 286 + avatarSize / 2f, avatarSize / 2f - 3, new Color(10, 10, 10).getRGB());
+        DisplayUtils.drawCircle(x + 10 + avatarSize / 2f, y + 286 + avatarSize / 2f, avatarSize / 2f - 5, accent);
+        Fonts.BOLD.draw("Пользователь", x + 42, y + 287.5f, 16, -1);
+        Fonts.BOLD.draw("Role: User", x + 42, y + 297.5f, 12, new Color(100, 100, 100).getRGB());
+        Fonts.BOLD.draw("Version: Excel 1.0.04", x + 42, y + 305, 12, new Color(100, 100, 100).getRGB());
+    }
+
+    private void renderThemes(float x, float y, float width, float height, int mouseX, int mouseY) {
+        Style style = ThemeStyle.MANAGER.getCurrentStyle();
+        List<Style> styles = ThemeStyle.MANAGER.getStyleList();
+
+        Fonts.BOLD.drawCentered("Theme", x + 510, y + 30, 38, style.getFirstColor().getRGB());
+        Fonts.BOLD.draw("Этот раздел добавлен для игры с", x + 472, y + 55, 15, new Color(100, 100, 100).getRGB());
+        Fonts.BOLD.draw("цветами клиента. Цвет - новое", x + 472, y + 65, 15, new Color(100, 100, 100).getRGB());
+        Fonts.BOLD.draw("настроение", x + 472, y + 75, 15, new Color(100, 100, 100).getRGB());
+
+        DisplayUtils.drawRoundedRectWithOutline(x + 472, y + 85, 153, height - 100, 10, new Color(13, 10, 10).getRGB(), new Color(80, 85, 95).getRGB(), 0.75f);
+        animateScrollT = MathUtil.lerp(animateScrollT, scrollT, 10);
+
+        float startX = x + 487;
+        float startY = y + 95 + animateScrollT;
+        float boxWidth = 55;
+        float boxHeight = 40;
+        float padding = 10;
+        int columns = 2;
+
+        for (int i = 0; i < styles.size(); i++) {
+            int row = i / columns;
+            int col = i % columns;
+            float boxX = startX + col * (boxWidth + padding);
+            float boxY = startY + row * (boxHeight + padding);
+
+            ThemeComponent themeComponent = new ThemeComponent(styles.get(i));
+            themeComponent.setPosition(boxX, boxY, boxWidth, boxHeight);
+            themeComponent.drawComponent(mouseX, mouseY);
+        }
+
+        int size1 = styles.size() * 30;
+        if (size1 < boxHeight) {
+            scrollT = 0;
+        } else {
+            scrollT = MathUtil.clamp(scrollT, -(size1 - height), 0);
+        }
+    }
+
+    private void renderCategories(float x, float y, float width, float height, int mouseX, int mouseY) {
+        float heightCategory = 30f;
+        int accent = ThemeStyle.getAccentRGB();
+        for (ModuleCategory t : ModuleCategory.values()) {
+            if (t == current) {
+                DisplayUtils.drawRoundedRectWithOutline(x - 14, y + 75.5f + t.ordinal() * heightCategory, 131, 24, 8, new Color(10, 10, 10).getRGB(), new Color(80, 85, 95).getRGB(), 0.75f);
+                DisplayUtils.drawRoundedRect(x - 18.5f, y + 80.25f + t.ordinal() * heightCategory, 23.5f, 14.5f, 5, accent);
+            }
+            Fonts.BOLD.draw(t.getReadableName(), x + 28, y + 85.5f + t.ordinal() * heightCategory, 20, t == current ? accent : new Color(63, 75, 78).getRGB());
+        }
+        DisplayUtils.drawRectHorizontalW(x + 100, y + 32, 5, height - 32, new Color(12, 13, 15, 50).getRGB(), new Color(12, 13, 15, 0).getRGB());
+    }
+
+    private void renderComponents(float x, float y, float width, float height, int mouseX, int mouseY) {
+        Scissor.enable(x, y + 32, width, height - 64, FIXED_GUI_SCALE);
+        drawComponents(mouseX, mouseY);
+        Scissor.reset();
+    }
+
+    private void drawComponents(int mouseX, int mouseY) {
+        List<ModuleComponent> moduleList = visibleModules();
+        List<ModuleComponent> first = new ArrayList<>();
+        List<ModuleComponent> second = new ArrayList<>();
+        for (ModuleComponent m : moduleList) {
+            if (objects.indexOf(m) % 2 == 0) {
+                first.add(m);
+            } else {
+                second.add(m);
+            }
+        }
+
+        animateScroll = MathUtil.lerp(animateScroll, scroll, 15);
+
+        float offset1 = yPanel + 14 + animateScroll;
+        float size1 = 0;
+        for (ModuleComponent component : first) {
+            component.parent = this;
+            component.setPosition(xPanel + 152, offset1, 142.5f, 37);
+            component.drawComponent(mouseX, mouseY);
+            if (!component.components.isEmpty()) {
+                for (Component settingComp : component.components) {
+                    if (settingComp.setting != null && settingComp.setting.isVisible()) {
+                        offset1 += settingComp.height;
+                        size1 += settingComp.height;
+                    }
+                }
+            }
+            offset1 += component.height + 8;
+            size1 += component.height + 8;
+        }
+
+        float offset2 = yPanel + 14 + animateScroll;
+        float size2 = 0;
+        for (ModuleComponent component : second) {
+            component.parent = this;
+            component.setPosition(xPanel + 309, offset2, 142.5f, 37);
+            component.drawComponent(mouseX, mouseY);
+            if (!component.components.isEmpty()) {
+                for (Component settingComp : component.components) {
+                    if (settingComp.setting != null && settingComp.setting.isVisible()) {
+                        offset2 += settingComp.height;
+                        size2 += settingComp.height;
+                    }
+                }
+            }
+            offset2 += component.height + 8;
+            size2 += component.height + 8;
+        }
+
+        float max = Math.max(size1, size2);
+        float height = 650 / FIXED_GUI_SCALE + 20;
+        if (max < height) {
+            scroll = 0;
+        } else {
+            scroll = MathUtil.clamp(scroll, -(max - height + 50), 0);
+        }
+    }
+
+    private void renderSearchBar(float x, float y, float width, float height, int mouseX, int mouseY) {
+        DisplayUtils.drawShadow(x + 20, y + 47, 100, 18, 12, new Color(17, 18, 21).getRGB());
+        DisplayUtils.drawRoundedRectWithOutline(x + 20, y + 47, 100, 18, 8, new Color(17, 18, 21).getRGB(), new Color(80, 85, 95).getRGB(), 0.75f);
+
+        Scissor.enable(x + 20, y + 47, 100, 18, FIXED_GUI_SCALE);
+        String display;
+        boolean cursor = typing && System.currentTimeMillis() % 1000 > 500;
+        if (searchText.isEmpty()) {
+            display = typing ? (cursor ? "_" : "") : "Поиск...";
+        } else {
+            display = cursor ? searchText + "_" : searchText;
+        }
+        Fonts.BOLD.draw(display, x + 30, y + 54, 12, new Color(53, 55, 60).getRGB());
+        Scissor.reset();
     }
 
     @Override
     public boolean mouseClicked(Click click, boolean doubled) {
         if (closing) return false;
 
-        if (click.button() == 0) {
-            if (Initialization.getInstance() != null && Initialization.getInstance().getManager() != null
-                    && Initialization.getInstance().getManager().getHudManager() != null) {
-                if (Initialization.getInstance().getManager().getHudManager().mouseClicked(click.x(), click.y(), click.button())) {
-                    return true;
-                }
-            }
-            Drag.onMouseClick(click);
-            if (Drag.isDragging()) {
-                return true;
-            }
-        }
-
         int guiScale = mc.getWindow().calculateScaleFactor(mc.options.getGuiScale().getValue(), mc.forcesUnicodeFont());
         float scale = (float) FIXED_GUI_SCALE / guiScale;
-        double mx = click.x() / scale, my = click.y() / scale;
+        float mx = (float) (click.x() / scale), my = (float) (click.y() / scale);
+        int button = click.button();
 
-        float[] bg = calculateBackground(scale);
-        float bgX = bg[0], bgY = bg[1];
-
-        if (background.isSearchBoxHovered(mx, my, bgX, bgY) && click.button() == 0) {
-            background.setSearchActive(true);
-            return true;
-        }
-
-        if (background.isSearchActive()) {
-            if (click.button() == 0) {
-                ModuleStructure searchModule = background.getSearchModuleAtPosition(mx, my, bgX, bgY);
-                if (searchModule != null) {
-                    searchModule.switchState();
-                    return true;
-                }
-
-                float panelX = bgX + 92f;
-                float panelY = bgY + 38f;
-                float panelW = BackgroundComponent.BG_WIDTH - 100f;
-                float panelH = BackgroundComponent.BG_HEIGHT - 46f;
-
-                if (mx >= panelX && mx <= panelX + panelW && my >= panelY && my <= panelY + panelH) {
-                    return true;
-                }
-
-                if (!background.isSearchBoxHovered(mx, my, bgX, bgY)) {
-                    background.setSearchActive(false);
-                }
-            } else if (click.button() == 1) {
-                ModuleStructure searchModule = background.getSearchModuleAtPosition(mx, my, bgX, bgY);
-                if (searchModule != null) {
-                    background.setSearchActive(false);
-                    selectedCategory = searchModule.getCategory();
-                    moduleComponent.selectModuleFromSearch(searchModule);
-                    updateModules();
-                    return true;
-                }
+        if (ColorComponent.opened != null) {
+            if (!ColorComponent.opened.click((int) mx, (int) my)) {
+                ColorComponent.opened = null;
             }
             return true;
         }
 
-        if (selectedCategory == ModuleCategory.AUTOBUY) {
-            if (autoBuyRenderer.mouseClicked(mx, my, click.button(), bgX, bgY, selectedCategory)) {
-                return true;
+        float[] l = layout();
+        float x = l[0], y = l[1], width = l[2], height = l[3];
+
+        float heightCategory = 30f;
+        for (ModuleCategory t : ModuleCategory.values()) {
+            if (MathUtil.isInRegion(mx, my, x, y + 73.5f + t.ordinal() * heightCategory, 117.5f, heightCategory)) {
+                if (current == t) continue;
+                current = t;
+                scroll = 0;
+                searchText = "";
+                ColorComponent.opened = null;
+                typing = false;
+                break;
             }
         }
 
-        if (selectedCategory == ModuleCategory.CONFIGS) {
-            if (configsRenderer.mouseClicked(mx, my, click.button(), bgX, bgY, selectedCategory)) {
-                return true;
+        if (MathUtil.isInRegion(mx, my, x, y + 32, width, height - 64)) {
+            for (ModuleComponent m : visibleModules()) {
+                m.mouseClicked((int) mx, (int) my, button);
             }
         }
-
-        float mlX = bgX + 92f, mlY = bgY + 38f, mlW = 120f, mlH = BackgroundComponent.BG_HEIGHT - 48f;
-
-        if (click.button() == 2) {
-            if (isAnyBindListening()) {
-                for (AbstractSettingComponent c : moduleComponent.getSettingComponents()) {
-                    if (c instanceof BindComponent bindComponent && bindComponent.isListening()) {
-                        bindComponent.handleMiddleMouseBind();
-                        return true;
-                    }
-                }
+        if (ModuleComponent.binding != null) {
+            if (button > 2) {
+                ModuleComponent.binding.function.setKey(-100 + button);
             }
-
-            if (moduleComponent.getBindingModule() != null) {
-                return true;
-            }
-
-            ModuleStructure module = moduleComponent.getModuleAtPosition(mx, my, mlX, mlY, mlW, mlH);
-            if (module != null) {
-                moduleComponent.setBindingModule(module);
-                return true;
-            }
-
-            if (dragHandler.startDrag(mx, my, bgX, bgY, BackgroundComponent.BG_WIDTH, BackgroundComponent.BG_HEIGHT)) {
-                return true;
-            }
+            ModuleComponent.binding = null;
         }
 
-        ModuleCategory cat = background.getCategoryAtPosition(mx, my, bgX, bgY);
-        if (cat != null) {
-            selectedCategory = cat;
-            updateModules();
-            return true;
+        if (MathUtil.isInRegion(mx, my, x + 20, y + 47, 100, 18)) {
+            typing = !typing;
+        } else {
+            typing = false;
         }
 
-        if (isModuleCategory(selectedCategory)) {
-            ModuleStructure starModule = moduleComponent.getModuleForStarClick(mx, my, mlX, mlY, mlW, mlH);
-            if (starModule != null && click.button() == 0) {
-                moduleComponent.toggleFavorite(starModule);
-                return true;
-            }
-
-            ModuleStructure module = moduleComponent.getModuleAtPosition(mx, my, mlX, mlY, mlW, mlH);
-            if (module != null) {
-                if (click.button() == 0) {
-                    module.switchState();
-                    moduleComponent.triggerTogglePulse(module);
-                }
-                else if (click.button() == 1) moduleComponent.selectModule(module);
-                return true;
-            }
-
-            float spX = bgX + 218f, spY = bgY + 38f, spW = 172f, spH = BackgroundComponent.BG_HEIGHT - 48f;
-            if (mx >= spX && mx <= spX + spW && my >= spY && my <= spY + spH) {
-                for (AbstractSettingComponent c : moduleComponent.getSettingComponents()) {
-                    if (c.getSetting().isVisible() && c.mouseClicked(mx, my, click.button())) return true;
-                }
-            }
-        }
-
-        return super.mouseClicked(click, doubled);
+        return true;
     }
 
     @Override
     public boolean mouseReleased(Click click) {
         if (closing) return false;
 
-        Drag.onMouseRelease(click);
+        int guiScale = mc.getWindow().calculateScaleFactor(mc.options.getGuiScale().getValue(), mc.forcesUnicodeFont());
+        float scale = (float) FIXED_GUI_SCALE / guiScale;
+        float mx = (float) (click.x() / scale), my = (float) (click.y() / scale);
+        int button = click.button();
 
-        if (selectedCategory == ModuleCategory.AUTOBUY) {
-            autoBuyRenderer.mouseReleased(click.x(), click.y(), click.button());
+        for (ModuleComponent m : visibleModules()) {
+            m.mouseReleased((int) mx, (int) my, button);
         }
-
-        if (selectedCategory == ModuleCategory.CONFIGS) {
-            configsRenderer.mouseReleased(click.x(), click.y(), click.button());
+        if (ColorComponent.opened != null) {
+            ColorComponent.opened.unclick((int) mx, (int) my);
         }
-
-        for (AbstractSettingComponent c : moduleComponent.getSettingComponents()) {
-            if (c.getSetting().isVisible() && c.mouseReleased(click.x(), click.y(), click.button())) {
-                return true;
-            }
-        }
-
         return super.mouseReleased(click);
     }
 
@@ -450,115 +412,76 @@ public class ClickGui extends Screen implements IMinecraft {
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontal, double vertical) {
         if (closing) return false;
 
-        if (isAnyBindListening()) {
-            for (AbstractSettingComponent c : moduleComponent.getSettingComponents()) {
-                if (c instanceof BindComponent bindComponent && bindComponent.isListening()) {
-                    bindComponent.handleScrollBind(vertical);
-                    return true;
-                }
-            }
-        }
-
-        if (moduleComponent.getBindingModule() != null) {
-            return true;
-        }
-
         int guiScale = mc.getWindow().calculateScaleFactor(mc.options.getGuiScale().getValue(), mc.forcesUnicodeFont());
         float scale = (float) FIXED_GUI_SCALE / guiScale;
-        double mx = mouseX / scale, my = mouseY / scale;
+        float mx = (float) (mouseX / scale), my = (float) (mouseY / scale);
 
-        float[] bg = calculateBackground(scale);
-        float bgX = bg[0], bgY = bg[1];
+        float[] l = layout();
+        float x = l[0], y = l[1], width = l[2], height = l[3];
+        float delta = (float) vertical;
 
-        if (background.isSearchActive()) {
-            float panelX = bgX + 92f;
-            float panelY = bgY + 38f;
-            float panelW = BackgroundComponent.BG_WIDTH - 100f;
-            float panelH = BackgroundComponent.BG_HEIGHT - 46f;
-
-            if (mx >= panelX && mx <= panelX + panelW && my >= panelY && my <= panelY + panelH) {
-                background.handleSearchScroll(vertical, panelH);
-                return true;
+        if (MathUtil.isInRegion(mx, my, x + 117.5f, y + 32, width - 117.5f - 18 + (themerender ? -95 : 0), height - 32)) {
+            scroll += delta * 30;
+        }
+        if (themerender) {
+            if (MathUtil.isInRegion(mx, my, x + 381, y + 85, 158, height - 100)) {
+                scrollT += delta * 15;
             }
         }
 
-        if (selectedCategory == ModuleCategory.AUTOBUY) {
-            if (autoBuyRenderer.mouseScrolled(mx, my, vertical, bgX, bgY, selectedCategory)) {
-                return true;
-            }
-        }
-
-        if (selectedCategory == ModuleCategory.CONFIGS) {
-            if (configsRenderer.mouseScrolled(mx, my, vertical, bgX, bgY, selectedCategory)) {
-                return true;
-            }
-        }
-
-        float mlX = bgX + 92f, mlY = bgY + 38f, mlW = 120f, mlH = BackgroundComponent.BG_HEIGHT - 48f;
-        if (mx >= mlX && mx <= mlX + mlW && my >= mlY && my <= mlY + mlH) {
-            moduleComponent.handleModuleScroll(vertical, mlH);
-            return true;
-        }
-
-        float spX = bgX + 218f, spY = bgY + 38f, spW = 172f, spH = BackgroundComponent.BG_HEIGHT - 48f;
-        if (mx >= spX && mx <= spX + spW && my >= spY && my <= spY + spH) {
-            moduleComponent.handleSettingScroll(vertical, spH);
-            return true;
-        }
+        ColorComponent.opened = null;
         return super.mouseScrolled(mouseX, mouseY, horizontal, vertical);
     }
 
     @Override
     public boolean keyPressed(KeyInput input) {
         if (input.key() == GLFW.GLFW_KEY_ESCAPE) {
-            if (autoBuyRenderer.isEditing()) {
-                return true;
-            }
-            if (configsRenderer.isEditing()) {
-                return true;
-            }
-            if (background.isSearchActive()) {
-                background.setSearchActive(false);
-                return true;
-            }
             close();
             return true;
         }
 
         if (closing) return false;
 
-        if (selectedCategory == ModuleCategory.AUTOBUY) {
-            if (autoBuyRenderer.keyPressed(input.key(), input.scancode(), input.modifiers())) {
-                return true;
-            }
-        }
-
-        if (selectedCategory == ModuleCategory.CONFIGS) {
-            if (configsRenderer.keyPressed(input.key(), input.scancode(), input.modifiers())) {
-                return true;
-            }
-        }
-
-        if (background.isSearchActive()) {
-            if (background.handleSearchKey(input.key())) {
-                return true;
-            }
-        }
-
-        if (dragHandler.isResetNeeded(input.key(), input.modifiers())) {
-            dragHandler.reset();
+        if (input.key() == GLFW.GLFW_KEY_R) {
+            themerender = !themerender;
             return true;
         }
 
-        ModuleStructure binding = moduleComponent.getBindingModule();
-        if (binding != null) {
-            binding.setKey(input.key() == GLFW.GLFW_KEY_DELETE ? GLFW.GLFW_KEY_UNKNOWN : input.key());
-            moduleComponent.setBindingModule(null);
+        if (typing) {
+            if ((input.modifiers() & GLFW.GLFW_MOD_CONTROL) != 0 && input.key() == GLFW.GLFW_KEY_V) {
+                String clip = mc.keyboard.getClipboard();
+                if (clip != null) searchText += clip;
+                return true;
+            }
+            if (input.key() == GLFW.GLFW_KEY_BACKSPACE) {
+                if (!searchText.isEmpty()) {
+                    searchText = searchText.substring(0, searchText.length() - 1);
+                }
+                return true;
+            }
+            if (input.key() == GLFW.GLFW_KEY_DELETE) {
+                searchText = "";
+                return true;
+            }
+            if (input.key() == GLFW.GLFW_KEY_ENTER) {
+                typing = false;
+                return true;
+            }
             return true;
         }
 
-        for (AbstractSettingComponent c : moduleComponent.getSettingComponents()) {
-            if (c.getSetting().isVisible() && c.keyPressed(input.key(), input.scancode(), input.modifiers())) return true;
+        if (ModuleComponent.binding != null) {
+            if (input.key() == GLFW.GLFW_KEY_DELETE) {
+                ModuleComponent.binding.function.setKey(GLFW.GLFW_KEY_UNKNOWN);
+            } else {
+                ModuleComponent.binding.function.setKey(input.key());
+            }
+            ModuleComponent.binding = null;
+            return true;
+        }
+
+        for (ModuleComponent m : visibleModules()) {
+            m.keyTyped(input.key(), input.scancode(), input.modifiers());
         }
 
         return super.keyPressed(input);
@@ -568,26 +491,13 @@ public class ClickGui extends Screen implements IMinecraft {
     public boolean charTyped(CharInput input) {
         if (closing) return false;
 
-        if (selectedCategory == ModuleCategory.AUTOBUY) {
-            if (autoBuyRenderer.charTyped((char) input.codepoint(), input.modifiers())) {
-                return true;
-            }
+        if (typing) {
+            searchText += (char) input.codepoint();
+            return true;
         }
 
-        if (selectedCategory == ModuleCategory.CONFIGS) {
-            if (configsRenderer.charTyped((char) input.codepoint(), input.modifiers())) {
-                return true;
-            }
-        }
-
-        if (background.isSearchActive()) {
-            if (background.handleSearchChar((char) input.codepoint())) {
-                return true;
-            }
-        }
-
-        for (AbstractSettingComponent c : moduleComponent.getSettingComponents()) {
-            if (c.getSetting().isVisible() && c.charTyped((char) input.codepoint(), input.modifiers())) return true;
+        for (ModuleComponent m : visibleModules()) {
+            m.charTyped((char) input.codepoint(), input.modifiers());
         }
         return super.charTyped(input);
     }
@@ -597,35 +507,19 @@ public class ClickGui extends Screen implements IMinecraft {
         return false;
     }
 
-    private void startActualClose() {
-        openAnimation.setDirection(Direction.BACKWARDS);
-        openAnimation.reset();
-
-        long handle = mc.getWindow().getHandle();
-        double centerX = mc.getWindow().getWidth() / 2.0;
-        double centerY = mc.getWindow().getHeight() / 2.0;
-
-        GLFW.glfwSetInputMode(handle, GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_DISABLED);
-        GLFW.glfwSetCursorPos(handle, centerX, centerY);
-
-        TextComponent.typing = false;
-        moduleComponent.setBindingModule(null);
-        background.setSearchActive(false);
-        dragHandler.stopDrag();
-    }
-
     @Override
     public void close() {
         if (!closing) {
             closing = true;
+            typing = false;
+            ColorComponent.opened = null;
+            ModuleComponent.binding = null;
 
-            if (selectedCategory == ModuleCategory.AUTOBUY) {
-                waitingForSlide = true;
-                slideTriggered = false;
-            } else {
-                waitingForSlide = false;
-                startActualClose();
-            }
+            long handle = mc.getWindow().getHandle();
+            double centerX = mc.getWindow().getWidth() / 2.0;
+            double centerY = mc.getWindow().getHeight() / 2.0;
+            GLFW.glfwSetInputMode(handle, GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_DISABLED);
+            GLFW.glfwSetCursorPos(handle, centerX, centerY);
         }
     }
 }
